@@ -1,6 +1,6 @@
 module ITensorBase
 
-using BroadcastMapConversion: Mapped
+using MapBroadcast: Mapped
 using NamedDimsArrays:
   NamedDimsArrays,
   AbstractName,
