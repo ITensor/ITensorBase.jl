@@ -96,7 +96,7 @@ function allocate!(a::AbstractITensor)
   return a
 end
 
-using Derive: @derive, @interface, AbstractArrayInterface
+using DerivableInterfaces: @derive, @interface, AbstractArrayInterface
 
 abstract type AbstractAllocatableArrayInterface <: AbstractArrayInterface end
 struct AllocatableArrayInterface <: AbstractAllocatableArrayInterface end
