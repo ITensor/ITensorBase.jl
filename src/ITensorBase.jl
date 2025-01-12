@@ -1,5 +1,6 @@
 module ITensorBase
 
+using Accessors: @set
 using MapBroadcast: Mapped
 using NamedDimsArrays:
   NamedDimsArrays,
@@ -14,15 +15,28 @@ using NamedDimsArrays:
   name,
   named,
   nameddimsindices,
+  setname,
   unname
+
+const Tag = String
+const TagSet = Set{Tag}
+
+tagset(tags::String) = Set(filter(!isempty, String.(strip.(split(tags, ",")))))
 
 @kwdef struct IndexName <: AbstractName
   id::UInt64 = rand(UInt64)
   plev::Int = 0
-  tags::Set{String} = Set{String}()
-  namedtags::Dict{Symbol,String} = Dict{Symbol,String}()
+  tags::TagSet = TagSet()
 end
 NamedDimsArrays.randname(n::IndexName) = IndexName()
+
+tags(n::IndexName) = n.tags
+settags(n::IndexName, tags) = @set n.tags = tags
+addtags(n::IndexName, ts) = settags(n, tags(n) ∪ tagset(ts))
+
+plev(n::IndexName) = n.plev
+setprime(n::IndexName, plev) = @set n.plev = plev
+prime(n::IndexName) = setprime(n, plev(n) + 1)
 
 struct IndexVal{Value<:Integer} <: AbstractNamedInteger{Value,IndexName}
   value::Value
@@ -41,7 +55,15 @@ struct Index{T,Value<:AbstractUnitRange{T}} <: AbstractNamedUnitRange{T,Value,In
   name::IndexName
 end
 
-Index(length::Int) = Index(Base.OneTo(length), IndexName())
+Index(length::Int; kwargs...) = Index(Base.OneTo(length), IndexName(; kwargs...))
+function Index(length::Int, tags::String; kwargs...)
+  return Index(Base.OneTo(length), IndexName(; kwargs..., tags=tagset(tags)))
+end
+
+tags(i::Index) = tags(name(i))
+addtags(i::Index, tags) = setname(i, addtags(name(i), tags))
+prime(i::Index) = setname(i, prime(name(i)))
+Base.adjoint(i::Index) = prime(i)
 
 # Interface
 # TODO: Overload `Base.parent` instead.
@@ -127,9 +149,21 @@ using Accessors: @set
 setdenamed(a::ITensor, denamed) = (@set a.parent = denamed)
 setdenamed!(a::ITensor, denamed) = (a.parent = denamed)
 
+function ITensor(elt::Type, I1::Index, I_rest::Index...)
+  I = (I1, I_rest...)
+  # TODO: Use `FillArrays.Zeros`.
+  return ITensor(zeros(elt, length.(dename.(I))...), I)
+end
+
 function ITensor(I1::Index, I_rest::Index...)
   I = (I1, I_rest...)
   return ITensor(Zeros{UnspecifiedZero}(length.(dename.(I))...), I)
 end
+
+function ITensor()
+  return ITensor(Zeros{UnspecifiedZero}(), ())
+end
+
+include("quirks.jl")
 
 end
