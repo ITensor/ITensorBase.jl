@@ -249,6 +249,8 @@ function commonind(a1::AbstractITensor, a_rest::AbstractITensor...)
   return only(commoninds(a1, a_rest...))
 end
 
+# TODO: Use `replaceinds`/`mapinds`, based on
+# `replacenameddimsindices`/`mapnameddimsindices`.
 prime(a::AbstractITensor) = setinds(a, prime.(inds(a)))
 
 include("quirks.jl")
