@@ -10,3 +10,5 @@ itensor(parent::AbstractArray, nameddimsindices) = ITensor(parent, nameddimsindi
 function itensor(parent::AbstractArray, i1::Index, i_rest::Index...)
   return ITensor(parent, (i1, i_rest...))
 end
+
+Base.Broadcast.extrude(a::AbstractITensor) = a

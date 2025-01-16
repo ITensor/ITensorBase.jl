@@ -1,5 +1,7 @@
 module ITensorBase
 
+export ITensor, Index
+
 using Accessors: @set
 using MapBroadcast: Mapped
 using NamedDimsArrays:
