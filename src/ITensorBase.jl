@@ -25,6 +25,7 @@ const Tag = String
 const TagSet = Set{Tag}
 
 tagset(tags::String) = Set(filter(!isempty, String.(strip.(split(tags, ",")))))
+tagset(tags::TagSet) = tags
 
 function tagsstring(tags::TagSet)
   str = ""
@@ -80,7 +81,7 @@ struct Index{T,Value<:AbstractUnitRange{T}} <: AbstractNamedUnitRange{T,Value,In
   name::IndexName
 end
 
-function Index(length::Int; tags, kwargs...)
+function Index(length::Int; tags=TagSet(), kwargs...)
   return Index(Base.OneTo(length), IndexName(; tags=tagset(tags), kwargs...))
 end
 function Index(length::Int, tags::String; kwargs...)
