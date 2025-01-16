@@ -19,13 +19,8 @@ julia> Pkg.add("ITensorBase")
 
 ````julia
 using ITensorBase: ITensorBase, ITensor, Index
-````
-
-TODO: This should be `TensorAlgebra.qr`.
-
-````julia
 using LinearAlgebra: qr
-using NamedDimsArrays: NamedDimsArray, aligndims, dimnames, name, unname
+using NamedDimsArrays: aligndims, unname
 using Test: @test
 i = Index(2)
 j = Index(2)
