@@ -18,6 +18,7 @@ using NamedDimsArrays:
   named,
   nameddimsindices,
   setname,
+  setnameddimsindices,
   unname
 
 const Tag = String
@@ -79,7 +80,9 @@ struct Index{T,Value<:AbstractUnitRange{T}} <: AbstractNamedUnitRange{T,Value,In
   name::IndexName
 end
 
-Index(length::Int; kwargs...) = Index(Base.OneTo(length), IndexName(; kwargs...))
+function Index(length::Int; tags, kwargs...)
+  return Index(Base.OneTo(length), IndexName(; tags=tagset(tags), kwargs...))
+end
 function Index(length::Int, tags::String; kwargs...)
   return Index(Base.OneTo(length), IndexName(; kwargs..., tags=tagset(tags)))
 end
@@ -177,17 +180,30 @@ struct AllocatableArrayInterface <: AbstractAllocatableArrayInterface end
 
 unallocatable(a::AbstractITensor) = NamedDimsArray(a)
 
-@interface ::AbstractAllocatableArrayInterface function Base.setindex!(
-  a::AbstractArray, value, I::Int...
-)
+function setindex_allocatable!(a::AbstractArray, value, I...)
   allocate!(specify_eltype!(a, typeof(value)))
   # TODO: Maybe use `@interface interface(a) a[I...] = value`?
   unallocatable(a)[I...] = value
   return a
 end
 
+# TODO: Combine these by using `Base.to_indices`.
+@interface ::AbstractAllocatableArrayInterface function Base.setindex!(
+  a::AbstractArray, value, I::Int...
+)
+  setindex_allocatable!(a, value, I...)
+  return a
+end
+@interface ::AbstractAllocatableArrayInterface function Base.setindex!(
+  a::AbstractArray, value, I::AbstractNamedInteger...
+)
+  setindex_allocatable!(a, value, I...)
+  return a
+end
+
 @derive AllocatableArrayInterface() (T=AbstractITensor,) begin
   Base.setindex!(::T, ::Any, ::Int...)
+  Base.setindex!(::T, ::Any, ::AbstractNamedInteger...)
 end
 
 mutable struct ITensor <: AbstractITensor
@@ -215,6 +231,25 @@ end
 function ITensor()
   return ITensor(Zeros{UnspecifiedZero}(), ())
 end
+
+inds(a::AbstractITensor) = nameddimsindices(a)
+setinds(a::AbstractITensor, inds) = setnameddimsindices(a, inds)
+
+function uniqueinds(a1::AbstractITensor, a_rest::AbstractITensor...)
+  return setdiff(inds(a1), inds.(a_rest)...)
+end
+function uniqueind(a1::AbstractITensor, a_rest::AbstractITensor...)
+  return only(uniqueinds(a1, a_rest...))
+end
+
+function commoninds(a1::AbstractITensor, a_rest::AbstractITensor...)
+  return intersect(inds(a1), inds.(a_rest)...)
+end
+function commonind(a1::AbstractITensor, a_rest::AbstractITensor...)
+  return only(commoninds(a1, a_rest...))
+end
+
+prime(a::AbstractITensor) = setinds(a, prime.(inds(a)))
 
 include("quirks.jl")
 
