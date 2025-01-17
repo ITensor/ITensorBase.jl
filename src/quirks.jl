@@ -38,14 +38,31 @@ end
 
 using LinearAlgebra: qr, svd
 # TODO: Define this in `MatrixAlgebra.jl`/`TensorAlgebra.jl`.
-function factorize(a::AbstractITensor, args...; maxdim=nothing, cutoff=nothing, kwargs...)
+function factorize(
+  a::AbstractITensor, codomain_inds; maxdim=nothing, cutoff=nothing, kwargs...
+)
+  # TODO: Perform this intersection in `TensorAlgebra.qr`/`TensorAlgebra.svd`?
+  # See https://github.com/ITensor/NamedDimsArrays.jl/issues/22.
+  codomain_inds′ = intersect(inds(a), codomain_inds)
   if isnothing(maxdim) && isnothing(cutoff)
-    Q, R = qr(a, args...)
-    return Q, R
+    Q, R = qr(a, codomain_inds′)
+    return Q, R, (; truncerr=zero(Bool),)
   else
-    error("Truncation in `factorize` not implemented yet.")
-    U, S, V = svd(a, args...; kwargs...)
-    return U, S * V
+    U, S, V = svd(a, codomain_inds′)
+    # TODO: This is just a stand-in for truncated SVD
+    # that only makes use of `maxdim`, just to get some
+    # functionality running in `ITensorMPS.jl`.
+    # Define a proper truncated SVD in
+    # `MatrixAlgebra.jl`/`TensorAlgebra.jl`.
+    r = Base.OneTo(min(maxdim, minimum(Int.(size(S)))))
+    u = commonind(U, S)
+    v = commonind(V, S)
+    us = uniqueinds(U, S)
+    vs = uniqueinds(V, S)
+    U′ = U[(us .=> :)..., u => r]
+    S′ = S[u => r, v => r]
+    V′ = V[v => r, (vs .=> :)...]
+    return U′, S′ * V′, (; truncerr=zero(Bool),)
   end
 end
 
