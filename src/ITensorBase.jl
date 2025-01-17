@@ -54,6 +54,7 @@ addtags(n::IndexName, ts) = settags(n, tags(n) ∪ tagset(ts))
 
 setprime(n::IndexName, plev) = @set n.plev = plev
 prime(n::IndexName) = setprime(n, plev(n) + 1)
+noprime(n::IndexName) = setprime(n, 0)
 
 function Base.show(io::IO, i::IndexName)
   idstr = "id=$(id(i) % 1000)"
@@ -97,6 +98,7 @@ plev(i::Index) = plev(name(i))
 addtags(i::Index, tags) = setname(i, addtags(name(i), tags))
 prime(i::Index) = setname(i, prime(name(i)))
 Base.adjoint(i::Index) = prime(i)
+noprime(i::Index) = setname(i, noprime(name(i)))
 
 # Interface
 # TODO: Overload `Base.parent` instead.
@@ -253,6 +255,10 @@ end
 # TODO: Use `replaceinds`/`mapinds`, based on
 # `replacenameddimsindices`/`mapnameddimsindices`.
 prime(a::AbstractITensor) = setinds(a, prime.(inds(a)))
+noprime(a::AbstractITensor) = setinds(a, noprime.(inds(a)))
+
+using VectorInterface: VectorInterface, scalartype
+VectorInterface.scalartype(a::AbstractITensor) = scalartype(unallocatable(a))
 
 include("quirks.jl")
 
