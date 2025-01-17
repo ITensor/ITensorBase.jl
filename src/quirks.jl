@@ -3,20 +3,25 @@ dag(i::Index) = i
 # TODO: Define this properly.
 dag(a::ITensor) = a
 # TODO: Deprecate.
-dim(i::Index) = dename(length(i))
+# Conversion to `Int` is used in case the output is named.
+dim(i::Index) = Int(length(i))
 # TODO: Deprecate.
-dim(a::AbstractITensor) = unname(length(a))
+# Conversion to `Int` is used in case the output is named.
+dim(a::AbstractITensor) = Int(length(a))
 # TODO: Define this properly.
 hasqns(i::Index) = false
 # TODO: Define this properly.
 hasqns(i::AbstractITensor) = false
-# TODO: Deprecate.
+# TODO: Deprecate, and/or decide on aliasing behavior of `ITensor`.
 itensor(parent::AbstractArray, nameddimsindices) = ITensor(parent, nameddimsindices)
 function itensor(parent::AbstractArray, i1::Index, i_rest::Index...)
   return ITensor(parent, (i1, i_rest...))
 end
 # TODO: Deprecate.
 order(a::AbstractArray) = ndims(a)
+# TODO: Deprecate.
+using NamedDimsArrays: aligndims
+permute(a::AbstractITensor, dimnames) = aligndims(a, dimnames)
 
 # This seems to be needed to get broadcasting working.
 # TODO: Investigate this and see if we can get rid of it.
