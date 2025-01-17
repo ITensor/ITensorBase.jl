@@ -1,11 +1,15 @@
 # TODO: Define this properly.
 dag(i::Index) = i
+# TODO: Define this properly.
 dag(a::ITensor) = a
 # TODO: Deprecate.
 dim(i::Index) = dename(length(i))
+# TODO: Deprecate.
 dim(a::AbstractITensor) = unname(length(a))
 # TODO: Define this properly.
 hasqns(i::Index) = false
+# TODO: Define this properly.
+hasqns(i::AbstractITensor) = false
 # TODO: Deprecate.
 itensor(parent::AbstractArray, nameddimsindices) = ITensor(parent, nameddimsindices)
 function itensor(parent::AbstractArray, i1::Index, i_rest::Index...)
@@ -29,9 +33,8 @@ end
 
 using LinearAlgebra: qr, svd
 # TODO: Define this in `MatrixAlgebra.jl`/`TensorAlgebra.jl`.
-function factorize(a::AbstractITensor, args...; tags=TagSet(), maxdim=nothing)
-  if isnothing(maxdim)
-    # `tags` are ignored right now.
+function factorize(a::AbstractITensor, args...; maxdim=nothing, cutoff=nothing, kwargs...)
+  if isnothing(maxdim) && isnothing(cutoff)
     Q, R = qr(a, args...)
     return Q, R
   else

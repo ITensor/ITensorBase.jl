@@ -257,6 +257,9 @@ end
 prime(a::AbstractITensor) = setinds(a, prime.(inds(a)))
 noprime(a::AbstractITensor) = setinds(a, noprime.(inds(a)))
 
+using VectorInterface: VectorInterface, scalartype
+VectorInterface.scalartype(a::AbstractITensor) = scalartype(unallocatable(a))
+
 include("quirks.jl")
 
 end

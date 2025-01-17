@@ -12,6 +12,7 @@ MapBroadcast = "ebd9b9da-f48d-417c-9660-449667d60261"
 NamedDimsArrays = "60cbd0c0-df58-4cb7-918c-6f5607b73fde"
 UnallocatedArrays = "43c9e47c-e622-40fb-bf18-a09fc8c466b6"
 UnspecifiedTypes = "42b3faec-625b-4613-8ddc-352bf9672b8d"
+VectorInterface = "409d34a3-91d5-4945-b6ec-7529ddf182d8"
 
 [compat]
 Accessors = "0.1.39"
@@ -22,4 +23,5 @@ MapBroadcast = "0.1.5"
 NamedDimsArrays = "0.3.0"
 UnallocatedArrays = "0.1.1"
 UnspecifiedTypes = "0.1.1"
+VectorInterface = "0.5.0"
 julia = "1.10"
