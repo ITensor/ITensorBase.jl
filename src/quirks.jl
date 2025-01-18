@@ -36,34 +36,48 @@ function onehot(iv::Pair{<:Index,<:Int})
   return a
 end
 
+# TODO: This is just a stand-in for truncated SVD
+# that only makes use of `maxdim`, just to get some
+# functionality running in `ITensorMPS.jl`.
+# Define a proper truncated SVD in
+# `MatrixAlgebra.jl`/`TensorAlgebra.jl`.
+function svd_truncated(a::AbstractITensor, codomain_inds; maxdim)
+  U, S, V = svd(a, codomain_inds)
+  r = Base.OneTo(min(maxdim, minimum(Int.(size(S)))))
+  u = commonind(U, S)
+  v = commonind(V, S)
+  us = uniqueinds(U, S)
+  vs = uniqueinds(V, S)
+  U′ = U[(us .=> :)..., u => r]
+  S′ = S[u => r, v => r]
+  V′ = V[v => r, (vs .=> :)...]
+  return U′, S′, V′
+end
+
 using LinearAlgebra: qr, svd
 # TODO: Define this in `MatrixAlgebra.jl`/`TensorAlgebra.jl`.
 function factorize(
-  a::AbstractITensor, codomain_inds; maxdim=nothing, cutoff=nothing, kwargs...
+  a::AbstractITensor, codomain_inds; maxdim=nothing, cutoff=nothing, ortho="left", kwargs...
 )
   # TODO: Perform this intersection in `TensorAlgebra.qr`/`TensorAlgebra.svd`?
   # See https://github.com/ITensor/NamedDimsArrays.jl/issues/22.
-  codomain_inds′ = intersect(inds(a), codomain_inds)
-  if isnothing(maxdim) && isnothing(cutoff)
-    Q, R = qr(a, codomain_inds′)
-    return Q, R, (; truncerr=zero(Bool),)
+  codomain_inds′ = if ortho == "left"
+    intersect(inds(a), codomain_inds)
+  elseif ortho == "right"
+    setdiff(inds(a), codomain_inds)
   else
-    U, S, V = svd(a, codomain_inds′)
-    # TODO: This is just a stand-in for truncated SVD
-    # that only makes use of `maxdim`, just to get some
-    # functionality running in `ITensorMPS.jl`.
-    # Define a proper truncated SVD in
-    # `MatrixAlgebra.jl`/`TensorAlgebra.jl`.
-    r = Base.OneTo(min(maxdim, minimum(Int.(size(S)))))
-    u = commonind(U, S)
-    v = commonind(V, S)
-    us = uniqueinds(U, S)
-    vs = uniqueinds(V, S)
-    U′ = U[(us .=> :)..., u => r]
-    S′ = S[u => r, v => r]
-    V′ = V[v => r, (vs .=> :)...]
-    return U′, S′ * V′, (; truncerr=zero(Bool),)
+    error("Bad `ortho` input.")
   end
+  F1, F2 = if isnothing(maxdim) && isnothing(cutoff)
+    qr(a, codomain_inds′)
+  else
+    U, S, V = svd_truncated(a, codomain_inds′; maxdim)
+    U, S * V
+  end
+  if ortho == "right"
+    F2, F1 = F1, F2
+  end
+  return F1, F2, (; truncerr=zero(Bool),)
 end
 
 # TODO: Used in `ITensorMPS.jl`, decide where or if to define it.

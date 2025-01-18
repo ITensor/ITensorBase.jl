@@ -165,6 +165,9 @@ using UnspecifiedTypes: UnspecifiedZero
 function specify_eltype(a::Zeros{UnspecifiedZero}, elt::Type)
   return Zeros{elt}(axes(a))
 end
+function specify_eltype(a::AbstractArray, elt::Type)
+  return a
+end
 
 # TODO: Use `adapt` to reach down into the storage.
 function specify_eltype!(a::AbstractITensor, elt::Type)
