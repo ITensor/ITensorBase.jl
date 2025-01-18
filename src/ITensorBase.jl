@@ -14,9 +14,12 @@ using NamedDimsArrays:
   NamedDimsArray,
   dename,
   dimnames,
+  mapnameddimsindices,
   name,
   named,
   nameddimsindices,
+  randname,
+  replacenameddimsindices,
   setname,
   setnameddimsindices,
   unname
@@ -43,7 +46,7 @@ end
   tags::TagSet = TagSet()
   plev::Int = 0
 end
-NamedDimsArrays.randname(n::IndexName) = IndexName()
+NamedDimsArrays.randname(n::IndexName) = IndexName(; tags=tags(n), plev=plev(n))
 
 id(n::IndexName) = n.id
 tags(n::IndexName) = n.tags
@@ -55,6 +58,7 @@ addtags(n::IndexName, ts) = settags(n, tags(n) ∪ tagset(ts))
 setprime(n::IndexName, plev) = @set n.plev = plev
 prime(n::IndexName) = setprime(n, plev(n) + 1)
 noprime(n::IndexName) = setprime(n, 0)
+sim(n::IndexName) = randname(n)
 
 function Base.show(io::IO, i::IndexName)
   idstr = "id=$(id(i) % 1000)"
@@ -99,6 +103,7 @@ addtags(i::Index, tags) = setname(i, addtags(name(i), tags))
 prime(i::Index) = setname(i, prime(name(i)))
 Base.adjoint(i::Index) = prime(i)
 noprime(i::Index) = setname(i, noprime(name(i)))
+sim(i::Index) = setname(i, sim(name(i)))
 
 # Interface
 # TODO: Overload `Base.parent` instead.
@@ -256,6 +261,19 @@ end
 # `replacenameddimsindices`/`mapnameddimsindices`.
 prime(a::AbstractITensor) = setinds(a, prime.(inds(a)))
 noprime(a::AbstractITensor) = setinds(a, noprime.(inds(a)))
+sim(a::AbstractITensor) = setinds(a, sim.(inds(a)))
+
+function replaceinds(a::AbstractITensor, replacements::Pair...)
+  return replacenameddimsindices(a, replacements...)
+end
+
+function replaceinds(f, a::AbstractITensor)
+  return replacenameddimsindices(f, a)
+end
+
+function mapinds(f, a::AbstractITensor)
+  return mapnameddimsindices(f, a)
+end
 
 using VectorInterface: VectorInterface, scalartype
 VectorInterface.scalartype(a::AbstractITensor) = scalartype(unallocatable(a))
