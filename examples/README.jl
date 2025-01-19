@@ -41,8 +41,6 @@ q, r = qr(a, (i,))
 
 # Automatic allocation
 a = ITensor(i, j)
-# Broken, need to fix:
-# a[j[1], i[2]] = 1 + 2im
-a[2, 1] = 1 + 2im
+a[j[1], i[2]] = 1 + 2im
 eltype(a) == Complex{Int}
 @test a[i[2], j[1]] == 1 + 2im
