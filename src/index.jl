@@ -10,26 +10,11 @@ using NamedDimsArrays:
   randname,
   setname
 
-const Tag = String
-const TagSet = Set{Tag}
-
-tagset(tags::String) = Set(filter(!isempty, String.(strip.(split(tags, ",")))))
-tagset(tags::TagSet) = tags
-
-function tagsstring(tags::TagSet)
-  str = ""
-  length(tags) == 0 && return str
-  tags_vec = collect(tags)
-  for n in 1:(length(tags_vec) - 1)
-    str *= "$(tags_vec[n]),"
-  end
-  str *= "$(tags_vec[end])"
-  return str
-end
+tagsstring(tags::Dict{String,String}) = string(tags)
 
 @kwdef struct IndexName <: AbstractName
   id::UInt64 = rand(UInt64)
-  tags::TagSet = TagSet()
+  tags::Dict{String,String} = Dict{String,String}()
   plev::Int = 0
 end
 NamedDimsArrays.randname(n::IndexName) = IndexName(; tags=tags(n), plev=plev(n))
@@ -39,7 +24,19 @@ tags(n::IndexName) = n.tags
 plev(n::IndexName) = n.plev
 
 settags(n::IndexName, tags) = @set n.tags = tags
-addtags(n::IndexName, ts) = settags(n, tags(n) ∪ tagset(ts))
+
+gettag(n::IndexName, tagname::String) = tags(n)[tagname]
+gettag(n::IndexName, tagname::String, default) = get(tags(n), tagname, default)
+function settag(n::IndexName, tagname::String, tag::String)
+  newtags = copy(tags(n))
+  newtags[tagname] = tag
+  return settags(n, newtags)
+end
+function unsettag(n::IndexName, tagname::String)
+  newtags = copy(tags(n))
+  delete!(newtags, tagname)
+  return settags(n, newtags)
+end
 
 setprime(n::IndexName, plev) = @set n.plev = plev
 prime(n::IndexName) = setprime(n, plev(n) + 1)
@@ -72,11 +69,8 @@ struct Index{T,Value<:AbstractUnitRange{T}} <: AbstractNamedUnitRange{T,Value,In
   name::IndexName
 end
 
-function Index(length::Int; tags=TagSet(), kwargs...)
-  return Index(Base.OneTo(length), IndexName(; tags=tagset(tags), kwargs...))
-end
-function Index(length::Int, tags::String; kwargs...)
-  return Index(Base.OneTo(length), IndexName(; kwargs..., tags=tagset(tags)))
+function Index(length::Int; kwargs...)
+  return Index(Base.OneTo(length), IndexName(; kwargs...))
 end
 
 # TODO: Define for `NamedDimsArrays.NamedViewIndex`.
@@ -85,11 +79,17 @@ tags(i::Index) = tags(name(i))
 plev(i::Index) = plev(name(i))
 
 # TODO: Define for `NamedDimsArrays.NamedViewIndex`.
-addtags(i::Index, tags) = setname(i, addtags(name(i), tags))
+gettag(i::Index, tagname::String) = gettag(name(i), tagname)
+gettag(i::Index, tagname::String, default) = gettag(name(i), tagname, default)
+settag(i::Index, tagname::String, tag::String) = setname(i, settag(name(i), tagname, tag))
+unsettag(i::Index, tagname::String) = setname(i, unsettag(name(i), tagname))
+
 prime(i::Index) = setname(i, prime(name(i)))
-Base.adjoint(i::Index) = prime(i)
 noprime(i::Index) = setname(i, noprime(name(i)))
 sim(i::Index) = setname(i, sim(name(i)))
+
+# TODO: Delete this definition?
+Base.adjoint(i::Index) = prime(i)
 
 # Interface
 # TODO: Overload `Base.parent` instead.
