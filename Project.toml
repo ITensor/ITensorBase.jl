@@ -1,7 +1,7 @@
 name = "ITensorBase"
 uuid = "4795dd04-0d67-49bb-8f44-b89c448a1dc7"
 authors = ["ITensor developers <support@itensor.org> and contributors"]
-version = "0.1.11"
+version = "0.1.12"
 
 [deps]
 Accessors = "7d9f7c33-5ae7-4f3b-8dc6-eff91059b697"
@@ -27,7 +27,7 @@ DiagonalArrays = "0.2.3"
 FillArrays = "1.13.0"
 LinearAlgebra = "1.10"
 MapBroadcast = "0.1.5"
-NamedDimsArrays = "0.3.0"
+NamedDimsArrays = "0.4"
 UnallocatedArrays = "0.1.1"
 UnspecifiedTypes = "0.1.1"
 VectorInterface = "0.5.0"
