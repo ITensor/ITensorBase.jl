@@ -84,6 +84,13 @@ end
 Base.parent(a::ITensor) = a.parent
 NamedDimsArrays.nameddimsindices(a::ITensor) = a.nameddimsindices
 
+function ITensor(parent::AbstractArray, i1::Index, i_rest::Index...)
+  return ITensor(parent, (i1, i_rest...))
+end
+function ITensor(parent::AbstractArray)
+  return ITensor(parent, ())
+end
+
 using Accessors: @set
 setdenamed(a::ITensor, denamed) = (@set a.parent = denamed)
 setdenamed!(a::ITensor, denamed) = (a.parent = denamed)
