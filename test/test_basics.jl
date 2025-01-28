@@ -7,10 +7,7 @@ using Test: @test, @test_broken, @testset
   @testset "Basics" begin
     i, j = Index.((2, 2))
     x = randn(2, 2)
-    for a in (
-      ITensor(x, i, j),
-      ITensor(x, (i, j)),
-    )
+    for a in (ITensor(x, i, j), ITensor(x, (i, j)))
       @test unname(a) == x
       @test plev(i) == 0
       @test plev(prime(i)) == 1
