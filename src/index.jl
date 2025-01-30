@@ -25,6 +25,8 @@ plev(n::IndexName) = n.plev
 
 settags(n::IndexName, tags) = @set n.tags = tags
 
+hastag(n::IndexName, tagname::String) = haskey(tags(n), tagname)
+
 gettag(n::IndexName, tagname::String) = tags(n)[tagname]
 gettag(n::IndexName, tagname::String, default) = get(tags(n), tagname, default)
 function settag(n::IndexName, tagname::String, tag::String)
@@ -69,14 +71,21 @@ struct Index{T,Value<:AbstractUnitRange{T}} <: AbstractNamedUnitRange{T,Value,In
   name::IndexName
 end
 
+function Index(r::AbstractUnitRange; kwargs...)
+  return Index(r, IndexName(; kwargs...))
+end
+
 function Index(length::Int; kwargs...)
-  return Index(Base.OneTo(length), IndexName(; kwargs...))
+  return Index(Base.OneTo(length); kwargs...)
 end
 
 # TODO: Define for `NamedDimsArrays.NamedViewIndex`.
 id(i::Index) = id(name(i))
 tags(i::Index) = tags(name(i))
 plev(i::Index) = plev(name(i))
+
+# TODO: Define for `NamedDimsArrays.NamedViewIndex`.
+hastag(i::Index, tagname::String) = hastag(name(i), tagname)
 
 # TODO: Define for `NamedDimsArrays.NamedViewIndex`.
 gettag(i::Index, tagname::String) = gettag(name(i), tagname)
