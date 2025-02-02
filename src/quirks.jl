@@ -1,31 +1,30 @@
 # TODO: Define this properly.
+# TODO: Rename this to `dual`.
 dag(i::Index) = i
 # TODO: Define this properly.
+# TODO: Rename this to `dual`.
 dag(a::ITensor) = a
-# TODO: Deprecate.
+
+# TODO: Deprecate, just use `Int(length(i))` or
+# `unname(length(i))` directly.
 # Conversion to `Int` is used in case the output is named.
 dim(i::Index) = Int(length(i))
 # TODO: Deprecate.
 # Conversion to `Int` is used in case the output is named.
+# TODO: Deprecate, just use `Int(length(i))` or
+# `unname(length(i))` directly.
 dim(a::AbstractITensor) = Int(length(a))
+
 # TODO: Define this properly.
-hasqns(i::Index) = false
+# TODO: Maybe rename to `isgraded(i::Index) = isgraded(dename(i))`.
+hasqns(::Index) = false
 # TODO: Define this properly.
-hasqns(i::AbstractITensor) = false
+# TODO: Maybe rename to `isgraded(a) = all(isgraded, axes(a))`.
+hasqns(::AbstractITensor) = false
 
 # This seems to be needed to get broadcasting working.
 # TODO: Investigate this and see if we can get rid of it.
 Base.Broadcast.extrude(a::AbstractITensor) = a
-
-# TODO: Generalize this.
-# Maybe define it as `oneelement`, and base it on
-# `FillArrays.OneElement` (https://juliaarrays.github.io/FillArrays.jl/stable/#FillArrays.OneElement).
-function onehot(elt::Type{<:Number}, iv::Pair{<:Index,<:Int})
-  a = ITensor(first(iv))
-  a[last(iv)] = one(elt)
-  return a
-end
-onehot(iv::Pair{<:Index,<:Int}) = onehot(Bool, iv)
 
 # TODO: This is just a stand-in for truncated SVD
 # that only makes use of `maxdim`, just to get some
