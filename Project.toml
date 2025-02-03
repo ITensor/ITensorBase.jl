@@ -16,9 +16,11 @@ VectorInterface = "409d34a3-91d5-4945-b6ec-7529ddf182d8"
 
 [weakdeps]
 DiagonalArrays = "74fd4be6-21e2-4f6f-823a-4360d37c7a77"
+SparseArraysBase = "0d5efcca-f356-4864-8770-e1ed8d78f208"
 
 [extensions]
 ITensorBaseDiagonalArraysExt = "DiagonalArrays"
+ITensorBaseSparseArraysBaseExt = ["NamedDimsArrays", "SparseArraysBase"]
 
 [compat]
 Accessors = "0.1.39"
@@ -28,6 +30,7 @@ FillArrays = "1.13.0"
 LinearAlgebra = "1.10"
 MapBroadcast = "0.1.5"
 NamedDimsArrays = "0.4"
+SparseArraysBase = "0.2.10"
 UnallocatedArrays = "0.1.1"
 UnspecifiedTypes = "0.1.1"
 VectorInterface = "0.5.0"

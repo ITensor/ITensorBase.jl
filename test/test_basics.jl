@@ -5,7 +5,6 @@ using ITensorBase:
   gettag,
   hastag,
   inds,
-  oneelement,
   plev,
   prime,
   settag,
@@ -13,6 +12,7 @@ using ITensorBase:
   unsettag
 using DiagonalArrays: δ, delta, diagview
 using NamedDimsArrays: dename, name, named
+using SparseArraysBase: oneelement
 using Test: @test, @test_broken, @testset
 
 @testset "ITensorBase" begin
@@ -46,6 +46,24 @@ using Test: @test, @test_broken, @testset
     @test plev(i) == 0
     @test length(tags(i)) == 0
   end
+  @testset "delta" begin
+    i, j = Index.((2, 2))
+    for a in (
+      delta(i, j),
+      delta(Bool, i, j),
+      delta((i, j)),
+      delta(Bool, (i, j)),
+      δ(i, j),
+      δ(Bool, i, j),
+      δ((i, j)),
+      δ(Bool, (i, j)),
+    )
+      @test eltype(a) === Bool
+      # TODO: Fix this.
+      @test_broken diagview(a)
+      @test diagview(dename(a)) == ones(2)
+    end
+  end
   @testset "oneelement" begin
     i = Index(3)
     a = oneelement(i => 2)
@@ -66,23 +84,5 @@ using Test: @test, @test_broken, @testset
     @test a[1] == 0
     @test a[2] == 1
     @test a[3] == 0
-  end
-  @testset "delta" begin
-    i, j = Index.((2, 2))
-    for a in (
-      delta(i, j),
-      delta(Bool, i, j),
-      delta((i, j)),
-      delta(Bool, (i, j)),
-      δ(i, j),
-      δ(Bool, i, j),
-      δ((i, j)),
-      δ(Bool, (i, j)),
-    )
-      @test eltype(a) === Bool
-      # TODO: Fix this.
-      @test_broken diagview(a)
-      @test diagview(dename(a)) == ones(2)
-    end
   end
 end

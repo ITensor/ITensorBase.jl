@@ -91,24 +91,6 @@ function ITensor(parent::AbstractArray)
   return ITensor(parent, ())
 end
 
-# TODO:
-# 1. Generalize this to arbitrary dimensions.
-# 2. Define a basic non-ITensor version in `SparseArraysBase.jl`,
-#    and this constructor can wrap that one. It could construct
-#    a `OneElement` sparse object like `FillArrays.OneElement`
-#    (https://juliaarrays.github.io/FillArrays.jl/stable/#FillArrays.OneElement).
-# 3. Define `oneelement(value, index::Tuple{Vargarg{Int}}, axes::Tuple{Vararg{Index}})`,
-#    where the pair version calls out to that one.
-function oneelement(elt::Type{<:Number}, iv::Pair{<:Index,<:Int})
-  a = ITensor(first(iv))
-  a[last(iv)] = one(elt)
-  return a
-end
-# TODO: The non-ITensor version should default to `Float64`,
-# like `FillArrays.OneElement`.
-# TODO: Make the element type `UnspecifiedOne`.
-oneelement(iv::Pair{<:Index,<:Int}) = oneelement(Bool, iv)
-
 using Accessors: @set
 setdenamed(a::ITensor, denamed) = (@set a.parent = denamed)
 setdenamed!(a::ITensor, denamed) = (a.parent = denamed)
