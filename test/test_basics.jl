@@ -2,6 +2,7 @@ using ITensorBase:
   ITensorBase, ITensor, Index, gettag, hastag, inds, plev, prime, settag, tags, unsettag
 using DiagonalArrays: δ, delta, diagview
 using NamedDimsArrays: dename, name, named
+using SparseArraysBase: oneelement
 using Test: @test, @test_broken, @testset
 
 @testset "ITensorBase" begin
@@ -52,5 +53,26 @@ using Test: @test, @test_broken, @testset
       @test_broken diagview(a)
       @test diagview(dename(a)) == ones(2)
     end
+  end
+  @testset "oneelement" begin
+    i = Index(3)
+    a = oneelement(i => 2)
+    @test a isa ITensor
+    @test ndims(a) == 1
+    @test issetequal(inds(a), (i,))
+    @test eltype(a) === Bool
+    @test a[1] == 0
+    @test a[2] == 1
+    @test a[3] == 0
+
+    i = Index(3)
+    a = oneelement(Float32, i => 2)
+    @test a isa ITensor
+    @test ndims(a) == 1
+    @test issetequal(inds(a), (i,))
+    @test eltype(a) === Float32
+    @test a[1] == 0
+    @test a[2] == 1
+    @test a[3] == 0
   end
 end
