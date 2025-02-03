@@ -1,15 +1,5 @@
 using ITensorBase:
-  ITensorBase,
-  ITensor,
-  Index,
-  gettag,
-  hastag,
-  inds,
-  plev,
-  prime,
-  settag,
-  tags,
-  unsettag
+  ITensorBase, ITensor, Index, gettag, hastag, inds, plev, prime, settag, tags, unsettag
 using DiagonalArrays: δ, delta, diagview
 using NamedDimsArrays: dename, name, named
 using SparseArraysBase: oneelement
