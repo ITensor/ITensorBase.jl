@@ -1,9 +1,4 @@
-# TODO: Define this properly.
-# TODO: Rename this to `dual`.
-dag(i::Index) = i
-# TODO: Define this properly.
-# TODO: Rename this to `dual`.
-dag(a::ITensor) = a
+using NamedDimsArrays: dename
 
 # TODO: Deprecate, just use `Int(length(i))` or
 # `unname(length(i))` directly.
@@ -15,12 +10,11 @@ dim(i::Index) = Int(length(i))
 # `unname(length(i))` directly.
 dim(a::AbstractITensor) = Int(length(a))
 
-# TODO: Define this properly.
-# TODO: Maybe rename to `isgraded(i::Index) = isgraded(dename(i))`.
-hasqns(::Index) = false
-# TODO: Define this properly.
-# TODO: Maybe rename to `isgraded(a) = all(isgraded, axes(a))`.
-hasqns(::AbstractITensor) = false
+# TODO: Replace with a more general functionality in
+# `GradedUnitRanges`, like `isgraded`.
+hasqns(r::AbstractUnitRange) = false
+hasqns(i::Index) = hasqns(dename(i))
+hasqns(a::AbstractITensor) = all(hasqns, inds(a))
 
 # This seems to be needed to get broadcasting working.
 # TODO: Investigate this and see if we can get rid of it.

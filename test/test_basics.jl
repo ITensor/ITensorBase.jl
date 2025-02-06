@@ -1,8 +1,23 @@
-using ITensorBase:
-  ITensorBase, ITensor, Index, gettag, hastag, inds, plev, prime, settag, tags, unsettag
+using BlockArrays: Block
+using BlockSparseArrays: BlockSparseArray
 using DiagonalArrays: δ, delta, diagview
+using GradedUnitRanges: dual, gradedrange
+using ITensorBase:
+  ITensorBase,
+  ITensor,
+  Index,
+  gettag,
+  hastag,
+  hasqns,
+  inds,
+  plev,
+  prime,
+  settag,
+  tags,
+  unsettag
 using NamedDimsArrays: dename, name, named
 using SparseArraysBase: oneelement
+using SymmetrySectors: U1
 using Test: @test, @test_broken, @testset
 
 @testset "ITensorBase" begin
@@ -74,5 +89,24 @@ using Test: @test, @test_broken, @testset
     @test a[1] == 0
     @test a[2] == 1
     @test a[3] == 0
+  end
+  @testset "hasqns" begin
+    i = Index(2)
+    j = Index(2)
+    a = ITensor(randn(2, 2), (i, j))
+    @test !hasqns(i)
+    @test !hasqns(j)
+    @test !hasqns(a)
+
+    r = gradedrange([U1(0) => 2, U1(1) => 2])
+    d = BlockSparseArray{Float64}(r, dual(r))
+    d[Block(1, 1)] = randn(2, 2)
+    d[Block(2, 2)] = randn(2, 2)
+    i = Index(r)
+    j = Index(dual(r))
+    a = ITensor(d, (i, j))
+    @test hasqns(i)
+    @test hasqns(j)
+    @test hasqns(a)
   end
 end
