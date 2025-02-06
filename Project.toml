@@ -1,7 +1,7 @@
 name = "ITensorBase"
 uuid = "4795dd04-0d67-49bb-8f44-b89c448a1dc7"
 authors = ["ITensor developers <support@itensor.org> and contributors"]
-version = "0.1.14"
+version = "0.1.15"
 
 [deps]
 Accessors = "7d9f7c33-5ae7-4f3b-8dc6-eff91059b697"
@@ -16,10 +16,12 @@ VectorInterface = "409d34a3-91d5-4945-b6ec-7529ddf182d8"
 
 [weakdeps]
 DiagonalArrays = "74fd4be6-21e2-4f6f-823a-4360d37c7a77"
+GradedUnitRanges = "e2de450a-8a67-46c7-b59c-01d5a3d041c5"
 SparseArraysBase = "0d5efcca-f356-4864-8770-e1ed8d78f208"
 
 [extensions]
 ITensorBaseDiagonalArraysExt = "DiagonalArrays"
+ITensorBaseGradedUnitRangesExt = "GradedUnitRanges"
 ITensorBaseSparseArraysBaseExt = ["NamedDimsArrays", "SparseArraysBase"]
 
 [compat]
@@ -27,6 +29,7 @@ Accessors = "0.1.39"
 DerivableInterfaces = "0.3.7"
 DiagonalArrays = "0.2.3"
 FillArrays = "1.13.0"
+GradedUnitRanges = "0.1.4"
 LinearAlgebra = "1.10"
 MapBroadcast = "0.1.5"
 NamedDimsArrays = "0.4"
