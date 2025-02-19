@@ -80,6 +80,11 @@ end
 mutable struct ITensor <: AbstractITensor
   parent::AbstractArray
   nameddimsindices
+  function ITensor(parent::AbstractArray, dims)
+    # This checks the shapes of the inputs.
+    nameddimsindices = NamedDimsArrays.to_nameddimsindices(parent, dims)
+    return new(parent, nameddimsindices)
+  end
 end
 Base.parent(a::ITensor) = a.parent
 NamedDimsArrays.nameddimsindices(a::ITensor) = a.nameddimsindices
