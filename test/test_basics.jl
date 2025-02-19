@@ -18,12 +18,13 @@ using ITensorBase:
 using NamedDimsArrays: dename, name, named
 using SparseArraysBase: oneelement
 using SymmetrySectors: U1
-using Test: @test, @test_broken, @testset
+using Test: @test, @test_broken, @test_throws, @testset
 
 @testset "ITensorBase" begin
   @testset "Basics" begin
+    elt = Float64
     i, j = Index.((2, 2))
-    x = randn(2, 2)
+    x = randn(elt, 2, 2)
     for a in (ITensor(x, i, j), ITensor(x, (i, j)))
       @test dename(a) == x
       @test plev(i) == 0
@@ -33,6 +34,9 @@ using Test: @test, @test_broken, @testset
       @test dename(a′) == x
       @test issetequal(inds(a′), (prime(i), prime(j)))
     end
+
+    @test_throws ErrorException ITensor(randn(elt, 2, 2), Index.((2, 3)))
+    @test_throws ErrorException ITensor(randn(elt, 4), Index.((2, 2)))
 
     i = Index(2)
     i = settag(i, "X", "x")
