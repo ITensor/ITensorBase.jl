@@ -12,6 +12,7 @@ using ITensorBase:
   inds,
   plev,
   prime,
+  setprime,
   settag,
   tags,
   unsettag
@@ -37,6 +38,11 @@ using Test: @test, @test_broken, @test_throws, @testset
 
     @test_throws ErrorException ITensor(randn(elt, 2, 2), Index.((2, 3)))
     @test_throws ErrorException ITensor(randn(elt, 4), Index.((2, 2)))
+
+    i = Index(2)
+    @test plev(i) == 0
+    i = setprime(i, 2)
+    @test plev(i) == 2
 
     i = Index(2)
     i = settag(i, "X", "x")

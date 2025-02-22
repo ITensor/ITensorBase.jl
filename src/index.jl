@@ -93,6 +93,7 @@ gettag(i::Index, tagname::String, default) = gettag(name(i), tagname, default)
 settag(i::Index, tagname::String, tag::String) = setname(i, settag(name(i), tagname, tag))
 unsettag(i::Index, tagname::String) = setname(i, unsettag(name(i), tagname))
 
+setprime(i::Index, plev) = setname(i, setprime(name(i), plev))
 prime(i::Index) = setname(i, prime(name(i)))
 noprime(i::Index) = setname(i, noprime(name(i)))
 sim(i::Index) = setname(i, sim(name(i)))
