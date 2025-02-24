@@ -60,6 +60,28 @@ using Test: @test, @test_broken, @test_throws, @testset
     @test dename(i) == 1:2
     @test plev(i) == 0
     @test length(tags(i)) == 0
+
+    for i in (
+      Index(2; tags=Dict(["X" => "Y"])),
+      Index(2; tags=["X" => "Y"]),
+      Index(2; tags=("X" => "Y",)),
+      Index(2; tags="X" => "Y"),
+    )
+      @test Int(length(i)) == 2
+      @test hastag(i, "X")
+      @test gettag(i, "X") == "Y"
+      @test plev(i) == 0
+      @test length(tags(i)) == 1
+    end
+  end
+  @testset "show" begin
+    id = rand(UInt64)
+    i = Index(2; id)
+    @test sprint(show, "text/plain", i) == "Index(length=2|id=$(id % 1000))"
+
+    id = rand(UInt64)
+    i = Index(2; id, tags=["X" => "Y"])
+    @test sprint(show, "text/plain", i) == "Index(length=2|id=$(id % 1000)|\"X\"=>\"Y\")"
   end
   @testset "delta" begin
     i, j = Index.((2, 2))
