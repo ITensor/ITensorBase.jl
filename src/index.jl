@@ -10,14 +10,24 @@ using NamedDimsArrays:
   randname,
   setname
 
-tagsstring(tags::Dict{String,String}) = string(tags)
-
-@kwdef struct IndexName <: AbstractName
-  id::UInt64 = rand(UInt64)
-  tags::Dict{String,String} = Dict{String,String}()
-  plev::Int = 0
+tagpairstring(pair::Pair) = repr(first(pair)) * "=>" * repr(last(pair))
+function tagsstring(tags::Dict{String,String})
+  tagpairs = sort(collect(tags); by=first)
+  tagpair1, tagpair_rest = Iterators.peel(tagpairs)
+  return mapreduce(*, tagpair_rest; init=tagpairstring(tagpair1)) do tagpair
+    return "," * tagpairstring(tagpair)
+  end
 end
-NamedDimsArrays.randname(n::IndexName) = IndexName(; tags=tags(n), plev=plev(n))
+
+struct IndexName <: AbstractName
+  id::UInt64
+  tags::Dict{String,String}
+  plev::Int
+end
+function IndexName(; id::UInt64=rand(UInt64), tags=Dict{String,String}(), plev::Int=0)
+  return IndexName(id, Dict{String,String}(tags), plev)
+end
+NamedDimsArrays.randname(n::IndexName) = IndexName()
 
 id(n::IndexName) = n.id
 tags(n::IndexName) = n.tags
@@ -47,7 +57,7 @@ sim(n::IndexName) = randname(n)
 
 function Base.show(io::IO, i::IndexName)
   idstr = "id=$(id(i) % 1000)"
-  tagsstr = !isempty(tags(i)) ? "|\"$(tagsstring(tags(i)))\"" : ""
+  tagsstr = !isempty(tags(i)) ? "|$(tagsstring(tags(i)))" : ""
   primestr = primestring(plev(i))
   str = "IndexName($(idstr)$(tagsstr))$(primestr)"
   print(io, str)
@@ -125,7 +135,7 @@ end
 function Base.show(io::IO, i::Index)
   lenstr = "length=$(dename(length(i)))"
   idstr = "|id=$(id(i) % 1000)"
-  tagsstr = !isempty(tags(i)) ? "|\"$(tagsstring(tags(i)))\"" : ""
+  tagsstr = !isempty(tags(i)) ? "|$(tagsstring(tags(i)))" : ""
   primestr = primestring(plev(i))
   str = "Index($(lenstr)$(idstr)$(tagsstr))$(primestr)"
   print(io, str)
