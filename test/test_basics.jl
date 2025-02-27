@@ -39,6 +39,29 @@ using Test: @test, @test_broken, @test_throws, @testset
     @test_throws ErrorException ITensor(randn(elt, 2, 2), Index.((2, 3)))
     @test_throws ErrorException ITensor(randn(elt, 4), Index.((2, 2)))
 
+    i, j = Index.((3, 4))
+    a = randn(elt, i, j)
+    a′ = Array(a)
+    @test eltype(a′) === elt
+    @test a′ isa Matrix{elt}
+    @test a′ == dename(a)
+
+    i, j = Index.((3, 4))
+    a = randn(elt, i, j)
+    for a′ in (Array{Float32}(a), Matrix{Float32}(a))
+      @test eltype(a′) === Float32
+      @test a′ isa Matrix{Float32}
+      @test a′ == Float32.(dename(a))
+    end
+
+    i, j, k = Index.((2, 2, 2))
+    a = randn(elt, i, j, k)
+    b = randn(elt, k, i, j)
+    copyto!(a, b)
+    @test a == b
+    @test dename(a) == dename(b, (i, j, k))
+    @test dename(a) == permutedims(dename(b), (2, 3, 1))
+
     i = Index(2)
     @test plev(i) == 0
     i = setprime(i, 2)
