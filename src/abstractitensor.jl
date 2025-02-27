@@ -86,8 +86,9 @@ mutable struct ITensor <: AbstractITensor
     return new(parent, nameddimsindices)
   end
 end
-Base.parent(a::ITensor) = a.parent
-NamedDimsArrays.nameddimsindices(a::ITensor) = a.nameddimsindices
+Base.parent(a::ITensor) = getfield(a, :parent)
+NamedDimsArrays.nameddimsindices(a::ITensor) = getfield(a, :nameddimsindices)
+NamedDimsArrays.dename(a::ITensor) = parent(a)
 
 function ITensor(parent::AbstractArray, i1::Index, i_rest::Index...)
   return ITensor(parent, (i1, i_rest...))
