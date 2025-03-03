@@ -6,3 +6,5 @@ NamedDimsArrays = "60cbd0c0-df58-4cb7-918c-6f5607b73fde"
 
 [compat]
 Documenter = "1"
+Literate = "2"
+NamedDimsArrays = "0.5"
