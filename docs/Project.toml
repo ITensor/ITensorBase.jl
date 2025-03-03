@@ -5,6 +5,7 @@ Literate = "98b081ad-f1c9-55d3-8b20-4c87d4299306"
 NamedDimsArrays = "60cbd0c0-df58-4cb7-918c-6f5607b73fde"
 
 [compat]
+ITensorBase = "0.1"
 Documenter = "1"
 Literate = "2"
 NamedDimsArrays = "0.5"
