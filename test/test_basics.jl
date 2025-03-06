@@ -154,7 +154,7 @@ using Test: @test, @test_broken, @test_throws, @testset
     @test !hasqns(a)
 
     r = gradedrange([U1(0) => 2, U1(1) => 2])
-    d = BlockSparseArray{Float64}(r, dual(r))
+    d = BlockSparseArray{Float64}(undef, r, dual(r))
     d[Block(1, 1)] = randn(2, 2)
     d[Block(2, 2)] = randn(2, 2)
     i = Index(r)
