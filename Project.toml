@@ -26,7 +26,7 @@ ITensorBaseSparseArraysBaseExt = ["NamedDimsArrays", "SparseArraysBase"]
 
 [compat]
 Accessors = "0.1.39"
-DerivableInterfaces = "0.3.7, 0.4"
+DerivableInterfaces = "0.4"
 DiagonalArrays = "0.3"
 FillArrays = "1.13.0"
 GradedUnitRanges = "0.1.4"
