@@ -1,9 +1,7 @@
 using ITensorBase: ITensorBase
 using Documenter: Documenter, DocMeta, deploydocs, makedocs
 
-DocMeta.setdocmeta!(
-  ITensorBase, :DocTestSetup, :(using ITensorBase); recursive=true
-)
+DocMeta.setdocmeta!(ITensorBase, :DocTestSetup, :(using ITensorBase); recursive=true)
 
 include("make_index.jl")
 
@@ -19,6 +17,4 @@ makedocs(;
   pages=["Home" => "index.md", "Reference" => "reference.md"],
 )
 
-deploydocs(;
-  repo="github.com/ITensor/ITensorBase.jl", devbranch="main", push_preview=true
-)
+deploydocs(; repo="github.com/ITensor/ITensorBase.jl", devbranch="main", push_preview=true)
