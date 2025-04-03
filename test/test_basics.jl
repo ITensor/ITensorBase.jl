@@ -1,7 +1,7 @@
 using BlockArrays: Block
 using BlockSparseArrays: BlockSparseArray
 using DiagonalArrays: δ, delta, diagview
-using GradedUnitRanges: dual, gradedrange
+using GradedArrays: dual, gradedrange
 using ITensorBase:
   ITensorBase,
   ITensor,

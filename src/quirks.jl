@@ -11,7 +11,7 @@ dim(i::Index) = Int(length(i))
 dim(a::AbstractITensor) = Int(length(a))
 
 # TODO: Replace with a more general functionality in
-# `GradedUnitRanges`, like `isgraded`.
+# `GradedArrays`, like `isgraded`.
 hasqns(r::AbstractUnitRange) = false
 hasqns(i::Index) = hasqns(dename(i))
 hasqns(a::AbstractITensor) = all(hasqns, inds(a))

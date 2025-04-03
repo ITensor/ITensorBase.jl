@@ -1,10 +1,10 @@
-module ITensorBaseGradedUnitRangesExt
+module ITensorBaseGradedArraysExt
 
-using GradedUnitRanges: AbstractGradedUnitRange
+using GradedArrays: AbstractGradedUnitRange
 using ITensorBase: ITensorBase
 
 # TODO: Replace with a more general functionality in
-# `GradedUnitRanges`, like `isgraded`.
+# `GradedArrays`, like `isgraded`.
 ITensorBase.hasqns(r::AbstractGradedUnitRange) = true
 
 end
