@@ -21,19 +21,21 @@ hasqns(a::AbstractITensor) = all(hasqns, inds(a))
 Base.Broadcast.extrude(a::AbstractITensor) = a
 
 function translate_factorize_kwargs(;
+  # MatrixAlgebraKit.jl/TensorAlgebra.jl kwargs.
+  orth=nothing,
+  rtol=nothing,
+  maxrank=nothing,
   # ITensors.jl kwargs.
   ortho=nothing,
   cutoff=nothing,
   maxdim=nothing,
-  # MatrixAlgebraKit.jl/TensorAlgebra.jl kwargs.
-  orth=nothing,
-  trunc=nothing,
   kwargs...,
 )
-  @show ortho, cutoff, maxdim
-  @show orth, trunc
-  @show kwargs
-  return error()
+  orth::Symbol = @something orth ortho :left
+  rtol = @something rtol cutoff Some(nothing)
+  maxrank = @something maxrank maxdim Some(nothing)
+  !isnothing(maxrank) && error("`maxrank` not supported yet.")
+  return filter(!isnothing, (; orth, rtol, maxrank, kwargs...))
 end
 
 using TensorAlgebra: TensorAlgebra, factorize

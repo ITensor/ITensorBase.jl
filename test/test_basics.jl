@@ -22,6 +22,7 @@ using SymmetrySectors: U1
 using LinearAlgebra: factorize
 using Test: @test, @test_broken, @test_throws, @testset
 
+const elts = (Float32, Float64, Complex{Float32}, Complex{Float64})
 @testset "ITensorBase" begin
   @testset "Basics" begin
     elt = Float64
@@ -165,10 +166,29 @@ using Test: @test, @test_broken, @test_throws, @testset
     @test hasqns(j)
     @test hasqns(a)
   end
-  @testset "factorize" begin
+  @testset "factorize" for elt in elts
     i = Index(2)
     j = Index(2)
-    a = randn(i, j)
+    a = randn(elt, i, j)
     x, y = factorize(a, (i,))
+    @test a ≈ x * y
+    @test x isa ITensor
+    @test y isa ITensor
+    @test i ∈ inds(x)
+    @test j ∈ inds(y)
+    @test eltype(x) === elt
+    @test eltype(y) === elt
+    @test Int.(Tuple(size(x))) == (2, 2)
+    @test Int.(Tuple(size(y))) == (2, 2)
+
+    i = Index(2)
+    j = Index(2)
+    a = randn(elt, i) * randn(elt, j)
+    for kwargs in ((; rtol=1e-2), (; cutoff=1e-2))
+      x, y = factorize(a, (i,); kwargs...)
+      @test a ≈ x * y
+      @test Int.(Tuple(size(x))) == (2, 1)
+      @test Int.(Tuple(size(y))) == (1, 2)
+    end
   end
 end
