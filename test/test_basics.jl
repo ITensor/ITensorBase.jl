@@ -19,6 +19,7 @@ using ITensorBase:
 using NamedDimsArrays: dename, name, named
 using SparseArraysBase: oneelement
 using SymmetrySectors: U1
+using LinearAlgebra: factorize
 using Test: @test, @test_broken, @test_throws, @testset
 
 @testset "ITensorBase" begin
@@ -163,5 +164,11 @@ using Test: @test, @test_broken, @test_throws, @testset
     @test hasqns(i)
     @test hasqns(j)
     @test hasqns(a)
+  end
+  @testset "factorize" begin
+    i = Index(2)
+    j = Index(2)
+    a = randn(i, j)
+    x, y = factorize(a, (i,))
   end
 end
