@@ -4,5 +4,5 @@ LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
 NamedDimsArrays = "60cbd0c0-df58-4cb7-918c-6f5607b73fde"
 
 [compat]
-NamedDimsArrays = "0.6"
+NamedDimsArrays = "0.7"
 ITensorBase = "0.2"
