@@ -36,10 +36,10 @@ function translate_factorize_kwargs(;
   maxdim=nothing,
   kwargs...,
 )
-  orth::Symbol = @something orth ortho :left
+  orth = Symbol(@something orth ortho :left)
   rtol = @something rtol cutoff Some(nothing)
   maxrank = @something maxrank maxdim Some(nothing)
-  !isnothing(maxrank) && error("`maxrank` not supported yet.")
+  # !isnothing(maxrank) && error("`maxrank` not supported yet.")
   return filter_namedtuple(!isnothing, (; orth, rtol, maxrank, kwargs...))
 end
 
