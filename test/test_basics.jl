@@ -1,7 +1,7 @@
 using BlockArrays: Block
 using BlockSparseArrays: BlockSparseArray
 using DiagonalArrays: δ, delta, diagview
-using GradedArrays: dual, gradedrange
+using GradedArrays: U1, dual, gradedrange
 using ITensorBase:
   ITensorBase,
   ITensor,
@@ -18,7 +18,6 @@ using ITensorBase:
   unsettag
 using NamedDimsArrays: dename, name, named
 using SparseArraysBase: oneelement
-using SymmetrySectors: U1
 using LinearAlgebra: factorize
 using Test: @test, @test_broken, @test_throws, @testset
 
