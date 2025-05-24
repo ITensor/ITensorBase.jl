@@ -39,8 +39,9 @@ function translate_factorize_kwargs(;
   orth = Symbol(@something orth ortho :left)
   rtol = @something rtol cutoff Some(nothing)
   maxrank = @something maxrank maxdim Some(nothing)
+  trunc = (; rtol, maxrank)
   # !isnothing(maxrank) && error("`maxrank` not supported yet.")
-  return filter_namedtuple(!isnothing, (; orth, rtol, maxrank, kwargs...))
+  return filter_namedtuple(!isnothing, (; orth, trunc, kwargs...))
 end
 
 using TensorAlgebra: TensorAlgebra, factorize
