@@ -46,8 +46,11 @@ end
 
 using DerivableInterfaces: @derive, @interface, AbstractArrayInterface
 
-abstract type AbstractAllocatableArrayInterface <: AbstractArrayInterface end
-struct AllocatableArrayInterface <: AbstractAllocatableArrayInterface end
+abstract type AbstractAllocatableArrayInterface{N} <: AbstractArrayInterface{N} end
+struct AllocatableArrayInterface{N} <: AbstractAllocatableArrayInterface{N} end
+AllocatableArrayInterface{M}(::Val{N}) where {M,N} = AllocatableArrayInterface{N}()
+AllocatableArrayInterface(::Val{N}) where {N} = AllocatableArrayInterface{N}()
+AllocatableArrayInterface() = AllocatableArrayInterface{Any}()
 
 unallocatable(a::AbstractITensor) = NamedDimsArray(a)
 
