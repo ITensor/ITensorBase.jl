@@ -9,6 +9,7 @@ using NamedDimsArrays:
   name,
   randname,
   setname
+using Random: Random, AbstractRNG
 
 tagpairstring(pair::Pair) = repr(first(pair)) * "=>" * repr(last(pair))
 function tagsstring(tags::Dict{String,String})
@@ -24,10 +25,15 @@ struct IndexName <: AbstractName
   tags::Dict{String,String}
   plev::Int
 end
-function IndexName(; id::UInt64=rand(UInt64), tags=Dict{String,String}(), plev::Int=0)
+function IndexName(
+  rng::AbstractRNG=Random.default_rng();
+  id::UInt64=rand(rng, UInt64),
+  tags=Dict{String,String}(),
+  plev::Int=0,
+)
   return IndexName(id, Dict{String,String}(tags), plev)
 end
-NamedDimsArrays.randname(n::IndexName) = IndexName()
+NamedDimsArrays.randname(rng::AbstractRNG, ::Type{<:IndexName}) = IndexName(rng)
 
 id(n::IndexName) = n.id
 tags(n::IndexName) = n.tags
@@ -81,8 +87,16 @@ struct Index{T,Value<:AbstractUnitRange{T}} <: AbstractNamedUnitRange{T,Value,In
   name::IndexName
 end
 
+function Index{T,Value}(
+  r::AbstractUnitRange{T}; kwargs...
+) where {T,Value<:AbstractUnitRange{T}}
+  return Index{T,Value}(r, IndexName(; kwargs...))
+end
+function Index{T}(r::AbstractUnitRange{T}; kwargs...) where {T}
+  return Index{T,typeof(r)}(r; kwargs...)
+end
 function Index(r::AbstractUnitRange; kwargs...)
-  return Index(r, IndexName(; kwargs...))
+  return Index{eltype(r)}(r; kwargs...)
 end
 
 function Index(length::Int; kwargs...)
