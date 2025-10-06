@@ -1,37 +1,37 @@
 using Accessors: @set
 using NamedDimsArrays:
-  NamedDimsArrays,
-  AbstractName,
-  AbstractNamedInteger,
-  AbstractNamedUnitRange,
-  AbstractNamedVector,
-  dename,
-  name,
-  randname,
-  setname
+    NamedDimsArrays,
+    AbstractName,
+    AbstractNamedInteger,
+    AbstractNamedUnitRange,
+    AbstractNamedVector,
+    dename,
+    name,
+    randname,
+    setname
 using Random: Random, AbstractRNG
 
 tagpairstring(pair::Pair) = repr(first(pair)) * "=>" * repr(last(pair))
-function tagsstring(tags::Dict{String,String})
-  tagpairs = sort(collect(tags); by=first)
-  tagpair1, tagpair_rest = Iterators.peel(tagpairs)
-  return mapreduce(*, tagpair_rest; init=tagpairstring(tagpair1)) do tagpair
-    return "," * tagpairstring(tagpair)
-  end
+function tagsstring(tags::Dict{String, String})
+    tagpairs = sort(collect(tags); by = first)
+    tagpair1, tagpair_rest = Iterators.peel(tagpairs)
+    return mapreduce(*, tagpair_rest; init = tagpairstring(tagpair1)) do tagpair
+        return "," * tagpairstring(tagpair)
+    end
 end
 
 struct IndexName <: AbstractName
-  id::UInt64
-  tags::Dict{String,String}
-  plev::Int
+    id::UInt64
+    tags::Dict{String, String}
+    plev::Int
 end
 function IndexName(
-  rng::AbstractRNG=Random.default_rng();
-  id::UInt64=rand(rng, UInt64),
-  tags=Dict{String,String}(),
-  plev::Int=0,
-)
-  return IndexName(id, Dict{String,String}(tags), plev)
+        rng::AbstractRNG = Random.default_rng();
+        id::UInt64 = rand(rng, UInt64),
+        tags = Dict{String, String}(),
+        plev::Int = 0,
+    )
+    return IndexName(id, Dict{String, String}(tags), plev)
 end
 NamedDimsArrays.randname(rng::AbstractRNG, ::Type{<:IndexName}) = IndexName(rng)
 
@@ -46,14 +46,14 @@ hastag(n::IndexName, tagname::String) = haskey(tags(n), tagname)
 gettag(n::IndexName, tagname::String) = tags(n)[tagname]
 gettag(n::IndexName, tagname::String, default) = get(tags(n), tagname, default)
 function settag(n::IndexName, tagname::String, tag::String)
-  newtags = copy(tags(n))
-  newtags[tagname] = tag
-  return settags(n, newtags)
+    newtags = copy(tags(n))
+    newtags[tagname] = tag
+    return settags(n, newtags)
 end
 function unsettag(n::IndexName, tagname::String)
-  newtags = copy(tags(n))
-  delete!(newtags, tagname)
-  return settags(n, newtags)
+    newtags = copy(tags(n))
+    delete!(newtags, tagname)
+    return settags(n, newtags)
 end
 
 setprime(n::IndexName, plev) = @set n.plev = plev
@@ -62,17 +62,17 @@ noprime(n::IndexName) = setprime(n, 0)
 sim(n::IndexName) = randname(n)
 
 function Base.show(io::IO, i::IndexName)
-  idstr = "id=$(id(i) % 1000)"
-  tagsstr = !isempty(tags(i)) ? "|$(tagsstring(tags(i)))" : ""
-  primestr = primestring(plev(i))
-  str = "IndexName($(idstr)$(tagsstr))$(primestr)"
-  print(io, str)
-  return nothing
+    idstr = "id=$(id(i) % 1000)"
+    tagsstr = !isempty(tags(i)) ? "|$(tagsstring(tags(i)))" : ""
+    primestr = primestring(plev(i))
+    str = "IndexName($(idstr)$(tagsstr))$(primestr)"
+    print(io, str)
+    return nothing
 end
 
-struct IndexVal{Value<:Integer} <: AbstractNamedInteger{Value,IndexName}
-  value::Value
-  name::IndexName
+struct IndexVal{Value <: Integer} <: AbstractNamedInteger{Value, IndexName}
+    value::Value
+    name::IndexName
 end
 
 # Interface
@@ -82,25 +82,25 @@ NamedDimsArrays.name(i::IndexVal) = i.name
 # Constructor
 NamedDimsArrays.named(i::Integer, name::IndexName) = IndexVal(i, name)
 
-struct Index{T,Value<:AbstractUnitRange{T}} <: AbstractNamedUnitRange{T,Value,IndexName}
-  value::Value
-  name::IndexName
+struct Index{T, Value <: AbstractUnitRange{T}} <: AbstractNamedUnitRange{T, Value, IndexName}
+    value::Value
+    name::IndexName
 end
 
-function Index{T,Value}(
-  r::AbstractUnitRange{T}; kwargs...
-) where {T,Value<:AbstractUnitRange{T}}
-  return Index{T,Value}(r, IndexName(; kwargs...))
+function Index{T, Value}(
+        r::AbstractUnitRange{T}; kwargs...
+    ) where {T, Value <: AbstractUnitRange{T}}
+    return Index{T, Value}(r, IndexName(; kwargs...))
 end
 function Index{T}(r::AbstractUnitRange{T}; kwargs...) where {T}
-  return Index{T,typeof(r)}(r; kwargs...)
+    return Index{T, typeof(r)}(r; kwargs...)
 end
 function Index(r::AbstractUnitRange; kwargs...)
-  return Index{eltype(r)}(r; kwargs...)
+    return Index{eltype(r)}(r; kwargs...)
 end
 
 function Index(length::Int; kwargs...)
-  return Index(Base.OneTo(length); kwargs...)
+    return Index(Base.OneTo(length); kwargs...)
 end
 
 # TODO: Define for `NamedDimsArrays.NamedViewIndex`.
@@ -134,32 +134,32 @@ NamedDimsArrays.name(i::Index) = i.name
 NamedDimsArrays.named(i::AbstractUnitRange, name::IndexName) = Index(i, name)
 
 function primestring(plev)
-  if plev < 0
-    return " (warning: prime level $plev is less than 0)"
-  end
-  if plev == 0
-    return ""
-  elseif plev > 3
-    return "'$plev"
-  else
-    return "'"^plev
-  end
+    if plev < 0
+        return " (warning: prime level $plev is less than 0)"
+    end
+    if plev == 0
+        return ""
+    elseif plev > 3
+        return "'$plev"
+    else
+        return "'"^plev
+    end
 end
 
 function Base.show(io::IO, i::Index)
-  lenstr = "length=$(dename(length(i)))"
-  idstr = "|id=$(id(i) % 1000)"
-  tagsstr = !isempty(tags(i)) ? "|$(tagsstring(tags(i)))" : ""
-  primestr = primestring(plev(i))
-  str = "Index($(lenstr)$(idstr)$(tagsstr))$(primestr)"
-  print(io, str)
-  return nothing
+    lenstr = "length=$(dename(length(i)))"
+    idstr = "|id=$(id(i) % 1000)"
+    tagsstr = !isempty(tags(i)) ? "|$(tagsstring(tags(i)))" : ""
+    primestr = primestring(plev(i))
+    str = "Index($(lenstr)$(idstr)$(tagsstr))$(primestr)"
+    print(io, str)
+    return nothing
 end
 
-struct NoncontiguousIndex{T,Value<:AbstractVector{T}} <:
-       AbstractNamedVector{T,Value,IndexName}
-  value::Value
-  name::IndexName
+struct NoncontiguousIndex{T, Value <: AbstractVector{T}} <:
+    AbstractNamedVector{T, Value, IndexName}
+    value::Value
+    name::IndexName
 end
 
 # Interface
