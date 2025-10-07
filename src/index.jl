@@ -33,13 +33,20 @@ function IndexName(
     )
     return IndexName(id, Dict{String, String}(tags), plev)
 end
-NamedDimsArrays.randname(rng::AbstractRNG, ::Type{<:IndexName}) = IndexName(rng)
+function NamedDimsArrays.randname(rng::AbstractRNG, n::IndexName)
+    return setid(n, rand(rng, UInt64))
+end
+function NamedDimsArrays.randname(rng::AbstractRNG, ::Type{<:IndexName})
+    return IndexName(rng)
+end
 
-id(n::IndexName) = n.id
-tags(n::IndexName) = n.tags
-plev(n::IndexName) = n.plev
+id(n::IndexName) = getfield(n, :id)
+tags(n::IndexName) = getfield(n, :tags)
+plev(n::IndexName) = getfield(n, :plev)
 
+setid(n::IndexName, id) = @set n.id = id
 settags(n::IndexName, tags) = @set n.tags = tags
+setplev(n::IndexName, plev) = @set n.plev = plev
 
 hastag(n::IndexName, tagname::String) = haskey(tags(n), tagname)
 
@@ -56,10 +63,8 @@ function unsettag(n::IndexName, tagname::String)
     return settags(n, newtags)
 end
 
-setprime(n::IndexName, plev) = @set n.plev = plev
-prime(n::IndexName) = setprime(n, plev(n) + 1)
-noprime(n::IndexName) = setprime(n, 0)
-sim(n::IndexName) = randname(n)
+prime(n::IndexName) = setplev(n, plev(n) + 1)
+noprime(n::IndexName) = setplev(n, 0)
 
 function Base.show(io::IO, i::IndexName)
     idstr = "id=$(id(i) % 1000)"
@@ -82,7 +87,9 @@ NamedDimsArrays.name(i::IndexVal) = i.name
 # Constructor
 NamedDimsArrays.named(i::Integer, name::IndexName) = IndexVal(i, name)
 
-struct Index{T, Value <: AbstractUnitRange{T}} <: AbstractNamedUnitRange{T, Value, IndexName}
+struct Index{
+        T, Value <: AbstractUnitRange{T},
+    } <: AbstractNamedUnitRange{T, Value, IndexName}
     value::Value
     name::IndexName
 end
@@ -117,13 +124,9 @@ gettag(i::Index, tagname::String, default) = gettag(name(i), tagname, default)
 settag(i::Index, tagname::String, tag::String) = setname(i, settag(name(i), tagname, tag))
 unsettag(i::Index, tagname::String) = setname(i, unsettag(name(i), tagname))
 
-setprime(i::Index, plev) = setname(i, setprime(name(i), plev))
+setplev(i::Index, plev) = setname(i, setplev(name(i), plev))
 prime(i::Index) = setname(i, prime(name(i)))
 noprime(i::Index) = setname(i, noprime(name(i)))
-sim(i::Index) = setname(i, sim(name(i)))
-
-# TODO: Delete this definition?
-Base.adjoint(i::Index) = prime(i)
 
 # Interface
 # TODO: Overload `Base.parent` instead.

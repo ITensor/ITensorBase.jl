@@ -12,7 +12,7 @@ using ITensorBase:
     inds,
     plev,
     prime,
-    setprime,
+    setplev,
     settag,
     tags,
     unsettag
@@ -65,7 +65,7 @@ const elts = (Float32, Float64, Complex{Float32}, Complex{Float64})
 
         i = Index(2)
         @test plev(i) == 0
-        i = setprime(i, 2)
+        i = setplev(i, 2)
         @test plev(i) == 2
 
         i = Index(2)

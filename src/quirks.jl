@@ -10,6 +10,32 @@ dim(i::Index) = Int(length(i))
 # `unname(length(i))` directly.
 dim(a::AbstractITensor) = Int(length(a))
 
+# TODO: Delete this definition?
+Base.adjoint(i::Index) = prime(i)
+
+# TODO: Deprecate, just use `randname` directly.
+sim(n::IndexName) = randname(n)
+sim(i::Index) = setname(i, sim(name(i)))
+sim(a::AbstractITensor) = mapinds(sim, a)
+
+# TODO: Maybe deprecate these and use `mapinds` directly?
+prime(a::AbstractITensor) = mapinds(prime, a)
+noprime(a::AbstractITensor) = mapinds(noprime, a)
+
+# TODO: Delete these and just use set operations on `inds` directly.
+function uniqueinds(a1::AbstractITensor, a_rest::AbstractITensor...)
+    return setdiff(inds(a1), inds.(a_rest)...)
+end
+function uniqueind(a1::AbstractITensor, a_rest::AbstractITensor...)
+    return only(uniqueinds(a1, a_rest...))
+end
+function commoninds(a1::AbstractITensor, a_rest::AbstractITensor...)
+    return intersect(inds(a1), inds.(a_rest)...)
+end
+function commonind(a1::AbstractITensor, a_rest::AbstractITensor...)
+    return only(commoninds(a1, a_rest...))
+end
+
 # TODO: Replace with a more general functionality in
 # `GradedArrays`, like `isgraded`.
 hasqns(r::AbstractUnitRange) = false

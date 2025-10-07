@@ -5,14 +5,12 @@ using NamedDimsArrays:
     NamedDimsArray,
     dename,
     dimnames,
-    mapnameddimsindices,
-    nameddimsindices,
-    replacenameddimsindices,
-    setnameddimsindices
+    inds,
+    mapinds
 
 abstract type AbstractITensor <: AbstractNamedDimsArray{Any, Any} end
 
-NamedDimsArrays.nameddimsarraytype(::Type{<:IndexName}) = ITensor
+NamedDimsArrays.nameddimstype(::Type{<:IndexName}) = ITensor
 
 Base.ndims(::Type{<:AbstractITensor}) = Any
 
@@ -82,15 +80,15 @@ end
 
 mutable struct ITensor <: AbstractITensor
     parent::AbstractArray
-    nameddimsindices
+    inds
     function ITensor(parent::AbstractArray, dims)
         # This checks the shapes of the inputs.
-        nameddimsindices = NamedDimsArrays.to_nameddimsindices(parent, dims)
-        return new(parent, nameddimsindices)
+        inds = NamedDimsArrays.to_inds(parent, dims)
+        return new(parent, inds)
     end
 end
 Base.parent(a::ITensor) = getfield(a, :parent)
-NamedDimsArrays.nameddimsindices(a::ITensor) = getfield(a, :nameddimsindices)
+NamedDimsArrays.inds(a::ITensor) = getfield(a, :inds)
 NamedDimsArrays.dename(a::ITensor) = parent(a)
 
 function ITensor(parent::AbstractArray, i1::Index, i_rest::Index...)
@@ -118,38 +116,3 @@ end
 function ITensor()
     return ITensor(Zeros{UnspecifiedZero}(), ())
 end
-
-inds(a::AbstractITensor) = nameddimsindices(a)
-setinds(a::AbstractITensor, inds) = setnameddimsindices(a, inds)
-
-function uniqueinds(a1::AbstractITensor, a_rest::AbstractITensor...)
-    return setdiff(inds(a1), inds.(a_rest)...)
-end
-function uniqueind(a1::AbstractITensor, a_rest::AbstractITensor...)
-    return only(uniqueinds(a1, a_rest...))
-end
-
-function commoninds(a1::AbstractITensor, a_rest::AbstractITensor...)
-    return intersect(inds(a1), inds.(a_rest)...)
-end
-function commonind(a1::AbstractITensor, a_rest::AbstractITensor...)
-    return only(commoninds(a1, a_rest...))
-end
-
-function replaceinds(a::AbstractITensor, replacements::Pair...)
-    return replacenameddimsindices(a, replacements...)
-end
-function replaceinds(f, a::AbstractITensor)
-    return replacenameddimsindices(f, a)
-end
-
-function mapinds(f, a::AbstractITensor)
-    return mapnameddimsindices(f, a)
-end
-
-prime(a::AbstractITensor) = replaceinds(prime, a)
-noprime(a::AbstractITensor) = replaceinds(noprime, a)
-sim(a::AbstractITensor) = replaceinds(sim, a)
-
-using VectorInterface: VectorInterface, scalartype
-VectorInterface.scalartype(a::AbstractITensor) = scalartype(unallocatable(a))
