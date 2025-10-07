@@ -87,7 +87,9 @@ NamedDimsArrays.name(i::IndexVal) = i.name
 # Constructor
 NamedDimsArrays.named(i::Integer, name::IndexName) = IndexVal(i, name)
 
-struct Index{T, Value <: AbstractUnitRange{T}} <: AbstractNamedUnitRange{T, Value, IndexName}
+struct Index{
+        T, Value <: AbstractUnitRange{T},
+    } <: AbstractNamedUnitRange{T, Value, IndexName}
     value::Value
     name::IndexName
 end
