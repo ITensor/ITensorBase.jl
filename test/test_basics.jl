@@ -1,22 +1,17 @@
-using BlockArrays: Block
-using BlockSparseArrays: BlockSparseArray
 using DiagonalArrays: δ, delta, diagview
-using GradedArrays: U1, dual, gradedrange
 using ITensorBase:
     ITensorBase,
     ITensor,
     Index,
     gettag,
     hastag,
-    hasqns,
-    inds,
     plev,
     prime,
     setplev,
     settag,
     tags,
     unsettag
-using NamedDimsArrays: dename, name, named
+using NamedDimsArrays: dename, inds, mapinds, name, named
 using SparseArraysBase: oneelement
 using LinearAlgebra: factorize
 using Test: @test, @test_broken, @test_throws, @testset
@@ -32,7 +27,7 @@ const elts = (Float32, Float64, Complex{Float32}, Complex{Float64})
             @test plev(i) == 0
             @test plev(prime(i)) == 1
             @test length(tags(i)) == 0
-            a′ = prime(a)
+            a′ = mapinds(prime, a)
             @test dename(a′) == x
             @test issetequal(inds(a′), (prime(i), prime(j)))
         end
@@ -145,25 +140,6 @@ const elts = (Float32, Float64, Complex{Float32}, Complex{Float64})
         @test a[1] == 0
         @test a[2] == 1
         @test a[3] == 0
-    end
-    @testset "hasqns" begin
-        i = Index(2)
-        j = Index(2)
-        a = ITensor(randn(2, 2), (i, j))
-        @test !hasqns(i)
-        @test !hasqns(j)
-        @test !hasqns(a)
-
-        r = gradedrange([U1(0) => 2, U1(1) => 2])
-        d = BlockSparseArray{Float64}(undef, r, dual(r))
-        d[Block(1, 1)] = randn(2, 2)
-        d[Block(2, 2)] = randn(2, 2)
-        i = Index(r)
-        j = Index(dual(r))
-        a = ITensor(d, (i, j))
-        @test hasqns(i)
-        @test hasqns(j)
-        @test hasqns(a)
     end
     @testset "factorize" for elt in elts
         i = Index(2)

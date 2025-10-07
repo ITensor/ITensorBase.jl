@@ -3,8 +3,6 @@ module ITensorBaseGradedArraysExt
 using GradedArrays: AbstractGradedUnitRange
 using ITensorBase: ITensorBase
 
-# TODO: Replace with a more general functionality in
-# `GradedArrays`, like `isgraded`.
-ITensorBase.hasqns(r::AbstractGradedUnitRange) = true
+# Overloads for GradedArrays.jl interface go here.
 
 end
