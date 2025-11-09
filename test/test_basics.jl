@@ -1,16 +1,6 @@
 using DiagonalArrays: δ, delta, diagview
-using ITensorBase:
-    ITensorBase,
-    ITensor,
-    Index,
-    gettag,
-    hastag,
-    plev,
-    prime,
-    setplev,
-    settag,
-    tags,
-    unsettag
+using ITensorBase: ITensorBase, ITensor, Index, IndexName, gettag, hastag, plev, prime,
+    setplev, settag, tags, unsettag
 using NamedDimsArrays: dename, inds, mapinds, name, named
 using SparseArraysBase: oneelement
 using LinearAlgebra: factorize
@@ -18,7 +8,67 @@ using Test: @test, @test_broken, @test_throws, @testset
 
 const elts = (Float32, Float64, Complex{Float32}, Complex{Float64})
 @testset "ITensorBase" begin
-    @testset "Basics" begin
+    @testset "IndexName" begin
+        n1 = IndexName(; id = UInt64(0))
+        n2 = IndexName(; id = UInt64(0))
+        @test n1 == n2
+        @test isequal(n1, n2)
+        @test hash(n1) ≡ hash(n2)
+
+        n1 = IndexName(; id = UInt64(0))
+        n2 = IndexName(; id = UInt64(1))
+        @test n1 ≠ n2
+        @test !isequal(n1, n2)
+        @test n1 < n2
+        @test isless(n1, n2)
+        @test hash(n1) ≠ hash(n2)
+
+        n1 = IndexName(; id = UInt64(0), plev = 0)
+        n2 = IndexName(; id = UInt64(0), plev = 1)
+        @test n1 ≠ n2
+        @test !isequal(n1, n2)
+        @test n1 < n2
+        @test isless(n1, n2)
+        @test hash(n1) ≠ hash(n2)
+    end
+    @testset "Index basics" begin
+        i = Index(2)
+        @test plev(i) == 0
+        i = setplev(i, 2)
+        @test plev(i) == 2
+
+        i = Index(2)
+        i = settag(i, "X", "x")
+        @test hastag(i, "X")
+        @test !hastag(i, "Y")
+        @test gettag(i, "X") == "x"
+        i = unsettag(i, "X")
+        @test isnothing(gettag(i, "X", nothing))
+        @test !hastag(i, "X")
+        @test !hastag(i, "Y")
+
+        i = Index(Base.OneTo(2))
+        @test length(i) == named(2, name(i))
+        @test dename(length(i)) == 2
+        @test dename(i) == 1:2
+        @test plev(i) == 0
+        @test length(tags(i)) == 0
+
+        for i in (
+                Index(2; tags = Dict(["X" => "Y"])),
+                Index(2; tags = ["X" => "Y"]),
+                Index(2; tags = ("X" => "Y",)),
+                Index(2; tags = "X" => "Y"),
+            )
+            @test Int(length(i)) == 2
+            @test hastag(i, "X")
+            @test gettag(i, "X") == "Y"
+            @test plev(i) == 0
+            @test length(tags(i)) == 1
+        end
+
+    end
+    @testset "ITensor basics" begin
         elt = Float64
         i, j = Index.((2, 2))
         x = randn(elt, 2, 2)
@@ -57,41 +107,6 @@ const elts = (Float32, Float64, Complex{Float32}, Complex{Float64})
         @test a == b
         @test dename(a) == dename(b, (i, j, k))
         @test dename(a) == permutedims(dename(b), (2, 3, 1))
-
-        i = Index(2)
-        @test plev(i) == 0
-        i = setplev(i, 2)
-        @test plev(i) == 2
-
-        i = Index(2)
-        i = settag(i, "X", "x")
-        @test hastag(i, "X")
-        @test !hastag(i, "Y")
-        @test gettag(i, "X") == "x"
-        i = unsettag(i, "X")
-        @test isnothing(gettag(i, "X", nothing))
-        @test !hastag(i, "X")
-        @test !hastag(i, "Y")
-
-        i = Index(Base.OneTo(2))
-        @test length(i) == named(2, name(i))
-        @test dename(length(i)) == 2
-        @test dename(i) == 1:2
-        @test plev(i) == 0
-        @test length(tags(i)) == 0
-
-        for i in (
-                Index(2; tags = Dict(["X" => "Y"])),
-                Index(2; tags = ["X" => "Y"]),
-                Index(2; tags = ("X" => "Y",)),
-                Index(2; tags = "X" => "Y"),
-            )
-            @test Int(length(i)) == 2
-            @test hastag(i, "X")
-            @test gettag(i, "X") == "Y"
-            @test plev(i) == 0
-            @test length(tags(i)) == 1
-        end
     end
     @testset "show" begin
         id = rand(UInt64)

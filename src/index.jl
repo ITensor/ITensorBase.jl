@@ -1,14 +1,6 @@
 using Accessors: @set
-using NamedDimsArrays:
-    NamedDimsArrays,
-    AbstractName,
-    AbstractNamedInteger,
-    AbstractNamedUnitRange,
-    AbstractNamedVector,
-    dename,
-    name,
-    randname,
-    setname
+using NamedDimsArrays: NamedDimsArrays, AbstractName, AbstractNamedInteger,
+    AbstractNamedUnitRange, AbstractNamedVector, dename, name, randname, setname
 using Random: Random, AbstractRNG
 
 tagpairstring(pair::Pair) = repr(first(pair)) * "=>" * repr(last(pair))
@@ -26,10 +18,8 @@ struct IndexName <: AbstractName
     plev::Int
 end
 function IndexName(
-        rng::AbstractRNG = Random.default_rng();
-        id::UInt64 = rand(rng, UInt64),
-        tags = Dict{String, String}(),
-        plev::Int = 0,
+        rng::AbstractRNG = Random.default_rng(); id::UInt64 = rand(rng, UInt64),
+        tags = Dict{String, String}(), plev::Int = 0,
     )
     return IndexName(id, Dict{String, String}(tags), plev)
 end
@@ -43,6 +33,22 @@ end
 id(n::IndexName) = getfield(n, :id)
 tags(n::IndexName) = getfield(n, :tags)
 plev(n::IndexName) = getfield(n, :plev)
+
+using ConstructionBase: getfields
+Base.:(==)(n1::IndexName, n2::IndexName) = getfields(n1) == getfields(n2)
+Base.isequal(n1::IndexName, n2::IndexName) = isequal(getfields(n1), getfields(n2))
+function Base.isless(n1::IndexName, n2::IndexName)
+    t1 = (id(n1), plev(n1), keys(tags(n1)), collect(values(tags(n1))))
+    t2 = (id(n2), plev(n2), keys(tags(n2)), collect(values(tags(n2))))
+    return isless(t1, t2)
+end
+function Base.hash(n::IndexName, h::UInt)
+    h = hash(:IndexName, h)
+    h = hash(id(n), h)
+    h = hash(tags(n), h)
+    h = hash(plev(n), h)
+    return h
+end
 
 setid(n::IndexName, id) = @set n.id = id
 settags(n::IndexName, tags) = @set n.tags = tags
