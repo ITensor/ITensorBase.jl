@@ -41,3 +41,6 @@ UnallocatedArrays = "0.1.1"
 UnspecifiedTypes = "0.1.1"
 VectorInterface = "0.5"
 julia = "1.10"
+
+[workspace]
+projects = ["benchmark", "dev", "docs", "examples", "test"]

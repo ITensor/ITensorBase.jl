@@ -4,8 +4,11 @@ ITensorBase = "4795dd04-0d67-49bb-8f44-b89c448a1dc7"
 Literate = "98b081ad-f1c9-55d3-8b20-4c87d4299306"
 NamedDimsArrays = "60cbd0c0-df58-4cb7-918c-6f5607b73fde"
 
+[sources]
+ITensorBase = {path = ".."}
+
 [compat]
-ITensorBase = "0.3"
 Documenter = "1"
+ITensorBase = "0.3"
 Literate = "2"
-NamedDimsArrays = "0.8"
+NamedDimsArrays = "0.8, 0.9"
