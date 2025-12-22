@@ -1,8 +1,6 @@
-using DiagonalArrays: δ, delta, diagview
 using ITensorBase: ITensorBase, ITensor, Index, IndexName, gettag, hastag, plev, prime,
     setplev, settag, tags, unsettag
 using NamedDimsArrays: dename, inds, mapinds, name, named
-using SparseArraysBase: oneelement
 using LinearAlgebra: factorize
 using Test: @test, @test_broken, @test_throws, @testset
 
@@ -116,45 +114,6 @@ const elts = (Float32, Float64, Complex{Float32}, Complex{Float64})
         id = rand(UInt64)
         i = Index(2; id, tags = ["X" => "Y"])
         @test sprint(show, "text/plain", i) == "Index(length=2|id=$(id % 1000)|\"X\"=>\"Y\")"
-    end
-    @testset "delta" begin
-        i, j = Index.((2, 2))
-        for a in (
-                delta(i, j),
-                delta(Bool, i, j),
-                delta((i, j)),
-                delta(Bool, (i, j)),
-                δ(i, j),
-                δ(Bool, i, j),
-                δ((i, j)),
-                δ(Bool, (i, j)),
-            )
-            @test eltype(a) === Bool
-            # TODO: Fix this.
-            @test_broken diagview(a)
-            @test diagview(dename(a)) == ones(2)
-        end
-    end
-    @testset "oneelement" begin
-        i = Index(3)
-        a = oneelement(i => 2)
-        @test a isa ITensor
-        @test ndims(a) == 1
-        @test issetequal(inds(a), (i,))
-        @test eltype(a) === Bool
-        @test a[1] == 0
-        @test a[2] == 1
-        @test a[3] == 0
-
-        i = Index(3)
-        a = oneelement(Float32, i => 2)
-        @test a isa ITensor
-        @test ndims(a) == 1
-        @test issetequal(inds(a), (i,))
-        @test eltype(a) === Float32
-        @test a[1] == 0
-        @test a[2] == 1
-        @test a[3] == 0
     end
     @testset "factorize" for elt in elts
         i = Index(2)

@@ -15,11 +15,9 @@ ITensorBase = {path = ".."}
 
 [compat]
 Aqua = "0.8.9"
-DiagonalArrays = "0.3"
-ITensorBase = "0.3"
-NamedDimsArrays = "0.8, 0.9"
+ITensorBase = "0.4"
+NamedDimsArrays = "0.10"
 SafeTestsets = "0.1"
-SparseArraysBase = "0.7"
 Suppressor = "0.2"
 TensorAlgebra = "0.3, 0.4, 0.5, 0.6"
 Test = "1.10"

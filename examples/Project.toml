@@ -7,6 +7,6 @@ NamedDimsArrays = "60cbd0c0-df58-4cb7-918c-6f5607b73fde"
 ITensorBase = {path = ".."}
 
 [compat]
-ITensorBase = "0.3"
+ITensorBase = "0.4"
 LinearAlgebra = "1.10"
-NamedDimsArrays = "0.8, 0.9"
+NamedDimsArrays = "0.10"
