@@ -1,13 +1,10 @@
 [deps]
 Aqua = "4c88cf16-eb10-579e-8560-4a9242c79595"
-DiagonalArrays = "74fd4be6-21e2-4f6f-823a-4360d37c7a77"
 ITensorBase = "4795dd04-0d67-49bb-8f44-b89c448a1dc7"
 LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
 NamedDimsArrays = "60cbd0c0-df58-4cb7-918c-6f5607b73fde"
 SafeTestsets = "1bc83da4-3b8d-516f-aca4-4fe02f6d838f"
-SparseArraysBase = "0d5efcca-f356-4864-8770-e1ed8d78f208"
 Suppressor = "fd094767-a336-5f1f-9728-57cf17d0bbfb"
-TensorAlgebra = "68bd88dc-f39d-4e12-b2ca-f046b68fcc6a"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
 [sources]
@@ -16,8 +13,8 @@ ITensorBase = {path = ".."}
 [compat]
 Aqua = "0.8.9"
 ITensorBase = "0.4"
+LinearAlgebra = "1.10"
 NamedDimsArrays = "0.10"
 SafeTestsets = "0.1"
 Suppressor = "0.2"
-TensorAlgebra = "0.3, 0.4, 0.5, 0.6"
 Test = "1.10"
