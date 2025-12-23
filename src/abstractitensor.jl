@@ -1,16 +1,10 @@
 using MapBroadcast: Mapped
-using NamedDimsArrays:
-    NamedDimsArrays,
-    AbstractNamedDimsArray,
-    NamedDimsArray,
-    dename,
-    dimnames,
-    inds,
-    mapinds
+using NamedDimsArrays: NamedDimsArrays, AbstractNamedDimsArray, NamedDimsArray, dename,
+    dimnames, inds, mapinds
 
 abstract type AbstractITensor <: AbstractNamedDimsArray{Any, Any} end
 
-NamedDimsArrays.nameddimstype(::Type{<:IndexName}) = ITensor
+NamedDimsArrays.nameddimsconstructor(::Type{<:IndexName}) = ITensor
 
 Base.ndims(::Type{<:AbstractITensor}) = Any
 
@@ -23,9 +17,7 @@ using UnspecifiedTypes: UnspecifiedZero
 function specify_eltype(a::Zeros{UnspecifiedZero}, elt::Type)
     return Zeros{elt}(axes(a))
 end
-function specify_eltype(a::AbstractArray, elt::Type)
-    return a
-end
+specify_eltype(a::AbstractArray, elt::Type) = a
 
 # TODO: Use `adapt` to reach down into the storage.
 function specify_eltype!(a::AbstractITensor, elt::Type)
