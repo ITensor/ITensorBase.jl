@@ -10,11 +10,12 @@ Suppressor = "fd094767-a336-5f1f-9728-57cf17d0bbfb"
 TensorAlgebra = "68bd88dc-f39d-4e12-b2ca-f046b68fcc6a"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
-[sources]
-ITensorBase = {path = ".."}
+[sources.ITensorBase]
+path = ".."
 
 [compat]
 Aqua = "0.8.9"
+DiagonalArrays = "0.3"
 ITensorBase = "0.4"
 NamedDimsArrays = "0.10"
 SafeTestsets = "0.1"
