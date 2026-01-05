@@ -9,4 +9,4 @@ ITensorBase = {path = ".."}
 [compat]
 ITensorBase = "0.4"
 LinearAlgebra = "1.10"
-NamedDimsArrays = "0.11"
+NamedDimsArrays = "0.11, 0.12"
