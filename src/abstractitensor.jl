@@ -34,14 +34,6 @@ function allocate!(a::AbstractITensor)
     return a
 end
 
-using DerivableInterfaces: @derive, @interface, AbstractArrayInterface
-
-abstract type AbstractAllocatableArrayInterface{N} <: AbstractArrayInterface{N} end
-struct AllocatableArrayInterface{N} <: AbstractAllocatableArrayInterface{N} end
-AllocatableArrayInterface{M}(::Val{N}) where {M, N} = AllocatableArrayInterface{N}()
-AllocatableArrayInterface(::Val{N}) where {N} = AllocatableArrayInterface{N}()
-AllocatableArrayInterface() = AllocatableArrayInterface{Any}()
-
 unallocatable(a::AbstractITensor) = NamedDimsArray(a)
 
 function setindex_allocatable!(a::AbstractArray, value, I...)
@@ -52,22 +44,13 @@ function setindex_allocatable!(a::AbstractArray, value, I...)
 end
 
 # TODO: Combine these by using `Base.to_indices`.
-@interface ::AbstractAllocatableArrayInterface function Base.setindex!(
-        a::AbstractArray, value, I::Int...
-    )
+function Base.setindex!(a::AbstractITensor, value, I::Int...)
     setindex_allocatable!(a, value, I...)
     return a
 end
-@interface ::AbstractAllocatableArrayInterface function Base.setindex!(
-        a::AbstractArray, value, I::AbstractNamedInteger...
-    )
+function Base.setindex!(a::AbstractITensor, value, I::AbstractNamedInteger...)
     setindex_allocatable!(a, value, I...)
     return a
-end
-
-@derive AllocatableArrayInterface() (T = AbstractITensor,) begin
-    Base.setindex!(::T, ::Any, ::Int...)
-    Base.setindex!(::T, ::Any, ::AbstractNamedInteger...)
 end
 
 mutable struct ITensor <: AbstractITensor
