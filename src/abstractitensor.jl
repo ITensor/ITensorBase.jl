@@ -1,5 +1,5 @@
 using MapBroadcast: Mapped
-using NamedDimsArrays: NamedDimsArrays, AbstractNamedDimsArray, NamedDimsArray, dename,
+using NamedDimsArrays: NamedDimsArrays, AbstractNamedDimsArray, NamedDimsArray, denamed,
     dimnames, inds, mapinds
 
 abstract type AbstractITensor <: AbstractNamedDimsArray{Any, Any} end
@@ -21,7 +21,7 @@ specify_eltype(a::AbstractArray, elt::Type) = a
 
 # TODO: Use `adapt` to reach down into the storage.
 function specify_eltype!(a::AbstractITensor, elt::Type)
-    setdenamed!(a, specify_eltype(dename(a), elt))
+    setdenamed!(a, specify_eltype(denamed(a), elt))
     return a
 end
 
@@ -30,7 +30,7 @@ allocate!(a::AbstractArray) = a
 
 # TODO: Use `adapt` to reach down into the storage.
 function allocate!(a::AbstractITensor)
-    setdenamed!(a, allocate(dename(a)))
+    setdenamed!(a, allocate(denamed(a)))
     return a
 end
 
@@ -64,7 +64,7 @@ mutable struct ITensor <: AbstractITensor
 end
 Base.parent(a::ITensor) = getfield(a, :parent)
 NamedDimsArrays.inds(a::ITensor) = getfield(a, :inds)
-NamedDimsArrays.dename(a::ITensor) = parent(a)
+NamedDimsArrays.denamed(a::ITensor) = parent(a)
 
 function ITensor(parent::AbstractArray, i1::Index, i_rest::Index...)
     return ITensor(parent, (i1, i_rest...))
@@ -80,12 +80,12 @@ setdenamed!(a::ITensor, denamed) = (a.parent = denamed)
 function ITensor(elt::Type, I1::Index, I_rest::Index...)
     I = (I1, I_rest...)
     # TODO: Use `FillArrays.Zeros`.
-    return ITensor(zeros(elt, length.(dename.(I))...), I)
+    return ITensor(zeros(elt, length.(denamed.(I))...), I)
 end
 
 function ITensor(I1::Index, I_rest::Index...)
     I = (I1, I_rest...)
-    return ITensor(Zeros{UnspecifiedZero}(length.(dename.(I))...), I)
+    return ITensor(Zeros{UnspecifiedZero}(length.(denamed.(I))...), I)
 end
 
 function ITensor()
