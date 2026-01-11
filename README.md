@@ -63,15 +63,6 @@ q, r = qr(a, (i,))
 @test q * r ≈ a
 ````
 
-Automatic allocation
-
-````julia
-a = ITensor(i, j)
-a[j[1], i[2]] = 1 + 2im
-eltype(a) == Complex{Int}
-@test a[i[2], j[1]] == 1 + 2im
-````
-
 ---
 
 *This page was generated using [Literate.jl](https://github.com/fredrikekre/Literate.jl).*
