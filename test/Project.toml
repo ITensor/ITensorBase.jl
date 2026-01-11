@@ -14,7 +14,7 @@ ITensorBase = {path = ".."}
 Aqua = "0.8.9"
 ITensorBase = "0.4"
 LinearAlgebra = "1.10"
-NamedDimsArrays = "0.11, 0.12"
+NamedDimsArrays = "0.13"
 SafeTestsets = "0.1"
 Suppressor = "0.2"
 Test = "1.10"

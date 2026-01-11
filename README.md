@@ -44,7 +44,7 @@ julia> Pkg.add("ITensorBase")
 ````julia
 using ITensorBase: ITensorBase, ITensor, Index
 using LinearAlgebra: qr
-using NamedDimsArrays: aligndims, unname
+using NamedDimsArrays: aligndims, dename
 using Test: @test
 i = Index(2)
 j = Index(2)
@@ -55,21 +55,12 @@ a = randn(i, j)
 a′ = randn(j, i)
 b = randn(j, k)
 c = a * b
-@test unname(c, (i, k)) ≈ unname(a, (i, j)) * unname(b, (j, k))
+@test dename(c, (i, k)) ≈ dename(a, (i, j)) * dename(b, (j, k))
 d = a + a′
-@test unname(d, (i, j)) ≈ unname(a, (i, j)) + unname(a′, (i, j))
+@test dename(d, (i, j)) ≈ dename(a, (i, j)) + dename(a′, (i, j))
 @test a ≈ aligndims(a, (j, i))
 q, r = qr(a, (i,))
 @test q * r ≈ a
-````
-
-Automatic allocation
-
-````julia
-a = ITensor(i, j)
-a[j[1], i[2]] = 1 + 2im
-eltype(a) == Complex{Int}
-@test a[i[2], j[1]] == 1 + 2im
 ````
 
 ---

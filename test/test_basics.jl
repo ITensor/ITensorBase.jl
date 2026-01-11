@@ -1,6 +1,6 @@
 using ITensorBase: ITensorBase, ITensor, Index, IndexName, gettag, hastag, plev, prime,
     setplev, settag, tags, unsettag
-using NamedDimsArrays: dename, inds, mapinds, name, named
+using NamedDimsArrays: dename, denamed, inds, mapinds, name, named
 using LinearAlgebra: factorize
 using Test: @test, @test_broken, @test_throws, @testset
 
@@ -47,8 +47,8 @@ const elts = (Float32, Float64, Complex{Float32}, Complex{Float64})
 
         i = Index(Base.OneTo(2))
         @test length(i) == named(2, name(i))
-        @test dename(length(i)) == 2
-        @test dename(i) == 1:2
+        @test denamed(length(i)) == 2
+        @test denamed(i) == 1:2
         @test plev(i) == 0
         @test length(tags(i)) == 0
 
@@ -71,12 +71,12 @@ const elts = (Float32, Float64, Complex{Float32}, Complex{Float64})
         i, j = Index.((2, 2))
         x = randn(elt, 2, 2)
         for a in (ITensor(x, i, j), ITensor(x, (i, j)))
-            @test dename(a) == x
+            @test denamed(a) == x
             @test plev(i) == 0
             @test plev(prime(i)) == 1
             @test length(tags(i)) == 0
             a′ = mapinds(prime, a)
-            @test dename(a′) == x
+            @test denamed(a′) == x
             @test issetequal(inds(a′), (prime(i), prime(j)))
         end
 
@@ -88,14 +88,14 @@ const elts = (Float32, Float64, Complex{Float32}, Complex{Float64})
         a′ = Array(a)
         @test eltype(a′) === elt
         @test a′ isa Matrix{elt}
-        @test a′ == dename(a)
+        @test a′ == denamed(a)
 
         i, j = Index.((3, 4))
         a = randn(elt, i, j)
         for a′ in (Array{Float32}(a), Matrix{Float32}(a))
             @test eltype(a′) === Float32
             @test a′ isa Matrix{Float32}
-            @test a′ == Float32.(dename(a))
+            @test a′ == Float32.(denamed(a))
         end
 
         i, j, k = Index.((2, 2, 2))
@@ -103,8 +103,8 @@ const elts = (Float32, Float64, Complex{Float32}, Complex{Float64})
         b = randn(elt, k, i, j)
         copyto!(a, b)
         @test a == b
-        @test dename(a) == dename(b, (i, j, k))
-        @test dename(a) == permutedims(dename(b), (2, 3, 1))
+        @test denamed(a) == dename(b, (i, j, k))
+        @test denamed(a) == permutedims(denamed(b), (2, 3, 1))
     end
     @testset "show" begin
         id = rand(UInt64)

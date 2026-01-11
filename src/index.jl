@@ -1,6 +1,6 @@
 using Accessors: @set
 using NamedDimsArrays: NamedDimsArrays, AbstractName, AbstractNamedInteger,
-    AbstractNamedUnitRange, AbstractNamedVector, dename, name, randname, setname
+    AbstractNamedUnitRange, AbstractNamedVector, denamed, name, randname, setname
 using Random: Random, AbstractRNG
 
 tagpairstring(pair::Pair) = repr(first(pair)) * "=>" * repr(last(pair))
@@ -87,7 +87,7 @@ struct IndexVal{Value <: Integer} <: AbstractNamedInteger{Value, IndexName}
 end
 
 # Interface
-NamedDimsArrays.dename(i::IndexVal) = i.value
+NamedDimsArrays.denamed(i::IndexVal) = i.value
 NamedDimsArrays.name(i::IndexVal) = i.name
 
 # Constructor
@@ -136,7 +136,7 @@ noprime(i::Index) = setname(i, noprime(name(i)))
 
 # Interface
 # TODO: Overload `Base.parent` instead.
-NamedDimsArrays.dename(i::Index) = i.value
+NamedDimsArrays.denamed(i::Index) = i.value
 NamedDimsArrays.name(i::Index) = i.name
 
 # Constructor
@@ -156,7 +156,7 @@ function primestring(plev)
 end
 
 function Base.show(io::IO, i::Index)
-    lenstr = "length=$(dename(length(i)))"
+    lenstr = "length=$(denamed(length(i)))"
     idstr = "|id=$(id(i) % 1000)"
     tagsstr = !isempty(tags(i)) ? "|$(tagsstring(tags(i)))" : ""
     primestr = primestring(plev(i))
@@ -173,7 +173,7 @@ end
 
 # Interface
 # TODO: Overload `Base.parent` instead.
-NamedDimsArrays.dename(i::NoncontiguousIndex) = i.value
+NamedDimsArrays.denamed(i::NoncontiguousIndex) = i.value
 NamedDimsArrays.name(i::NoncontiguousIndex) = i.name
 
 # Constructor
