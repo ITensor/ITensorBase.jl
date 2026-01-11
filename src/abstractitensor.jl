@@ -7,7 +7,7 @@ NamedDimsArrays.nameddimsconstructor(::Type{<:IndexName}) = ITensor
 
 Base.ndims(::Type{<:AbstractITensor}) = Any
 
-mutable struct ITensor <: AbstractITensor
+struct ITensor <: AbstractITensor
     parent::AbstractArray
     inds
     function ITensor(parent::AbstractArray, dims)
