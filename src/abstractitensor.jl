@@ -1,5 +1,5 @@
-using NamedDimsArrays: NamedDimsArrays, AbstractNamedDimsArray, NamedDimsArray, denamed,
-    dimnames, inds, mapinds
+using NamedDimsArrays: NamedDimsArrays, AbstractNamedDimsArray, LittleSet, NamedDimsArray,
+    denamed, dimnames, inds, mapinds
 
 abstract type AbstractITensor <: AbstractNamedDimsArray{Any, Any} end
 
@@ -8,21 +8,16 @@ NamedDimsArrays.nameddimsconstructor(::Type{<:IndexName}) = ITensor
 Base.ndims(::Type{<:AbstractITensor}) = Any
 
 struct ITensor <: AbstractITensor
-    parent::AbstractArray
-    inds
-    function ITensor(parent::AbstractArray, dims)
-        # This checks the shapes of the inputs.
-        inds = NamedDimsArrays.to_inds(parent, dims)
-        return new(parent, inds)
+    denamed::AbstractArray
+    dimnames
+    function ITensor(denamed::AbstractArray, dimnames)
+        ndims(denamed) == length(dimnames) ||
+            throw(ArgumentError("Number of named dims must match ndims."))
+        all(dimname -> dimname isa IndexName, dimnames) ||
+            throw(ArgumentError("All dimnames must be of type IndexName."))
+        return new(denamed, dimnames)
     end
 end
-Base.parent(a::ITensor) = getfield(a, :parent)
-NamedDimsArrays.inds(a::ITensor) = getfield(a, :inds)
-NamedDimsArrays.denamed(a::ITensor) = parent(a)
-
-function ITensor(parent::AbstractArray, i1::Index, i_rest::Index...)
-    return ITensor(parent, (i1, i_rest...))
-end
-function ITensor(parent::AbstractArray)
-    return ITensor(parent, ())
-end
+NamedDimsArrays.dimnames(a::ITensor) = LittleSet(a.dimnames)
+NamedDimsArrays.denamed(a::ITensor) = a.denamed
+Base.parent(a::ITensor) = denamed(a)

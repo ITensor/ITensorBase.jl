@@ -70,18 +70,21 @@ const elts = (Float32, Float64, Complex{Float32}, Complex{Float64})
         elt = Float64
         i, j = Index.((2, 2))
         x = randn(elt, 2, 2)
-        for a in (ITensor(x, i, j), ITensor(x, (i, j)))
-            @test denamed(a) == x
-            @test plev(i) == 0
-            @test plev(prime(i)) == 1
-            @test length(tags(i)) == 0
-            a′ = mapinds(prime, a)
-            @test denamed(a′) == x
-            @test issetequal(inds(a′), (prime(i), prime(j)))
-        end
+        a = x[i, j]
+        @test denamed(a) == x
+        @test plev(i) == 0
+        @test plev(prime(i)) == 1
+        @test length(tags(i)) == 0
+        a′ = mapinds(prime, a)
+        @test denamed(a′) == x
+        @test issetequal(inds(a′), (prime(i), prime(j)))
 
-        @test_throws ErrorException ITensor(randn(elt, 2, 2), Index.((2, 3)))
-        @test_throws ErrorException ITensor(randn(elt, 4), Index.((2, 2)))
+        # For now, the `ITensor` constructor is strict and only accepts a collection of
+        # `IndexName` as dimnames.
+        @test_throws ArgumentError ITensor(randn(elt, 2, 2), Index.((2, 2)))
+        @test_throws ArgumentError ITensor(randn(elt, 2, 2), Index.((2, 3)))
+        @test_throws ArgumentError ITensor(randn(elt, 4), Index.((2, 2)))
+        @test_throws MethodError ITensor(randn(elt, 2, 2), Index(2), Index(2))
 
         i, j = Index.((3, 4))
         a = randn(elt, i, j)
