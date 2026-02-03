@@ -84,7 +84,7 @@ const elts = (Float32, Float64, Complex{Float32}, Complex{Float64})
         @test_throws ArgumentError ITensor(randn(elt, 2, 2), Index.((2, 2)))
         @test_throws ArgumentError ITensor(randn(elt, 2, 2), Index.((2, 3)))
         @test_throws ArgumentError ITensor(randn(elt, 4), Index.((2, 2)))
-        @test_throws ArgumentError ITensor(randn(elt, 2, 2), Index(2), Index(2))
+        @test_throws MethodError ITensor(randn(elt, 2, 2), Index(2), Index(2))
 
         i, j = Index.((3, 4))
         a = randn(elt, i, j)

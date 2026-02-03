@@ -9,6 +9,6 @@ ITensorBase = {path = ".."}
 
 [compat]
 Documenter = "1"
-ITensorBase = "0.4"
+ITensorBase = "0.5"
 Literate = "2"
 NamedDimsArrays = "0.14"
