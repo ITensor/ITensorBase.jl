@@ -16,7 +16,7 @@ function translate_factorize_kwargs(;
         ortho = nothing,
         cutoff = nothing,
         maxdim = nothing,
-        kwargs...,
+        kwargs...
     )
     orth = Symbol(@something orth ortho :left)
     rtol = @something rtol cutoff Some(nothing)
@@ -34,6 +34,6 @@ function TensorAlgebra.factorize(a::AbstractITensor, codomain_inds, domain_inds;
         a,
         codomain_inds,
         domain_inds;
-        translate_factorize_kwargs(; kwargs...)...,
+        translate_factorize_kwargs(; kwargs...)...
     )
 end

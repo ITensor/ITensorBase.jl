@@ -1,7 +1,7 @@
 using ITensorBase: ITensorBase, ITensor, Index, IndexName, gettag, hastag, plev, prime,
     setplev, settag, tags, unsettag
-using NamedDimsArrays: dename, denamed, inds, mapinds, name, named
 using LinearAlgebra: factorize
+using NamedDimsArrays: dename, denamed, inds, mapinds, name, named
 using Test: @test, @test_broken, @test_throws, @testset
 
 const elts = (Float32, Float64, Complex{Float32}, Complex{Float64})
@@ -64,7 +64,6 @@ const elts = (Float32, Float64, Complex{Float32}, Complex{Float64})
             @test plev(i) == 0
             @test length(tags(i)) == 1
         end
-
     end
     @testset "ITensor basics" begin
         elt = Float64
@@ -116,7 +115,8 @@ const elts = (Float32, Float64, Complex{Float32}, Complex{Float64})
 
         id = rand(UInt64)
         i = Index(2; id, tags = ["X" => "Y"])
-        @test sprint(show, "text/plain", i) == "Index(length=2|id=$(id % 1000)|\"X\"=>\"Y\")"
+        @test sprint(show, "text/plain", i) ==
+            "Index(length=2|id=$(id % 1000)|\"X\"=>\"Y\")"
     end
     @testset "factorize" for elt in elts
         i = Index(2)
