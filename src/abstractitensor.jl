@@ -9,7 +9,7 @@ Base.ndims(::Type{<:AbstractITensor}) = Any
 
 struct ITensor <: AbstractITensor
     denamed::AbstractArray
-    dimnames
+    dimnames::Any
     function ITensor(denamed::AbstractArray, dimnames)
         ndims(denamed) == length(dimnames) ||
             throw(ArgumentError("Number of named dims must match ndims."))

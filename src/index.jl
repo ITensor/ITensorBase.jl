@@ -19,7 +19,7 @@ struct IndexName <: AbstractName
 end
 function IndexName(
         rng::AbstractRNG = Random.default_rng(); id::UInt64 = rand(rng, UInt64),
-        tags = Dict{String, String}(), plev::Int = 0,
+        tags = Dict{String, String}(), plev::Int = 0
     )
     return IndexName(id, Dict{String, String}(tags), plev)
 end
