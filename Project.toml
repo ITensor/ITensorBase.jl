@@ -1,6 +1,6 @@
 name = "ITensorBase"
 uuid = "4795dd04-0d67-49bb-8f44-b89c448a1dc7"
-version = "0.5.4"
+version = "0.5.5"
 authors = ["ITensor developers <support@itensor.org> and contributors"]
 
 [workspace]
