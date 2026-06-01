@@ -1,7 +1,7 @@
 using ITensorBase: ITensorBase, ITensor, Index, IndexName, gettag, hastag, plev, prime,
     setplev, settag, tags, unsettag
 using LinearAlgebra: factorize
-using NamedDimsArrays: dename, denamed, inds, mapinds, name, named
+using NamedDimsArrays: dename, denamed, dimnametype, inds, mapinds, name, named
 using Test: @test, @test_broken, @test_throws, @testset
 
 const elts = (Float32, Float64, Complex{Float32}, Complex{Float64})
@@ -107,6 +107,14 @@ const elts = (Float32, Float64, Complex{Float32}, Complex{Float64})
         @test a == b
         @test denamed(a) == dename(b, (i, j, k))
         @test denamed(a) == permutedims(denamed(b), (2, 3, 1))
+    end
+    @testset "dimnametype" begin
+        i, j = Index.((2, 3))
+        a = randn(Float64, i, j)
+        @test a isa ITensor
+        @test dimnametype(a) === IndexName
+        @test dimnametype(typeof(a)) === IndexName
+        @test dimnametype(ITensor) === IndexName
     end
     @testset "show" begin
         id = rand(UInt64)

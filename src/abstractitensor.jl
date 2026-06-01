@@ -1,9 +1,10 @@
 using NamedDimsArrays: NamedDimsArrays, AbstractNamedDimsArray, LittleSet, NamedDimsArray,
-    denamed, dimnames, inds, mapinds
+    denamed, dimnames, dimnametype, inds, mapinds
 
 abstract type AbstractITensor <: AbstractNamedDimsArray{Any, Any} end
 
 NamedDimsArrays.nameddimsconstructor(::Type{<:IndexName}) = ITensor
+NamedDimsArrays.dimnametype(::Type{<:AbstractITensor}) = IndexName
 
 Base.ndims(::Type{<:AbstractITensor}) = Any
 
