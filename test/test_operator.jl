@@ -1,6 +1,6 @@
-using ITensorBase: ITensorBase as NDA, NamedDimsArray, NamedDimsOperator, apply,
-    codomainnames, dename, denamed, dimnames, domainnames, nameddims, namedoneto, operator,
-    product, replacedimnames, similar_operator, state
+using ITensorBase: ITensorBase as NDA, ITensor, ITensorOperator, apply, codomainnames,
+    dename, denamed, dimnames, domainnames, nameddims, namedoneto, operator, product,
+    replacedimnames, similar_operator, state
 using LinearAlgebra: I, norm
 using Random: Random
 using StableRNGs: StableRNG
@@ -9,27 +9,27 @@ using Test: @test, @testset
 
 @testset "operator" begin
     o = operator(randn(2, 2, 2, 2), ("i'", "j'"), ("i", "j"))
-    @test o isa NamedDimsOperator{Float64}
+    @test o isa ITensorOperator{String}
     @test eltype(o) ≡ Float64
     @test issetequal(NDA.codomainnames(o), ("i'", "j'"))
     @test issetequal(NDA.domainnames(o), ("i", "j"))
 
     o = operator(randn(2, 2, 2, 2), ("i'", "j'"), ("i", "j"))
     õ = similar(o)
-    @test õ isa NamedDimsOperator{Float64}
+    @test õ isa ITensorOperator{String}
     @test eltype(õ) ≡ Float64
     @test issetequal(NDA.codomainnames(õ), ("i'", "j'"))
     @test issetequal(NDA.domainnames(õ), ("i", "j"))
 
     o = operator(randn(2, 2, 2, 2), ("i'", "j'"), ("i", "j"))
     õ = similar(o, Float32)
-    @test õ isa NamedDimsOperator{Float32}
+    @test õ isa ITensorOperator{String}
     @test eltype(õ) ≡ Float32
     @test issetequal(NDA.codomainnames(õ), ("i'", "j'"))
     @test issetequal(NDA.domainnames(õ), ("i", "j"))
 
     o = operator(randn(2, 2, 2, 2), ("i'", "j'"), ("i", "j"))
-    @test o isa NamedDimsOperator
+    @test o isa ITensorOperator
     o² = product(o, o)
     @test issetequal(dimnames(o²), ("i'", "j'", "i", "j"))
     õ = replacedimnames(
@@ -39,25 +39,25 @@ using Test: @test, @testset
     @test state(o²) ≈ o²′
 
     o = operator(randn(2, 2, 2, 2), ("i'", "j'"), ("i", "j"))
-    v = NamedDimsArray(randn(2, 2), ("i", "j"))
+    v = ITensor(randn(2, 2), ("i", "j"))
     ov = apply(o, v)
     @test issetequal(dimnames(ov), ("i", "j"))
     @test ov ≈ replacedimnames(o * v, "i'" => "i", "j'" => "j")
 end
 
-@testset "one(::AbstractNamedDimsOperator)" begin
+@testset "one(::AbstractITensorOperator)" begin
     # Identity-operator construction: matricized form is the identity matrix.
     i, j, k, l = namedoneto.((2, 3, 2, 3), ("i", "j", "k", "l"))
     op = operator(randn(i, j, k, l), ("i", "j"), ("k", "l"))
     Id = one(op)
-    @test Id isa NamedDimsOperator{Float64}
+    @test Id isa ITensorOperator{String}
     @test codomainnames(Id) == codomainnames(op)
     @test domainnames(Id) == domainnames(op)
     Id_mat = matricize(state(Id), (i, j) => "row", (k, l) => "col")
     @test dename(Id_mat, ("row", "col")) ≈ I(6)
 end
 
-@testset "one(::AbstractNamedDimsArray, codomain, domain)" begin
+@testset "one(::AbstractITensor, codomain, domain)" begin
     # Trivial codomain/domain layout.
     i, j, k, l = namedoneto.((2, 3, 2, 3), ("i", "j", "k", "l"))
     a = randn(i, j, k, l)
@@ -77,13 +77,13 @@ end
 @testset "similar_operator" begin
     # Five-arg canonical: explicit element type, axes, codomain, domain names.
     op = similar_operator(randn(3, 3), Float32, (Base.OneTo(3),), ("i'",), ("i",))
-    @test op isa NamedDimsOperator{Float32}
+    @test op isa ITensorOperator{String}
     @test issetequal(codomainnames(op), ("i'",))
     @test issetequal(domainnames(op), ("i",))
 
     # Codomain names default to fresh `randname` outputs.
     op = similar_operator(randn(3, 3), Float64, (Base.OneTo(3),), ("i",))
-    @test op isa NamedDimsOperator{Float64}
+    @test op isa ITensorOperator{String}
     @test issetequal(domainnames(op), ("i",))
     @test only(codomainnames(op)) != "i"
 
@@ -98,7 +98,7 @@ end
     @test eltype(op) === ComplexF32
 end
 
-@testset "randn!(::AbstractNamedDimsOperator) / rand!" begin
+@testset "randn!(::AbstractITensorOperator) / rand!" begin
     op = operator(zeros(3, 3), ("i'",), ("i",))
     rng = StableRNG(123)
     Random.randn!(rng, op)
@@ -121,8 +121,8 @@ end
     nms = ("i'", "i")
 
     for r in (o + o, o - o, -o, 2 * o, o * 2, 2 .* o, o .* 2)
-        @test r isa NamedDimsArray
-        @test !(r isa NamedDimsOperator)
+        @test r isa ITensor
+        @test !(r isa ITensorOperator)
     end
 
     @test dename(o + o, nms) ≈ 2 .* dename(s, nms)
@@ -134,7 +134,7 @@ end
     @test dename(o .* 2, nms) ≈ 2 .* dename(s, nms)
 end
 
-@testset "gram_eigh_full on AbstractNamedDimsOperator" begin
+@testset "gram_eigh_full on AbstractITensorOperator" begin
     n = 5
     B = randn(n, n)
     A = B * B'  # Hermitian PSD

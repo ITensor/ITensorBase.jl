@@ -2,7 +2,7 @@ using ITensorBase: ITensorBase
 using Test: @test, @testset
 @testset "Test exports" begin
     exports = [
-        :ITensorBase, :ITensor, :Index, :NamedDimsArray, :aligndims, :dimnametype,
+        :ITensorBase, :ITensor, :Index, :aligndims, :dimnametype,
         :named, :nameddims, :operator, :similar_operator,
     ]
     publics = [:to_inds, Symbol("@names")]

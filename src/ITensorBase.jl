@@ -1,6 +1,6 @@
 module ITensorBase
 
-export ITensor, Index, NamedDimsArray, aligndims, dimnametype, named, nameddims,
+export ITensor, Index, aligndims, dimnametype, named, nameddims,
     operator, similar_operator
 using Compat: @compat
 @compat public to_inds
@@ -23,9 +23,8 @@ include("linearalgebra.jl")
 include("nameddimsarray.jl")
 include("nameddimsoperator.jl")
 
-# ITensor layer built on the named-array machinery.
+# `IndexName` dimname flavor and the `Index` named unit range.
 include("index.jl")
-include("abstractitensor.jl")
 include("quirks.jl")
 
 end

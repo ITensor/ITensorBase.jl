@@ -77,10 +77,8 @@ const elts = (Float32, Float64, Complex{Float32}, Complex{Float64})
         @test denamed(a′) == x
         @test issetequal(inds(a′), (prime(i), prime(j)))
 
-        # For now, the `ITensor` constructor is strict and only accepts a collection of
-        # `IndexName` as dimnames.
-        @test_throws ArgumentError ITensor(randn(elt, 2, 2), Index.((2, 2)))
-        @test_throws ArgumentError ITensor(randn(elt, 2, 2), Index.((2, 3)))
+        # The number of dimnames must match the array's `ndims`, and the dimnames are
+        # passed as a single collection.
         @test_throws ArgumentError ITensor(randn(elt, 4), Index.((2, 2)))
         @test_throws MethodError ITensor(randn(elt, 2, 2), Index(2), Index(2))
 
@@ -113,7 +111,9 @@ const elts = (Float32, Float64, Complex{Float32}, Complex{Float64})
         @test a isa ITensor
         @test dimnametype(a) === IndexName
         @test dimnametype(typeof(a)) === IndexName
-        @test dimnametype(ITensor) === IndexName
+        @test dimnametype(ITensor{IndexName}) === IndexName
+        # Unparameterized `ITensor` does not fix its dimname flavor, like `eltype(Array)`.
+        @test dimnametype(ITensor) === Any
     end
     @testset "show" begin
         id = rand(UInt64)

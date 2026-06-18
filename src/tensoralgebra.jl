@@ -5,7 +5,7 @@ using TupleTools: TupleTools
 # This layer is used to define derivative rules (to skip differentiating `setdiff`).
 dimnames_setdiff(s1, s2) = setdiff(s1, s2)
 
-Base.:*(a1::AbstractNamedDimsArray, a2::AbstractNamedDimsArray) = mul_nameddims(a1, a2)
+Base.:*(a1::AbstractITensor, a2::AbstractITensor) = mul_nameddims(a1, a2)
 function mul_nameddims(a1::AbstractArray, a2::AbstractArray)
     a_dest, dimnames_dest = TA.contract(
         denamed(a1), dimnames(a1), denamed(a2), dimnames(a2)
@@ -24,8 +24,8 @@ end
 # ```
 # that optimize matrix multiplication sequence.
 function Base.:*(
-        a1::AbstractNamedDimsArray, a2::AbstractNamedDimsArray,
-        a3::AbstractNamedDimsArray, a_rest::AbstractNamedDimsArray...
+        a1::AbstractITensor, a2::AbstractITensor,
+        a3::AbstractITensor, a_rest::AbstractITensor...
     )
     return mul_nameddims(a1, a2, a3, a_rest...)
 end
@@ -37,8 +37,8 @@ function mul_nameddims(
 end
 
 function LA.mul!(
-        a_dest::AbstractNamedDimsArray,
-        a1::AbstractNamedDimsArray, a2::AbstractNamedDimsArray,
+        a_dest::AbstractITensor,
+        a1::AbstractITensor, a2::AbstractITensor,
         α::Number, β::Number
     )
     return mul!_nameddims(a_dest, a1, a2, α, β)
@@ -58,8 +58,8 @@ function mul!_nameddims(
 end
 
 function LA.mul!(
-        a_dest::AbstractNamedDimsArray,
-        a1::AbstractNamedDimsArray, a2::AbstractNamedDimsArray
+        a_dest::AbstractITensor,
+        a1::AbstractITensor, a2::AbstractITensor
     )
     return mul!_nameddims(a_dest, a1, a2)
 end
@@ -75,7 +75,7 @@ function mul!_nameddims(
     return a_dest
 end
 
-function TA.blockedperm(na::AbstractNamedDimsArray, nameddim_blocks::Tuple...)
+function TA.blockedperm(na::AbstractITensor, nameddim_blocks::Tuple...)
     return blockedperm_nameddims(na, nameddim_blocks...)
 end
 function blockedperm_nameddims(a::AbstractArray, nameddim_blocks::Tuple...)
@@ -92,7 +92,7 @@ end
 # matricize(a, (i, k) => "a")
 # matricize(a, (i, k) => "a", (j, l) => "b")
 # TODO: Rewrite in terms of `matricize(a, .., (1, 3))` interface.
-function TA.matricize(a::AbstractNamedDimsArray, fusions::Vararg{Pair, 2})
+function TA.matricize(a::AbstractITensor, fusions::Vararg{Pair, 2})
     return matricize_nameddims(a, fusions...)
 end
 function matricize_nameddims(na::AbstractArray, fusions::Vararg{Pair, 2})
@@ -113,7 +113,7 @@ function matricize_nameddims(na::AbstractArray, fusions::Vararg{Pair, 2})
     return nameddims(a_fused, dimnames_fused)
 end
 
-function TA.unmatricize(na::AbstractNamedDimsArray, splitters::Vararg{Pair, 2})
+function TA.unmatricize(na::AbstractITensor, splitters::Vararg{Pair, 2})
     return unmatricize_nameddims(na, splitters...)
 end
 function unmatricize_nameddims(na::AbstractArray, splitters::Vararg{Pair, 2})
@@ -138,6 +138,39 @@ function unmatricize_nameddims(na::AbstractArray, splitters::Vararg{Pair, 2})
     return nameddims(a_split, names_split)
 end
 
+# See: https://github.com/JuliaLang/julia/blob/v1.11.4/base/namedtuple.jl#L269
+# `filter(f, ::NamedTuple)` is available in Julia v1.11, delete once
+# we drop support for Julia v1.10.
+filter_namedtuple(f, xs::NamedTuple) = xs[filter(k -> f(xs[k]), keys(xs))]
+
+# `factorize` additionally accepts the legacy ITensors.jl keyword names
+# (`ortho` / `cutoff` / `maxdim`) and maps them to the
+# MatrixAlgebraKit.jl / TensorAlgebra.jl names (`orth` / `rtol` / `maxrank`).
+function translate_factorize_kwargs(;
+        # MatrixAlgebraKit.jl/TensorAlgebra.jl kwargs.
+        orth = nothing,
+        rtol = nothing,
+        maxrank = nothing,
+        # ITensors.jl kwargs.
+        ortho = nothing,
+        cutoff = nothing,
+        maxdim = nothing,
+        kwargs...
+    )
+    orth = Symbol(@something orth ortho :left)
+    rtol = @something rtol cutoff Some(nothing)
+    maxrank = @something maxrank maxdim Some(nothing)
+    trunc = (; rtol, maxrank)
+    return filter_namedtuple(!isnothing, (; orth, trunc, kwargs...))
+end
+
+# Other factorizations pass their keywords through unchanged; only `factorize`
+# does the ITensors.jl keyword translation.
+translate_factorization_kwargs(f, kwargs) = kwargs
+function translate_factorization_kwargs(::typeof(TA.factorize), kwargs)
+    return translate_factorize_kwargs(; kwargs...)
+end
+
 for f in [
         :factorize, :left_orth, :left_polar, :lq, :orth, :polar, :qr, :right_orth,
         :right_polar,
@@ -145,9 +178,12 @@ for f in [
     f_nameddims = Symbol(f, "_nameddims")
     @eval begin
         function TA.$f(
-                a::AbstractNamedDimsArray, dimnames_codomain, dimnames_domain; kwargs...
+                a::AbstractITensor, dimnames_codomain, dimnames_domain; kwargs...
             )
-            return $f_nameddims(a, dimnames_codomain, dimnames_domain; kwargs...)
+            return $f_nameddims(
+                a, dimnames_codomain, dimnames_domain;
+                translate_factorization_kwargs(TA.$f, kwargs)...
+            )
         end
         function $f_nameddims(
                 a::AbstractArray, dimnames_codomain, dimnames_domain; kwargs...
@@ -164,8 +200,10 @@ for f in [
             y = nameddims(y_denamed, dimnames_y)
             return x, y
         end
-        function TA.$f(a::AbstractNamedDimsArray, dimnames_codomain; kwargs...)
-            return $f_nameddims(a, dimnames_codomain; kwargs...)
+        function TA.$f(a::AbstractITensor, dimnames_codomain; kwargs...)
+            return $f_nameddims(
+                a, dimnames_codomain; translate_factorization_kwargs(TA.$f, kwargs)...
+            )
         end
         function $f_nameddims(a::AbstractArray, dimnames_codomain; kwargs...)
             codomain = name.(dimnames_codomain)
@@ -176,13 +214,13 @@ for f in [
 end
 
 # Overload LinearAlgebra functions where relevant.
-function LA.qr(a::AbstractNamedDimsArray, args...; kwargs...)
+function LA.qr(a::AbstractITensor, args...; kwargs...)
     return TA.qr(a, args...; kwargs...)
 end
-function LA.lq(a::AbstractNamedDimsArray, args...; kwargs...)
+function LA.lq(a::AbstractITensor, args...; kwargs...)
     return TA.lq(a, args...; kwargs...)
 end
-function LA.factorize(a::AbstractNamedDimsArray, args...; kwargs...)
+function LA.factorize(a::AbstractITensor, args...; kwargs...)
     return TA.factorize(a, args...; kwargs...)
 end
 
@@ -191,7 +229,7 @@ end
 #
 
 function TA.svd(
-        a::AbstractNamedDimsArray, dimnames_codomain, dimnames_domain; kwargs...
+        a::AbstractITensor, dimnames_codomain, dimnames_domain; kwargs...
     )
     return svd_nameddims(a, dimnames_codomain, dimnames_domain; kwargs...)
 end
@@ -213,10 +251,10 @@ function svd_nameddims(
     v = nameddims(v_denamed, dimnames_v)
     return u, s, v
 end
-function TA.svd(a::AbstractNamedDimsArray, dimnames_codomain; kwargs...)
+function TA.svd(a::AbstractITensor, dimnames_codomain; kwargs...)
     return svd_nameddims(a, dimnames_codomain; kwargs...)
 end
-function svd_nameddims(a::AbstractNamedDimsArray, dimnames_codomain; kwargs...)
+function svd_nameddims(a::AbstractITensor, dimnames_codomain; kwargs...)
     return TA.svd(
         a,
         dimnames_codomain,
@@ -224,12 +262,12 @@ function svd_nameddims(a::AbstractNamedDimsArray, dimnames_codomain; kwargs...)
         kwargs...
     )
 end
-function LA.svd(a::AbstractNamedDimsArray, args...; kwargs...)
+function LA.svd(a::AbstractITensor, args...; kwargs...)
     return TA.svd(a, args...; kwargs...)
 end
 
 function TA.svdvals(
-        a::AbstractNamedDimsArray, dimnames_codomain, dimnames_domain; kwargs...
+        a::AbstractITensor, dimnames_codomain, dimnames_domain; kwargs...
     )
     return svdvals_nameddims(a, dimnames_codomain, dimnames_domain; kwargs...)
 end
@@ -245,7 +283,7 @@ function svdvals_nameddims(
     )
 end
 
-function TA.svdvals(a::AbstractNamedDimsArray, dimnames_codomain; kwargs...)
+function TA.svdvals(a::AbstractITensor, dimnames_codomain; kwargs...)
     return svdvals_nameddims(a, dimnames_codomain; kwargs...)
 end
 function svdvals_nameddims(a::AbstractArray, dimnames_codomain; kwargs...)
@@ -254,12 +292,12 @@ function svdvals_nameddims(a::AbstractArray, dimnames_codomain; kwargs...)
     return TA.svdvals(a, codomain, domain; kwargs...)
 end
 
-function LA.svdvals(a::AbstractNamedDimsArray, args...; kwargs...)
+function LA.svdvals(a::AbstractITensor, args...; kwargs...)
     return TA.svdvals(a, args...; kwargs...)
 end
 
 function TA.eigen(
-        a::AbstractNamedDimsArray, dimnames_codomain, dimnames_domain; kwargs...
+        a::AbstractITensor, dimnames_codomain, dimnames_domain; kwargs...
     )
     return eigen_nameddims(a, dimnames_codomain, dimnames_domain; kwargs...)
 end
@@ -279,12 +317,12 @@ function eigen_nameddims(
     return d, v
 end
 
-function LA.eigen(a::AbstractNamedDimsArray, args...; kwargs...)
+function LA.eigen(a::AbstractITensor, args...; kwargs...)
     return TA.eigen(a, args...; kwargs...)
 end
 
 function TA.eigvals(
-        a::AbstractNamedDimsArray, dimnames_codomain, dimnames_domain; kwargs...
+        a::AbstractITensor, dimnames_codomain, dimnames_domain; kwargs...
     )
     return eigvals_nameddims(a, dimnames_codomain, dimnames_domain; kwargs...)
 end
@@ -296,12 +334,12 @@ function eigvals_nameddims(
     return TA.eigvals(denamed(a), dimnames(a), codomain, domain; kwargs...)
 end
 
-function LA.eigvals(a::AbstractNamedDimsArray, args...; kwargs...)
+function LA.eigvals(a::AbstractITensor, args...; kwargs...)
     return TA.eigvals(a, args...; kwargs...)
 end
 
 function TA.left_null(
-        a::AbstractNamedDimsArray, dimnames_codomain, dimnames_domain; kwargs...
+        a::AbstractITensor, dimnames_codomain, dimnames_domain; kwargs...
     )
     return left_null_nameddims(a, dimnames_codomain, dimnames_domain; kwargs...)
 end
@@ -316,17 +354,17 @@ function left_null_nameddims(
     return nameddims(n_denamed, dimnames_n)
 end
 
-function TA.left_null(a::AbstractNamedDimsArray, dimnames_codomain; kwargs...)
+function TA.left_null(a::AbstractITensor, dimnames_codomain; kwargs...)
     return left_null_nameddims(a, dimnames_codomain; kwargs...)
 end
-function left_null_nameddims(a::AbstractNamedDimsArray, dimnames_codomain; kwargs...)
+function left_null_nameddims(a::AbstractITensor, dimnames_codomain; kwargs...)
     codomain = name.(dimnames_codomain)
     domain = dimnames_setdiff(dimnames(a), codomain)
     return TA.left_null(a, codomain, domain; kwargs...)
 end
 
 function TA.right_null(
-        a::AbstractNamedDimsArray, dimnames_codomain, dimnames_domain; kwargs...
+        a::AbstractITensor, dimnames_codomain, dimnames_domain; kwargs...
     )
     return right_null_nameddims(a, dimnames_codomain, dimnames_domain; kwargs...)
 end
@@ -341,7 +379,7 @@ function right_null_nameddims(
     return nameddims(n_denamed, dimnames_n)
 end
 
-function TA.right_null(a::AbstractNamedDimsArray, dimnames_codomain; kwargs...)
+function TA.right_null(a::AbstractITensor, dimnames_codomain; kwargs...)
     return right_null_nameddims(a, dimnames_codomain; kwargs...)
 end
 function right_null_nameddims(a::AbstractArray, dimnames_codomain; kwargs...)
@@ -351,7 +389,7 @@ function right_null_nameddims(a::AbstractArray, dimnames_codomain; kwargs...)
 end
 
 """
-    TensorAlgebra.gram_eigh_full(a::AbstractNamedDimsArray, dimnames_codomain, dimnames_domain; kwargs...) -> x
+    TensorAlgebra.gram_eigh_full(a::AbstractITensor, dimnames_codomain, dimnames_domain; kwargs...) -> x
 
 Gram factorization of a Hermitian positive semi-definite named array `a`,
 returning `x` such that `a ≈ x * x_cod`, where `x_cod` is `conj(x)` with
@@ -383,7 +421,7 @@ true
 ```
 """
 function TA.gram_eigh_full(
-        a::AbstractNamedDimsArray, dimnames_codomain, dimnames_domain; kwargs...
+        a::AbstractITensor, dimnames_codomain, dimnames_domain; kwargs...
     )
     return gram_eigh_full_nameddims(a, dimnames_codomain, dimnames_domain; kwargs...)
 end
@@ -399,7 +437,7 @@ function gram_eigh_full_nameddims(
 end
 
 """
-    TensorAlgebra.gram_eigh_full_with_pinv(a::AbstractNamedDimsArray, dimnames_codomain, dimnames_domain; kwargs...) -> x, y
+    TensorAlgebra.gram_eigh_full_with_pinv(a::AbstractITensor, dimnames_codomain, dimnames_domain; kwargs...) -> x, y
 
 Like `TensorAlgebra.gram_eigh_full`, but additionally returns a
 named array `y` that is a left inverse of `x`: `y * x ≈ I` on the rank
@@ -435,7 +473,7 @@ true
 ```
 """
 function TA.gram_eigh_full_with_pinv(
-        a::AbstractNamedDimsArray, dimnames_codomain, dimnames_domain; kwargs...
+        a::AbstractITensor, dimnames_codomain, dimnames_domain; kwargs...
     )
     return gram_eigh_full_with_pinv_nameddims(
         a, dimnames_codomain, dimnames_domain; kwargs...
@@ -456,7 +494,7 @@ function gram_eigh_full_with_pinv_nameddims(
 end
 
 """
-    Base.one(a::AbstractNamedDimsArray, dimnames_codomain, dimnames_domain) -> Id
+    Base.one(a::AbstractITensor, dimnames_codomain, dimnames_domain) -> Id
 
 Return an identity-operator-shaped named array sharing `a`'s dimension names,
 codomain/domain partition, and element type. The fused codomain and domain sizes
@@ -484,7 +522,7 @@ true
 ```
 """
 function Base.one(
-        a::AbstractNamedDimsArray, dimnames_codomain, dimnames_domain
+        a::AbstractITensor, dimnames_codomain, dimnames_domain
     )
     return one_nameddims(a, dimnames_codomain, dimnames_domain)
 end
@@ -509,7 +547,7 @@ for f in MATRIX_FUNCTIONS
     f_nameddims = Symbol(f, "_nameddims")
     @eval begin
         function Base.$f(
-                a::AbstractNamedDimsArray, dimnames_codomain, dimnames_domain; kwargs...
+                a::AbstractITensor, dimnames_codomain, dimnames_domain; kwargs...
             )
             return $f_nameddims(a, dimnames_codomain, dimnames_domain; kwargs...)
         end

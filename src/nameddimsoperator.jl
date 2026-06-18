@@ -21,14 +21,14 @@ get_codomain_name(a, i) = throw(MethodError(get_codomain_name, (a, i)))
 # If it doesn't exist, return the index itself.
 get_domain_name(a, i) = throw(MethodError(get_domain_name, (a, i)))
 
-function apply(x::AbstractNamedDimsArray, y::AbstractNamedDimsArray)
+function apply(x::AbstractITensor, y::AbstractITensor)
     xy = x * y
     return mapdimnames(xy) do i
         return get_domain_name(x, i)
     end
 end
 
-function apply_dag(x::AbstractNamedDimsArray, y::AbstractNamedDimsArray)
+function apply_dag(x::AbstractITensor, y::AbstractITensor)
     xy = x * y
     return mapdimnames(xy) do i
         return get_codomain_name(y, i)
@@ -37,7 +37,7 @@ end
 
 # TODO: Define versions that accept codomain and domain names,
 # i.e. `transpose(a, codomain, domain)` and `adjoint(a, codomain, domain)` (?).
-function Base.transpose(a::AbstractNamedDimsArray)
+function Base.transpose(a::AbstractITensor)
     c = codomainnames(a)
     d = domainnames(a)
     a_map = merge(Dict(c .=> d), Dict(d .=> c))
@@ -46,11 +46,11 @@ function Base.transpose(a::AbstractNamedDimsArray)
     end
     return operator(a′, c, d)
 end
-function Base.adjoint(a::AbstractNamedDimsArray)
+function Base.adjoint(a::AbstractITensor)
     return transpose(conj(a))
 end
 
-function product(x::AbstractNamedDimsArray, y::AbstractNamedDimsArray)
+function product(x::AbstractITensor, y::AbstractITensor)
     c = codomainnames(x)
     d = domainnames(x)
     c′ = randname.(c)
@@ -97,25 +97,25 @@ Base.iterate(b::Bijection) = iterate(b.domain_to_codomain)
 Base.iterate(b::Bijection, state) = iterate(b.domain_to_codomain, state)
 Base.length(b::Bijection) = length(b.domain_to_codomain)
 
-abstract type AbstractNamedDimsOperator{T, N} <: AbstractNamedDimsArray{T, N} end
+abstract type AbstractITensorOperator{DimName} <: AbstractITensor{DimName} end
 
-state(a::AbstractNamedDimsArray) = a
-dimnames(a::AbstractNamedDimsOperator) = dimnames(state(a))
+state(a::AbstractITensor) = a
+dimnames(a::AbstractITensorOperator) = dimnames(state(a))
 
 # TODO: Unify these two functions.
 function operator(a::AbstractArray, codomain, domain)
     na = nameddims(a, (codomain..., domain...))
     return operator(na, codomain, domain)
 end
-function operator(a::AbstractNamedDimsArray, codomain, domain)
-    return NamedDimsOperator(a, codomain, domain)
+function operator(a::AbstractITensor, codomain, domain)
+    return ITensorOperator(a, codomain, domain)
 end
 
-# This helps preserve the NamedDimsArray type when multiplying,
-# for example when a NamedDimsOperator wraps an ITensor.
-Base.:*(a::AbstractNamedDimsOperator, b::AbstractNamedDimsOperator) = state(a) * state(b)
-Base.:*(a::AbstractNamedDimsOperator, b::AbstractNamedDimsArray) = state(a) * state(b)
-Base.:*(a::AbstractNamedDimsArray, b::AbstractNamedDimsOperator) = state(a) * state(b)
+# This helps preserve the ITensor type when multiplying,
+# for example when a ITensorOperator wraps an ITensor.
+Base.:*(a::AbstractITensorOperator, b::AbstractITensorOperator) = state(a) * state(b)
+Base.:*(a::AbstractITensorOperator, b::AbstractITensor) = state(a) * state(b)
+Base.:*(a::AbstractITensor, b::AbstractITensorOperator) = state(a) * state(b)
 
 # Broadcasting peels an operator to its `state` before the broadcast style is
 # computed. This covers the array operations that lower to broadcasting too (`+`,
@@ -125,11 +125,11 @@ Base.:*(a::AbstractNamedDimsArray, b::AbstractNamedDimsOperator) = state(a) * st
 # `*`; keeping it an operator (carrying the codomain/domain bijection) is future
 # work that first needs the mixed cases settled (`state + operator`, and
 # `operator + operator` where names match but the codomain/domain split does not).
-Base.broadcastable(a::AbstractNamedDimsOperator) = state(a)
+Base.broadcastable(a::AbstractITensorOperator) = state(a)
 
 for f in MATRIX_FUNCTIONS
     @eval begin
-        function Base.$f(a::AbstractNamedDimsOperator)
+        function Base.$f(a::AbstractITensorOperator)
             c = codomainnames(a)
             d = domainnames(a)
             return operator($f(state(a), c, d), c, d)
@@ -138,7 +138,7 @@ for f in MATRIX_FUNCTIONS
 end
 
 # Operator entries for the gram factorizations defined in `tensoralgebra.jl`.
-# Placed here because `AbstractNamedDimsOperator` is defined below
+# Placed here because `AbstractITensorOperator` is defined below
 # `tensoralgebra.jl` in the include order.
 #
 # Per-method docstrings are factored out into `const` strings and attached
@@ -147,7 +147,7 @@ end
 # don't share enough structure to warrant `$($f)`-interpolation.
 
 const _gram_eigh_full_operator_docstring = """
-    TensorAlgebra.gram_eigh_full(a::AbstractNamedDimsOperator; kwargs...) -> x
+    TensorAlgebra.gram_eigh_full(a::AbstractITensorOperator; kwargs...) -> x
 
 Gram factorization of a Hermitian positive semi-definite named operator
 `a`, returning `x` such that `x * x_cod ≈ state(a)`, where `x_cod` is
@@ -180,7 +180,7 @@ true
 """
 
 const _gram_eigh_full_with_pinv_operator_docstring = """
-    TensorAlgebra.gram_eigh_full_with_pinv(a::AbstractNamedDimsOperator; kwargs...) -> x, y
+    TensorAlgebra.gram_eigh_full_with_pinv(a::AbstractITensorOperator; kwargs...) -> x, y
 
 Like `TensorAlgebra.gram_eigh_full`, but additionally returns a
 named array `y` that is a left inverse of `x`: `y * x ≈ I` on the
@@ -216,14 +216,14 @@ true
 for f in (:gram_eigh_full, :gram_eigh_full_with_pinv)
     doc_sym = Symbol("_", f, "_operator_docstring")
     @eval begin
-        @doc $doc_sym function TA.$f(a::AbstractNamedDimsOperator; kwargs...)
+        @doc $doc_sym function TA.$f(a::AbstractITensorOperator; kwargs...)
             return TA.$f(state(a), codomainnames(a), domainnames(a); kwargs...)
         end
     end
 end
 
 """
-    Base.one(op::AbstractNamedDimsOperator) -> Id
+    Base.one(op::AbstractITensorOperator) -> Id
 
 Return the identity operator with the same codomain/domain names and shape as
 `op`. `op` is treated as a shape prototype and is not mutated.
@@ -249,7 +249,7 @@ julia> apply(Id, v) ≈ v
 true
 ```
 """
-function Base.one(op::AbstractNamedDimsOperator)
+function Base.one(op::AbstractITensorOperator)
     co, dom = codomainnames(op), domainnames(op)
     return operator(one(state(op), co, dom), co, dom)
 end
@@ -308,52 +308,52 @@ function similar_operator(prototype, named_domain_axes)
 end
 
 # Forward `Random.randn!` / `Random.rand!` to the operator's state, which
-# itself peels to the concrete storage via the generic AbstractNamedDimsArray
+# itself peels to the concrete storage via the generic AbstractITensor
 # method.
 
-function Random.randn!(rng::Random.AbstractRNG, op::AbstractNamedDimsOperator)
+function Random.randn!(rng::Random.AbstractRNG, op::AbstractITensorOperator)
     Random.randn!(rng, state(op))
     return op
 end
 
-function Random.rand!(rng::Random.AbstractRNG, op::AbstractNamedDimsOperator)
+function Random.rand!(rng::Random.AbstractRNG, op::AbstractITensorOperator)
     Random.rand!(rng, state(op))
     return op
 end
 
-struct NamedDimsOperator{T, N, P <: AbstractNamedDimsArray{T, N}, D, C} <:
-    AbstractNamedDimsOperator{T, N}
+struct ITensorOperator{DimName, P <: AbstractITensor{DimName}, D, C} <:
+    AbstractITensorOperator{DimName}
     parent::P
     dimnames_bijection::Bijection{D, C}
 end
 
-state(a::NamedDimsOperator) = a.parent
-Base.parent(a::NamedDimsOperator) = state(a)
-denamed(a::NamedDimsOperator) = denamed(state(a))
+state(a::ITensorOperator) = a.parent
+Base.parent(a::ITensorOperator) = state(a)
+denamed(a::ITensorOperator) = denamed(state(a))
 
-function NamedDimsOperator(a::AbstractNamedDimsArray, codomainnames, domainnames)
-    return NamedDimsOperator(a, Bijection(domainnames, codomainnames))
+function ITensorOperator(a::AbstractITensor, codomainnames, domainnames)
+    return ITensorOperator(a, Bijection(domainnames, codomainnames))
 end
 
 using TypeParameterAccessors: TypeParameterAccessors, parenttype
-function TypeParameterAccessors.parenttype(type::Type{<:NamedDimsOperator})
+function TypeParameterAccessors.parenttype(type::Type{<:ITensorOperator})
     return fieldtype(type, :parent)
 end
-statetype(type::Type{<:NamedDimsOperator}) = parenttype(type)
+statetype(type::Type{<:ITensorOperator}) = parenttype(type)
 
-function nameddimsof(a::NamedDimsOperator, b::AbstractArray)
-    return NamedDimsOperator(nameddimsof(state(a), b), a.dimnames_bijection)
+function nameddimsof(a::ITensorOperator, b::AbstractArray)
+    return ITensorOperator(nameddimsof(state(a), b), a.dimnames_bijection)
 end
-function nameddimsconstructorof(type::Type{<:NamedDimsOperator})
+function nameddimsconstructorof(type::Type{<:ITensorOperator})
     return nameddimsconstructorof(statetype(type))
 end
 
-codomainnames(a::NamedDimsOperator) = codomain(a.dimnames_bijection)
-domainnames(a::NamedDimsOperator) = domain(a.dimnames_bijection)
+codomainnames(a::ITensorOperator) = codomain(a.dimnames_bijection)
+domainnames(a::ITensorOperator) = domain(a.dimnames_bijection)
 
-function get_codomain_name(a::NamedDimsOperator, i)
+function get_codomain_name(a::ITensorOperator, i)
     return get(a.dimnames_bijection, i, i)
 end
-function get_domain_name(a::NamedDimsOperator, i)
+function get_domain_name(a::ITensorOperator, i)
     return get(inverse(a.dimnames_bijection), i, i)
 end
