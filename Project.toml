@@ -1,6 +1,6 @@
 name = "ITensorBase"
 uuid = "4795dd04-0d67-49bb-8f44-b89c448a1dc7"
-version = "0.5.20"
+version = "0.6.0"
 authors = ["ITensor developers <support@itensor.org> and contributors"]
 
 [workspace]
@@ -8,15 +8,47 @@ projects = ["benchmark", "dev", "docs", "examples", "test"]
 
 [deps]
 Accessors = "7d9f7c33-5ae7-4f3b-8dc6-eff91059b697"
+ArrayLayouts = "4c555306-a7a7-4459-81d9-ec55ddd5c99a"
+Compat = "34da2185-b29b-5c13-b0c7-acf172513d20"
 ConstructionBase = "187b0558-2788-49d3-abe0-74a17ed4e7c9"
-NamedDimsArrays = "60cbd0c0-df58-4cb7-918c-6f5607b73fde"
+FillArrays = "1a297f60-69ca-5386-bcde-b61e274b549b"
+LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
+OrderedCollections = "bac558e1-5e72-5ebc-8fee-abe8a469f55d"
 Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
+SimpleTraits = "699a6c99-e7fa-54fc-8d76-47d257e15c1d"
 TensorAlgebra = "68bd88dc-f39d-4e12-b2ca-f046b68fcc6a"
+TupleTools = "9d95972d-f1c8-5527-a6e0-b4b365fa01f6"
+TypeParameterAccessors = "7e5a90cf-f82e-492e-a09b-e3e26432c138"
+VectorInterface = "409d34a3-91d5-4945-b6ec-7529ddf182d8"
+
+[weakdeps]
+AbstractTrees = "1520ce14-60c1-5f80-bbc7-55ef81b5835c"
+Adapt = "79e6a3ab-5dfb-504d-930d-738a2a938a0e"
+BlockArrays = "8e7c35d0-a365-5155-bbbb-fb81a777f24e"
+Mooncake = "da2b9cff-9c12-43a0-ae48-6db2b0edb7d6"
+
+[extensions]
+ITensorBaseAbstractTreesExt = "AbstractTrees"
+ITensorBaseAdaptExt = "Adapt"
+ITensorBaseBlockArraysExt = "BlockArrays"
+ITensorBaseMooncakeExt = "Mooncake"
 
 [compat]
+AbstractTrees = "0.4.5"
 Accessors = "0.1.39"
+Adapt = "4.1.1"
+ArrayLayouts = "1.11"
+BlockArrays = "1.3"
+Compat = "4.16"
 ConstructionBase = "1.6"
-NamedDimsArrays = "0.14, 0.15"
+FillArrays = "1.13"
+LinearAlgebra = "1.10"
+Mooncake = "0.4.202, 0.5"
+OrderedCollections = "1.6"
 Random = "1.10"
-TensorAlgebra = "0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9"
+SimpleTraits = "0.9.4"
+TensorAlgebra = "0.9.6"
+TupleTools = "1.6"
+TypeParameterAccessors = "0.4"
+VectorInterface = "0.5, 0.6"
 julia = "1.10"

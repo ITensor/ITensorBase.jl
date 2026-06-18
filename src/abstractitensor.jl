@@ -1,10 +1,7 @@
-using NamedDimsArrays: NamedDimsArrays, AbstractNamedDimsArray, LittleSet, NamedDimsArray,
-    denamed, dimnames, dimnametype, inds, mapinds
-
 abstract type AbstractITensor <: AbstractNamedDimsArray{Any, Any} end
 
-NamedDimsArrays.nameddimsconstructor(::Type{<:IndexName}) = ITensor
-NamedDimsArrays.dimnametype(::Type{<:AbstractITensor}) = IndexName
+nameddimsconstructor(::Type{<:IndexName}) = ITensor
+dimnametype(::Type{<:AbstractITensor}) = IndexName
 
 Base.ndims(::Type{<:AbstractITensor}) = Any
 
@@ -19,6 +16,6 @@ struct ITensor <: AbstractITensor
         return new(denamed, dimnames)
     end
 end
-NamedDimsArrays.dimnames(a::ITensor) = LittleSet(a.dimnames)
-NamedDimsArrays.denamed(a::ITensor) = a.denamed
+dimnames(a::ITensor) = LittleSet(a.dimnames)
+denamed(a::ITensor) = a.denamed
 Base.parent(a::ITensor) = denamed(a)

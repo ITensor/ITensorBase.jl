@@ -1,6 +1,4 @@
 using Accessors: @set
-using NamedDimsArrays: NamedDimsArrays, AbstractName, AbstractNamedInteger,
-    AbstractNamedUnitRange, AbstractNamedVector, denamed, name, randname, setname
 using Random: Random, AbstractRNG
 
 tagpairstring(pair::Pair) = repr(first(pair)) * "=>" * repr(last(pair))
@@ -23,10 +21,10 @@ function IndexName(
     )
     return IndexName(id, Dict{String, String}(tags), plev)
 end
-function NamedDimsArrays.randname(rng::AbstractRNG, n::IndexName)
+function randname(rng::AbstractRNG, n::IndexName)
     return setid(n, rand(rng, UInt64))
 end
-function NamedDimsArrays.randname(rng::AbstractRNG, ::Type{<:IndexName})
+function randname(rng::AbstractRNG, ::Type{<:IndexName})
     return IndexName(rng)
 end
 
@@ -87,11 +85,11 @@ struct IndexVal{Value <: Integer} <: AbstractNamedInteger{Value, IndexName}
 end
 
 # Interface
-NamedDimsArrays.denamed(i::IndexVal) = i.value
-NamedDimsArrays.name(i::IndexVal) = i.name
+denamed(i::IndexVal) = i.value
+name(i::IndexVal) = i.name
 
 # Constructor
-NamedDimsArrays.named(i::Integer, name::IndexName) = IndexVal(i, name)
+named(i::Integer, name::IndexName) = IndexVal(i, name)
 
 struct Index{
         T, Value <: AbstractUnitRange{T},
@@ -116,15 +114,15 @@ function Index(length::Int; kwargs...)
     return Index(Base.OneTo(length); kwargs...)
 end
 
-# TODO: Define for `NamedDimsArrays.NamedViewIndex`.
+# TODO: Define for `NamedViewIndex`.
 id(i::Index) = id(name(i))
 tags(i::Index) = tags(name(i))
 plev(i::Index) = plev(name(i))
 
-# TODO: Define for `NamedDimsArrays.NamedViewIndex`.
+# TODO: Define for `NamedViewIndex`.
 hastag(i::Index, tagname::String) = hastag(name(i), tagname)
 
-# TODO: Define for `NamedDimsArrays.NamedViewIndex`.
+# TODO: Define for `NamedViewIndex`.
 gettag(i::Index, tagname::String) = gettag(name(i), tagname)
 gettag(i::Index, tagname::String, default) = gettag(name(i), tagname, default)
 settag(i::Index, tagname::String, tag::String) = setname(i, settag(name(i), tagname, tag))
@@ -136,11 +134,11 @@ noprime(i::Index) = setname(i, noprime(name(i)))
 
 # Interface
 # TODO: Overload `Base.parent` instead.
-NamedDimsArrays.denamed(i::Index) = i.value
-NamedDimsArrays.name(i::Index) = i.name
+denamed(i::Index) = i.value
+name(i::Index) = i.name
 
 # Constructor
-NamedDimsArrays.named(i::AbstractUnitRange, name::IndexName) = Index(i, name)
+named(i::AbstractUnitRange, name::IndexName) = Index(i, name)
 
 function primestring(plev)
     if plev < 0
@@ -173,8 +171,8 @@ end
 
 # Interface
 # TODO: Overload `Base.parent` instead.
-NamedDimsArrays.denamed(i::NoncontiguousIndex) = i.value
-NamedDimsArrays.name(i::NoncontiguousIndex) = i.name
+denamed(i::NoncontiguousIndex) = i.value
+name(i::NoncontiguousIndex) = i.name
 
 # Constructor
-NamedDimsArrays.named(i::AbstractVector, name::IndexName) = NoncontiguousIndex(i, name)
+named(i::AbstractVector, name::IndexName) = NoncontiguousIndex(i, name)

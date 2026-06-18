@@ -43,9 +43,8 @@ julia> Pkg.add("ITensorBase")
 
 # ## Examples
 
-using ITensorBase: ITensorBase, ITensor, Index
+using ITensorBase: ITensorBase, ITensor, Index, aligndims, dename
 using LinearAlgebra: qr
-using NamedDimsArrays: aligndims, dename
 using Test: @test
 i = Index(2)
 j = Index(2)
