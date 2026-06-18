@@ -1,7 +1,6 @@
-using ITensorBase: ITensorBase, ITensor, Index, IndexName, gettag, hastag, plev, prime,
-    setplev, settag, tags, unsettag
+using ITensorBase: ITensorBase, ITensor, Index, IndexName, dename, denamed, dimnametype,
+    gettag, hastag, inds, mapinds, name, named, plev, prime, setplev, settag, tags, unsettag
 using LinearAlgebra: factorize
-using NamedDimsArrays: dename, denamed, dimnametype, inds, mapinds, name, named
 using Test: @test, @test_broken, @test_throws, @testset
 
 const elts = (Float32, Float64, Complex{Float32}, Complex{Float64})
