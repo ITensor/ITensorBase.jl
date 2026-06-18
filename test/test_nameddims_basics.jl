@@ -44,7 +44,9 @@ end
         @test dim(na, "j") == 2
         @test dims(na, ("j", "i")) == (2, 1)
         @test na[1, 1] == a[1, 1]
-        # The parent array is erased at the field level.
+        # The parent array's concrete type is erased from the type but is still
+        # recoverable from an instance.
+        @test denamedtype(na) === typeof(a)
         @test denamedtype(typeof(na)) === AbstractArray
         @test dimnametype(typeof(na)) === String
         @test dimnametype(na) === String

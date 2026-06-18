@@ -25,6 +25,9 @@ Base.parent(a::ITensor) = denamed(a)
 dimnametype(::Type{<:ITensor{DimName}}) where {DimName} = DimName
 
 # The parent array is erased at the field level, so its concrete type is not part
-# of `ITensor`'s signature.
+# of `ITensor`'s signature. An instance still carries the parent, so the instance
+# methods recover the concrete type while the type methods report `AbstractArray`.
+denamedtype(a::ITensor) = typeof(denamed(a))
 denamedtype(::Type{<:ITensor}) = AbstractArray
+TypeParameterAccessors.parenttype(a::ITensor) = typeof(parent(a))
 TypeParameterAccessors.parenttype(::Type{<:ITensor}) = AbstractArray
