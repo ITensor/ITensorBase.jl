@@ -11,7 +11,7 @@ path = ".."
 
 [compat]
 Documenter = "1"
-ITensorBase = "0.6"
+ITensorBase = "0.6, 0.5"
 ITensorFormatter = "0.2.27"
 Literate = "2"
 TensorAlgebra = "0.9.6"
