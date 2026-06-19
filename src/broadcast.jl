@@ -1,5 +1,5 @@
-using ..ITensorBase: AbstractITensor, AbstractNamedUnitRange, ITensorBase, LittleSet,
-    dename, denamed, getperm, inds, name, named, nameddimsconstructorof
+using ..ITensorBase: AbstractITensor, AbstractNamedUnitRange, ITensorBase, dename, denamed,
+    getperm, inds, name, named, nameddimsconstructorof
 using Base.Broadcast: Broadcast as BC, Broadcasted, broadcast_shape, broadcasted,
     check_broadcast_shape, combine_axes
 using TensorAlgebra: TensorAlgebra as TA
@@ -33,26 +33,41 @@ function BC.combine_axes(a1::AbstractITensor, a2::AbstractITensor)
 end
 BC.combine_axes(a::AbstractITensor) = axes(a)
 
+# The named axes are a `Tuple` of `AbstractNamedUnitRange`s. Dispatch the
+# name-aware shape combination on that tuple form (the elements are not
+# `AbstractUnitRange`s, so Base's positional tuple-shape methods do not apply).
 function BC.broadcast_shape(
-        ax1::LittleSet, ax2::LittleSet, ax_rest::LittleSet...
+        ax1::Tuple{AbstractNamedUnitRange, Vararg{AbstractNamedUnitRange}},
+        ax2::Tuple{AbstractNamedUnitRange, Vararg{AbstractNamedUnitRange}},
+        ax_rest::Tuple{AbstractNamedUnitRange, Vararg{AbstractNamedUnitRange}}...
     )
     return broadcast_shape(broadcast_shape(ax1, ax2), ax_rest...)
 end
 
-function BC.broadcast_shape(ax1::LittleSet, ax2::LittleSet)
+function BC.broadcast_shape(
+        ax1::Tuple{AbstractNamedUnitRange, Vararg{AbstractNamedUnitRange}},
+        ax2::Tuple{AbstractNamedUnitRange, Vararg{AbstractNamedUnitRange}}
+    )
     return promote_shape(ax1, ax2)
 end
 
 # Handle scalar values.
-function BC.broadcast_shape(ax1::Tuple{}, ax2::LittleSet)
+function BC.broadcast_shape(
+        ax1::Tuple{}, ax2::Tuple{AbstractNamedUnitRange, Vararg{AbstractNamedUnitRange}}
+    )
     return ax2
 end
-function BC.broadcast_shape(ax1::LittleSet, ax2::Tuple{})
+function BC.broadcast_shape(
+        ax1::Tuple{AbstractNamedUnitRange, Vararg{AbstractNamedUnitRange}}, ax2::Tuple{}
+    )
     return ax1
 end
 
-function Base.promote_shape(ax1::LittleSet, ax2::LittleSet)
-    return LittleSet(set_promote_shape(Tuple(ax1), Tuple(ax2)))
+function Base.promote_shape(
+        ax1::Tuple{AbstractNamedUnitRange, Vararg{AbstractNamedUnitRange}},
+        ax2::Tuple{AbstractNamedUnitRange, Vararg{AbstractNamedUnitRange}}
+    )
+    return set_promote_shape(ax1, ax2)
 end
 
 function set_promote_shape(
@@ -83,8 +98,11 @@ function set_promote_shape(
     return ax1
 end
 
-function BC.check_broadcast_shape(ax1::LittleSet, ax2::LittleSet)
-    return set_check_broadcast_shape(Tuple(ax1), Tuple(ax2))
+function BC.check_broadcast_shape(
+        ax1::Tuple{AbstractNamedUnitRange, Vararg{AbstractNamedUnitRange}},
+        ax2::Tuple{AbstractNamedUnitRange, Vararg{AbstractNamedUnitRange}}
+    )
+    return set_check_broadcast_shape(ax1, ax2)
 end
 
 function set_check_broadcast_shape(

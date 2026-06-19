@@ -7,7 +7,6 @@ using Compat: @compat
 @compat public @names
 
 # Named-array machinery (relocated from NamedDimsArrays.jl).
-include("littleset.jl")
 include("isnamed.jl")
 include("randname.jl")
 include("abstractnamedinteger.jl")
