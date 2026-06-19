@@ -97,13 +97,13 @@ denamed(c::NamedColon) = Colon()
 name(c::NamedColon) = c.name
 named(::Colon, name) = NamedColon(name)
 
-struct FirstIndex{Arr <: AbstractArray, Dim}
+struct FirstIndex{Arr, Dim}
     array::Arr
     dim::Dim
 end
 Base.to_index(i::FirstIndex) = Int(first(axes(i.array, i.dim)))
 
-struct LastIndex{Arr <: AbstractArray, Dim}
+struct LastIndex{Arr, Dim}
     array::Arr
     dim::Dim
 end

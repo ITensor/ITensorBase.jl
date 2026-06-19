@@ -19,6 +19,10 @@ function BC.BroadcastStyle(arraytype::Type{<:AbstractITensor})
     return ITensorStyle{ndims(arraytype), nameddimsconstructorof(arraytype)}()
 end
 
+# An `AbstractITensor` broadcasts as itself (previously inherited from
+# `AbstractArray`); without this the default `broadcastable` wraps it in a `Ref`.
+BC.broadcastable(a::AbstractITensor) = a
+
 function BC.combine_axes(
         a1::AbstractITensor, a_rest::AbstractITensor...
     )
@@ -95,7 +99,7 @@ end
 set_check_broadcast_shape(ax1::Tuple{}, ax2::Tuple{}) = nothing
 
 broadcasted_denamed(x::Number, inds) = x
-broadcasted_denamed(a::AbstractArray, inds) = denamed(a, inds)
+broadcasted_denamed(a::AbstractITensor, inds) = denamed(a, inds)
 function broadcasted_denamed(bc::Broadcasted, inds)
     return broadcasted(bc.f, Base.Fix2(broadcasted_denamed, inds).(bc.args)...)
 end
@@ -142,7 +146,7 @@ function Base.copy(bc::Broadcasted{<:AbstractITensorStyle})
     return nameddimstype(bc.style)(dest_denamed, inds_dest)
 end
 
-function Base.copyto!(dest::AbstractArray, bc::Broadcasted{<:AbstractITensorStyle})
+function Base.copyto!(dest::AbstractITensor, bc::Broadcasted{<:AbstractITensorStyle})
     dest_denamed = denamed(dest)
     inds_dest = inds(dest)
     bc_denamed = broadcasted_denamed(bc, inds_dest)

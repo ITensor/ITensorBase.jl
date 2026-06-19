@@ -6,7 +6,7 @@ using TupleTools: TupleTools
 dimnames_setdiff(s1, s2) = setdiff(s1, s2)
 
 Base.:*(a1::AbstractITensor, a2::AbstractITensor) = mul_nameddims(a1, a2)
-function mul_nameddims(a1::AbstractArray, a2::AbstractArray)
+function mul_nameddims(a1::AbstractITensor, a2::AbstractITensor)
     a_dest, dimnames_dest = TA.contract(
         denamed(a1), dimnames(a1), denamed(a2), dimnames(a2)
     )
@@ -30,8 +30,8 @@ function Base.:*(
     return mul_nameddims(a1, a2, a3, a_rest...)
 end
 function mul_nameddims(
-        a1::AbstractArray, a2::AbstractArray,
-        a3::AbstractArray, a_rest::AbstractArray...
+        a1::AbstractITensor, a2::AbstractITensor,
+        a3::AbstractITensor, a_rest::AbstractITensor...
     )
     return *(*(a1, a2), a3, a_rest...)
 end
@@ -44,8 +44,8 @@ function LA.mul!(
     return mul!_nameddims(a_dest, a1, a2, α, β)
 end
 function mul!_nameddims(
-        a_dest::AbstractArray,
-        a1::AbstractArray, a2::AbstractArray,
+        a_dest::AbstractITensor,
+        a1::AbstractITensor, a2::AbstractITensor,
         α::Number, β::Number
     )
     TA.contractadd!(
@@ -64,8 +64,8 @@ function LA.mul!(
     return mul!_nameddims(a_dest, a1, a2)
 end
 function mul!_nameddims(
-        a_dest::AbstractArray,
-        a1::AbstractArray, a2::AbstractArray
+        a_dest::AbstractITensor,
+        a1::AbstractITensor, a2::AbstractITensor
     )
     TA.contract!(
         denamed(a_dest), dimnames(a_dest),
@@ -78,7 +78,7 @@ end
 function TA.blockedperm(na::AbstractITensor, nameddim_blocks::Tuple...)
     return blockedperm_nameddims(na, nameddim_blocks...)
 end
-function blockedperm_nameddims(a::AbstractArray, nameddim_blocks::Tuple...)
+function blockedperm_nameddims(a::AbstractITensor, nameddim_blocks::Tuple...)
     dimname_blocks = map(group -> name.(group), nameddim_blocks)
     dimnames_a = dimnames(a)
     perms = map(dimname_blocks) do dimname_block
@@ -95,7 +95,7 @@ end
 function TA.matricize(a::AbstractITensor, fusions::Vararg{Pair, 2})
     return matricize_nameddims(a, fusions...)
 end
-function matricize_nameddims(na::AbstractArray, fusions::Vararg{Pair, 2})
+function matricize_nameddims(na::AbstractITensor, fusions::Vararg{Pair, 2})
     dimnames_fuse = map(group -> name.(group), first.(fusions))
     dimnames_fused = last.(fusions)
     if sum(length, dimnames_fuse) < ndims(na)
@@ -116,7 +116,7 @@ end
 function TA.unmatricize(na::AbstractITensor, splitters::Vararg{Pair, 2})
     return unmatricize_nameddims(na, splitters...)
 end
-function unmatricize_nameddims(na::AbstractArray, splitters::Vararg{Pair, 2})
+function unmatricize_nameddims(na::AbstractITensor, splitters::Vararg{Pair, 2})
     splitters = name.(first.(splitters)) .=> last.(splitters)
     split_namedlengths = last.(splitters)
     splitters_denamed = map(splitters) do splitter
@@ -186,7 +186,7 @@ for f in [
             )
         end
         function $f_nameddims(
-                a::AbstractArray, dimnames_codomain, dimnames_domain; kwargs...
+                a::AbstractITensor, dimnames_codomain, dimnames_domain; kwargs...
             )
             codomain = name.(dimnames_codomain)
             domain = name.(dimnames_domain)
@@ -205,7 +205,7 @@ for f in [
                 a, dimnames_codomain; translate_factorization_kwargs(TA.$f, kwargs)...
             )
         end
-        function $f_nameddims(a::AbstractArray, dimnames_codomain; kwargs...)
+        function $f_nameddims(a::AbstractITensor, dimnames_codomain; kwargs...)
             codomain = name.(dimnames_codomain)
             domain = dimnames_setdiff(dimnames(a), codomain)
             return TA.$f(a, codomain, domain; kwargs...)
@@ -234,7 +234,7 @@ function TA.svd(
     return svd_nameddims(a, dimnames_codomain, dimnames_domain; kwargs...)
 end
 function svd_nameddims(
-        a::AbstractArray, dimnames_codomain, dimnames_domain; kwargs...
+        a::AbstractITensor, dimnames_codomain, dimnames_domain; kwargs...
     )
     codomain = name.(dimnames_codomain)
     domain = name.(dimnames_domain)
@@ -272,7 +272,7 @@ function TA.svdvals(
     return svdvals_nameddims(a, dimnames_codomain, dimnames_domain; kwargs...)
 end
 function svdvals_nameddims(
-        a::AbstractArray, dimnames_codomain, dimnames_domain; kwargs...
+        a::AbstractITensor, dimnames_codomain, dimnames_domain; kwargs...
     )
     return TA.svdvals(
         denamed(a),
@@ -286,7 +286,7 @@ end
 function TA.svdvals(a::AbstractITensor, dimnames_codomain; kwargs...)
     return svdvals_nameddims(a, dimnames_codomain; kwargs...)
 end
-function svdvals_nameddims(a::AbstractArray, dimnames_codomain; kwargs...)
+function svdvals_nameddims(a::AbstractITensor, dimnames_codomain; kwargs...)
     codomain = name.(dimnames_codomain)
     domain = dimnames_setdiff(dimnames(a), codomain)
     return TA.svdvals(a, codomain, domain; kwargs...)
@@ -302,7 +302,7 @@ function TA.eigen(
     return eigen_nameddims(a, dimnames_codomain, dimnames_domain; kwargs...)
 end
 function eigen_nameddims(
-        a::AbstractArray, dimnames_codomain, dimnames_domain; kwargs...
+        a::AbstractITensor, dimnames_codomain, dimnames_domain; kwargs...
     )
     codomain = name.(dimnames_codomain)
     domain = name.(dimnames_domain)
@@ -327,7 +327,7 @@ function TA.eigvals(
     return eigvals_nameddims(a, dimnames_codomain, dimnames_domain; kwargs...)
 end
 function eigvals_nameddims(
-        a::AbstractArray, dimnames_codomain, dimnames_domain; kwargs...
+        a::AbstractITensor, dimnames_codomain, dimnames_domain; kwargs...
     )
     codomain = name.(dimnames_codomain)
     domain = name.(dimnames_domain)
@@ -344,7 +344,7 @@ function TA.left_null(
     return left_null_nameddims(a, dimnames_codomain, dimnames_domain; kwargs...)
 end
 function left_null_nameddims(
-        a::AbstractArray, dimnames_codomain, dimnames_domain; kwargs...
+        a::AbstractITensor, dimnames_codomain, dimnames_domain; kwargs...
     )
     codomain = name.(dimnames_codomain)
     domain = name.(dimnames_domain)
@@ -369,7 +369,7 @@ function TA.right_null(
     return right_null_nameddims(a, dimnames_codomain, dimnames_domain; kwargs...)
 end
 function right_null_nameddims(
-        a::AbstractArray, dimnames_codomain, dimnames_domain; kwargs...
+        a::AbstractITensor, dimnames_codomain, dimnames_domain; kwargs...
     )
     codomain = name.(dimnames_codomain)
     domain = name.(dimnames_domain)
@@ -382,7 +382,7 @@ end
 function TA.right_null(a::AbstractITensor, dimnames_codomain; kwargs...)
     return right_null_nameddims(a, dimnames_codomain; kwargs...)
 end
-function right_null_nameddims(a::AbstractArray, dimnames_codomain; kwargs...)
+function right_null_nameddims(a::AbstractITensor, dimnames_codomain; kwargs...)
     codomain = name.(dimnames_codomain)
     domain = dimnames_setdiff(dimnames(a), codomain)
     return TA.right_null(a, codomain, domain; kwargs...)
@@ -426,7 +426,7 @@ function TA.gram_eigh_full(
     return gram_eigh_full_nameddims(a, dimnames_codomain, dimnames_domain; kwargs...)
 end
 function gram_eigh_full_nameddims(
-        a::AbstractArray, dimnames_codomain, dimnames_domain; kwargs...
+        a::AbstractITensor, dimnames_codomain, dimnames_domain; kwargs...
     )
     codomain = name.(dimnames_codomain)
     domain = name.(dimnames_domain)
@@ -480,7 +480,7 @@ function TA.gram_eigh_full_with_pinv(
     )
 end
 function gram_eigh_full_with_pinv_nameddims(
-        a::AbstractArray, dimnames_codomain, dimnames_domain; kwargs...
+        a::AbstractITensor, dimnames_codomain, dimnames_domain; kwargs...
     )
     codomain = name.(dimnames_codomain)
     domain = name.(dimnames_domain)
@@ -527,7 +527,7 @@ function Base.one(
     return one_nameddims(a, dimnames_codomain, dimnames_domain)
 end
 function one_nameddims(
-        a::AbstractArray, dimnames_codomain, dimnames_domain
+        a::AbstractITensor, dimnames_codomain, dimnames_domain
     )
     codomain = name.(dimnames_codomain)
     domain = name.(dimnames_domain)
@@ -552,7 +552,7 @@ for f in MATRIX_FUNCTIONS
             return $f_nameddims(a, dimnames_codomain, dimnames_domain; kwargs...)
         end
         function $f_nameddims(
-                a::AbstractArray, dimnames_codomain, dimnames_domain; kwargs...
+                a::AbstractITensor, dimnames_codomain, dimnames_domain; kwargs...
             )
             codomain = name.(dimnames_codomain)
             domain = name.(dimnames_domain)
