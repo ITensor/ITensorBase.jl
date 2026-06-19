@@ -1,7 +1,5 @@
-using TypeParameterAccessors: unspecify_type_parameters
-
 abstract type AbstractNamedUnitRange{T, Value <: AbstractUnitRange, Name} <:
-AbstractUnitRange{T} end
+AbstractNamedArray{T, 1, Value, Name} end
 
 # Minimal interface.
 denamed(r::AbstractNamedUnitRange) = throw(MethodError(denamed, Tuple{typeof(r)}))
@@ -14,27 +12,12 @@ namedunitrange(r::AbstractUnitRange, name) = NamedUnitRange(r, name)
 # Shorthand.
 named(r::AbstractUnitRange, name) = namedunitrange(r, name)
 
-# Derived interface.
+# Derived interface. `setname` differs from the `AbstractNamedArray` method: it
+# rebuilds through `named` so the result stays a named unit range, not a named
+# array. The rest of the named interface (`==`, `hash`, `isnamed`, `denamedtype`,
+# `nametype`, `randname`, `show`, `isempty`) is inherited from `AbstractNamedArray`.
 # TODO: Use `Accessors.@set`?
 setname(r::AbstractNamedUnitRange, name) = named(denamed(r), name)
-
-# TODO: Use `TypeParameterAccessors`.
-denamedtype(::Type{<:AbstractNamedUnitRange{<:Any, Value}}) where {Value} = Value
-nametype(::Type{<:AbstractNamedUnitRange{<:Any, <:Any, Name}}) where {Name} = Name
-
-# Traits.
-isnamed(::Type{<:AbstractNamedUnitRange}) = true
-
-# TODO: Should they also have the same base type?
-function Base.:(==)(r1::AbstractNamedUnitRange, r2::AbstractNamedUnitRange)
-    return name(r1) == name(r2) && denamed(r1) == denamed(r2)
-end
-function Base.hash(r::AbstractNamedUnitRange, h::UInt)
-    h = hash(Symbol(unspecify_type_parameters(typeof(r))), h)
-    # TODO: Double check how this is handling blocking/sector information.
-    h = hash(denamed(r), h)
-    return hash(name(r), h)
-end
 
 # Forward `conj` to the underlying range so graded axes flip their sector
 # arrows. The `Base.conj(::AbstractArray{<:Real}) = x` fallback would
@@ -66,7 +49,18 @@ function Base.getindex(r::AbstractNamedUnitRange, I::AbstractNamedInteger)
     @assert name(r) == name(I)
     return getindex_named(r, denamed(I))
 end
-Base.isempty(r::AbstractNamedUnitRange) = isempty(denamed(r))
+
+# Named ranges are not `AbstractUnitRange`s, so `CartesianIndices` over a tuple of
+# them has no Base method; dename to the parent ranges so `CartesianIndices` of a
+# named tensor matches the parent's.
+function Base.CartesianIndices(
+        rs::Tuple{AbstractNamedUnitRange, Vararg{AbstractNamedUnitRange}}
+    )
+    return CartesianIndices(denamed.(rs))
+end
+
+# Show compactly; the inherited `AbstractNamedArray` text/plain show is multiline.
+Base.show(io::IO, ::MIME"text/plain", r::AbstractNamedUnitRange) = show(io, r)
 
 function Base.AbstractUnitRange{Int}(r::AbstractNamedUnitRange)
     return AbstractUnitRange{Int}(denamed(r))
@@ -79,15 +73,6 @@ function Base.iterate(r::AbstractNamedUnitRange, i)
     i == last(r) && return nothing
     next = named(denamed(i) + denamed(step(r)), name(r))
     return (next, next)
-end
-
-function randname(rng::AbstractRNG, r::AbstractNamedUnitRange)
-    return named(denamed(r), randname(rng, name(r)))
-end
-
-function Base.show(io::IO, r::AbstractNamedUnitRange)
-    print(io, "named(", denamed(r), ", ", repr(name(r)), ")")
-    return nothing
 end
 
 struct NamedColon{Name} <: Function
