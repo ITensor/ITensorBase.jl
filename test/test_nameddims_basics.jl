@@ -1,9 +1,9 @@
 using Combinatorics: Combinatorics
-using ITensorBase: @names, AbstractNamedDimsArray, AbstractNamedDimsMatrix, LittleSet, Name,
-    NameMismatch, NamedDimsArray, NamedDimsCartesianIndex, NamedDimsCartesianIndices,
-    NamedDimsMatrix, aligndims, aligneddims, apply, dename, denamed, denamedtype, dim,
-    dimnames, dimnametype, dims, fusednames, inds, isnamed, mapinds, name, named, nameddims,
-    namedoneto, product, replacedimnames, replaceinds, setinds
+using ITensorBase: @names, AbstractITensor, ITensor, LittleSet, Name, NameMismatch,
+    NamedDimsCartesianIndex, NamedDimsCartesianIndices, aligndims, aligneddims, apply,
+    dename, denamed, denamedtype, dim, dimnames, dimnametype, dims, fusednames, inds,
+    isnamed, mapinds, name, named, nameddims, namedoneto, product, replacedimnames,
+    replaceinds, setinds
 using LinearAlgebra: LinearAlgebra
 using Test: @test, @test_throws, @testset
 using VectorInterface: scalartype
@@ -17,10 +17,10 @@ end
         a = randn(elt, 3, 4)
         @test !isnamed(a)
         na = nameddims(a, ("i", "j"))
-        @test na isa NamedDimsMatrix{elt, Matrix{elt}}
-        @test na isa AbstractNamedDimsMatrix{elt}
-        @test na isa NamedDimsArray{elt}
-        @test na isa AbstractNamedDimsArray{elt}
+        @test na isa ITensor{String}
+        @test na isa AbstractITensor{String}
+        @test eltype(na) === elt
+        @test ndims(na) == 2
         @test_throws MethodError denamed(a)
         @test_throws MethodError dename(a, ("i", "j"))
         @test_throws MethodError denamed(a, ("i", "j"))
@@ -44,7 +44,10 @@ end
         @test dim(na, "j") == 2
         @test dims(na, ("j", "i")) == (2, 1)
         @test na[1, 1] == a[1, 1]
-        @test denamedtype(typeof(na)) === typeof(a)
+        # The parent array's concrete type is erased from the type but is still
+        # recoverable from an instance.
+        @test denamedtype(na) === typeof(a)
+        @test denamedtype(typeof(na)) === AbstractArray
         @test dimnametype(typeof(na)) === String
         @test dimnametype(na) === String
 
@@ -68,8 +71,8 @@ end
         @test CartesianIndices(na) == CartesianIndices(a)
         @test collect(pairs(na)) == (CartesianIndices(a) .=> a)
 
-        @test_throws ArgumentError NamedDimsArray(randn(4), namedoneto.((2, 2), ("i", "j")))
-        ## @test_throws ErrorException NamedDimsArray(randn(2, 2), namedoneto.((2, 3), ("i", "j")))
+        @test_throws ArgumentError ITensor(randn(4), namedoneto.((2, 2), ("i", "j")))
+        ## @test_throws ErrorException ITensor(randn(2, 2), namedoneto.((2, 3), ("i", "j")))
 
         a = randn(elt, 3, 4)
         na = nameddims(a, ("i", "j"))
@@ -150,13 +153,13 @@ end
         i = namedoneto(2, "i")
         a = randn(elt, 2)
         na = a[i]
-        @test na isa NamedDimsArray{elt}
+        @test na isa ITensor{String}
         @test dimnames(na) == ("i",)
         @test denamed(na) == a
 
         # slicing
         a = randn(elt, 3, 3)
-        na = NamedDimsArray(a, ("i", "j"))
+        na = ITensor(a, ("i", "j"))
         for na′ in (na[named(2:3, "i"), named(2:3, "j")], na["i" => 2:3, "j" => 2:3])
             @test inds(na′) == (named(1:2, "i"), named(1:2, "j"))
             @test denamed(na′) == a[2:3, 2:3]
@@ -165,7 +168,7 @@ end
 
         # view slicing
         a = randn(elt, 3, 3)
-        na = NamedDimsArray(a, ("i", "j"))
+        na = ITensor(a, ("i", "j"))
         for na′ in
             (@view(na[named(2:3, "i"), named(2:3, "j")]), @view(na["i" => 2:3, "j" => 2:3]))
             @test inds(na′) == (named(1:2, "i"), named(1:2, "j"))
@@ -233,7 +236,7 @@ end
         @test Tuple(size(na)) == (named(3, "i"), named(4, "j"))
         @test length(na) == named(12, fusednames("i", "j"))
         @test Tuple(axes(na)) == (named(1:3, "i"), named(1:4, "j"))
-        @test randn(named.((3, 4), ("i", "j"))) isa NamedDimsArray
+        @test randn(named.((3, 4), ("i", "j"))) isa ITensor
         @test na["i" => 1, "j" => 2] == a[1, 2]
         @test na["j" => 2, "i" => 1] == a[1, 2]
         na["j" => 2, "i" => 1] = 12
@@ -366,26 +369,26 @@ end
         value = rand(elt)
         for na in (zeros(elt, i, j), zeros(elt, (i, j)))
             @test eltype(na) ≡ elt
-            @test na isa NamedDimsArray
+            @test na isa ITensor
             @test inds(na) == Base.oneto.((i, j))
             @test iszero(na)
         end
         for na in (fill(value, i, j), fill(value, (i, j)))
             @test eltype(na) ≡ elt
-            @test na isa NamedDimsArray
+            @test na isa ITensor
             @test inds(na) == Base.oneto.((i, j))
             @test all(isequal(value), na)
         end
         for na in (rand(elt, i, j), rand(elt, (i, j)))
             @test eltype(na) ≡ elt
-            @test na isa NamedDimsArray
+            @test na isa ITensor
             @test inds(na) == Base.oneto.((i, j))
             @test !iszero(na)
             @test all(x -> real(x) > 0, na)
         end
         for na in (randn(elt, i, j), randn(elt, (i, j)))
             @test eltype(na) ≡ elt
-            @test na isa NamedDimsArray
+            @test na isa ITensor
             @test inds(na) == Base.oneto.((i, j))
             @test !iszero(na)
         end
@@ -395,20 +398,20 @@ end
         default_elt = Float64
         for na in (zeros(i, j), zeros((i, j)))
             @test eltype(na) ≡ default_elt
-            @test na isa NamedDimsArray
+            @test na isa ITensor
             @test inds(na) == Base.oneto.((i, j))
             @test iszero(na)
         end
         for na in (rand(i, j), rand((i, j)))
             @test eltype(na) ≡ default_elt
-            @test na isa NamedDimsArray
+            @test na isa ITensor
             @test inds(na) == Base.oneto.((i, j))
             @test !iszero(na)
             @test all(x -> real(x) > 0, na)
         end
         for na in (randn(i, j), randn((i, j)))
             @test eltype(na) ≡ default_elt
-            @test na isa NamedDimsArray
+            @test na isa ITensor
             @test inds(na) == Base.oneto.((i, j))
             @test !iszero(na)
         end
@@ -447,13 +450,13 @@ end
         @test values(sp) == (1.0, 2.0, 3.0)
     end
     @testset "show" begin
-        a = NamedDimsArray([1 2; 3 4], ("i", "j"))
+        a = ITensor([1 2; 3 4], ("i", "j"))
         @test sprint(show, "text/plain", a) ==
             "named(Base.OneTo(2), \"i\")×named(Base.OneTo(2), \"j\") " *
-            "$NamedDimsArray{Int64, 2, Matrix{Int64}, Tuple{String, String}}:\n" *
+            "$ITensor{String}:\n" *
             "2×2 Matrix{Int64}:\n 1  2\n 3  4"
 
-        a = NamedDimsArray([1 2; 3 4], ("i", "j"))
+        a = ITensor([1 2; 3 4], ("i", "j"))
         @test sprint(show, a) ==
             "[1 2; 3 4][named(Base.OneTo(2), \"i\"), named(Base.OneTo(2), \"j\")]"
     end

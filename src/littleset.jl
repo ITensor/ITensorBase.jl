@@ -30,8 +30,8 @@ Base.Broadcast.BroadcastStyle(s1::AbstractArrayStyle, s2::Style{LittleSet}) = s1
 Base.Broadcast.broadcastable(s::LittleSet) = s
 Base.to_shape(s::LittleSet) = s
 
-# Needed for functionality such as `CartesianIndices(::AbstractNamedDimsArray)`,
-# `pairs(::AbstractNamedDimsArray)`, etc.
+# Needed for functionality such as `CartesianIndices(::AbstractITensor)`,
+# `pairs(::AbstractITensor)`, etc.
 Base.CartesianIndices(s::LittleSet) = CartesianIndices(s.values)
 
 function Base.copy(

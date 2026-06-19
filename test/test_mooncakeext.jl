@@ -1,4 +1,4 @@
-using ITensorBase: AbstractNamedUnitRange, Name, NamedDimsArray, NamedUnitRange,
+using ITensorBase: AbstractNamedUnitRange, ITensor, Name, NamedUnitRange,
     blockedperm_nameddims, combine_nameddimsconstructors, dimnames, dimnames_setdiff, inds,
     name, nameddimsconstructorof, randname, to_inds
 using LinearAlgebra: mul!
@@ -28,7 +28,7 @@ using Test: @test, @testset
             rng, blockedperm_nameddims, a1, (i,), (j,); mode, is_primitive
         )
         Mooncake.TestUtils.test_rule(
-            rng, combine_nameddimsconstructors, NamedDimsArray, NamedDimsArray;
+            rng, combine_nameddimsconstructors, ITensor, ITensor;
             mode, is_primitive
         )
         Mooncake.TestUtils.test_rule(rng, dimnames, a1; mode, is_primitive)

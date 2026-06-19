@@ -1,33 +1,33 @@
-using ..ITensorBase: AbstractNamedDimsArray, AbstractNamedUnitRange, ITensorBase, LittleSet,
+using ..ITensorBase: AbstractITensor, AbstractNamedUnitRange, ITensorBase, LittleSet,
     dename, denamed, getperm, inds, name, named, nameddimsconstructorof
 using Base.Broadcast: Broadcast as BC, Broadcasted, broadcast_shape, broadcasted,
     check_broadcast_shape, combine_axes
 using TensorAlgebra: TensorAlgebra as TA
 
-abstract type AbstractNamedDimsArrayStyle{N} <: BC.AbstractArrayStyle{N} end
+abstract type AbstractITensorStyle{N} <: BC.AbstractArrayStyle{N} end
 
-struct NamedDimsArrayStyle{N, NDA} <: AbstractNamedDimsArrayStyle{N} end
-NamedDimsArrayStyle(::Val{N}) where {N} = NamedDimsArrayStyle{N, NamedDimsArray}()
-NamedDimsArrayStyle{M}(::Val{N}) where {M, N} = NamedDimsArrayStyle{N, NamedDimsArray}()
-NamedDimsArrayStyle{M, NDA}(::Val{N}) where {M, N, NDA} = NamedDimsArrayStyle{N, NDA}()
+struct ITensorStyle{N, NDA} <: AbstractITensorStyle{N} end
+ITensorStyle(::Val{N}) where {N} = ITensorStyle{N, ITensor}()
+ITensorStyle{M}(::Val{N}) where {M, N} = ITensorStyle{N, ITensor}()
+ITensorStyle{M, NDA}(::Val{N}) where {M, N, NDA} = ITensorStyle{N, NDA}()
 
-function nameddimstype(style::NamedDimsArrayStyle{<:Any, NDA}) where {NDA}
+function nameddimstype(style::ITensorStyle{<:Any, NDA}) where {NDA}
     return NDA
 end
 
-function BC.BroadcastStyle(arraytype::Type{<:AbstractNamedDimsArray})
-    return NamedDimsArrayStyle{ndims(arraytype), nameddimsconstructorof(arraytype)}()
+function BC.BroadcastStyle(arraytype::Type{<:AbstractITensor})
+    return ITensorStyle{ndims(arraytype), nameddimsconstructorof(arraytype)}()
 end
 
 function BC.combine_axes(
-        a1::AbstractNamedDimsArray, a_rest::AbstractNamedDimsArray...
+        a1::AbstractITensor, a_rest::AbstractITensor...
     )
     return broadcast_shape(axes(a1), combine_axes(a_rest...))
 end
-function BC.combine_axes(a1::AbstractNamedDimsArray, a2::AbstractNamedDimsArray)
+function BC.combine_axes(a1::AbstractITensor, a2::AbstractITensor)
     return broadcast_shape(axes(a1), axes(a2))
 end
-BC.combine_axes(a::AbstractNamedDimsArray) = axes(a)
+BC.combine_axes(a::AbstractITensor) = axes(a)
 
 function BC.broadcast_shape(
         ax1::LittleSet, ax2::LittleSet, ax_rest::LittleSet...
@@ -62,7 +62,7 @@ function set_promote_shape(
 end
 
 # Handle operations like `randn() + randn(2, 2)[i, j]``.
-# TODO: Decide if this should be a general definition for `AbstractNamedDimsArray`,
+# TODO: Decide if this should be a general definition for `AbstractITensor`,
 # or just for `AbstractITensor`.
 function set_promote_shape(
         ax1::Tuple{}, ax2::Tuple{AbstractNamedUnitRange, Vararg{AbstractNamedUnitRange}}
@@ -71,7 +71,7 @@ function set_promote_shape(
 end
 
 # Handle operations like `randn(2, 2)[i, j] + randn()`.
-# TODO: Decide if this should be a general definition for `AbstractNamedDimsArray`,
+# TODO: Decide if this should be a general definition for `AbstractITensor`,
 # or just for `AbstractITensor`.
 function set_promote_shape(
         ax1::Tuple{AbstractNamedUnitRange, Vararg{AbstractNamedUnitRange}}, ax2::Tuple{}
@@ -104,11 +104,11 @@ end
 # result inherits the operands' backend (e.g. graded) rather than a lazy permuted
 # wrapper's `similar` (which can drop the backend).
 denamed_prototype(bc::Broadcasted) = denamed_prototype(bc.args...)
-denamed_prototype(arg::AbstractNamedDimsArray, args...) = denamed(arg)
+denamed_prototype(arg::AbstractITensor, args...) = denamed(arg)
 denamed_prototype(arg::Broadcasted, args...) = denamed_prototype(arg.args..., args...)
 denamed_prototype(arg, args...) = denamed_prototype(args...)
 
-function Base.similar(bc::Broadcasted{<:AbstractNamedDimsArrayStyle}, elt::Type, ax)
+function Base.similar(bc::Broadcasted{<:AbstractITensorStyle}, elt::Type, ax)
     inds_a = name.(ax)
     bc_denamed = broadcasted_denamed(bc, inds_a)
     a_denamed = similar(bc_denamed, elt)
@@ -116,7 +116,7 @@ function Base.similar(bc::Broadcasted{<:AbstractNamedDimsArrayStyle}, elt::Type,
 end
 
 inds(bc::Broadcasted) = name.(axes(bc))
-function Base.copy(bc::Broadcasted{<:AbstractNamedDimsArrayStyle})
+function Base.copy(bc::Broadcasted{<:AbstractITensorStyle})
     # We could use:
     # ```julia
     # elt = combine_eltypes(bc.f, bc.args)
@@ -142,7 +142,7 @@ function Base.copy(bc::Broadcasted{<:AbstractNamedDimsArrayStyle})
     return nameddimstype(bc.style)(dest_denamed, inds_dest)
 end
 
-function Base.copyto!(dest::AbstractArray, bc::Broadcasted{<:AbstractNamedDimsArrayStyle})
+function Base.copyto!(dest::AbstractArray, bc::Broadcasted{<:AbstractITensorStyle})
     dest_denamed = denamed(dest)
     inds_dest = inds(dest)
     bc_denamed = broadcasted_denamed(bc, inds_dest)
