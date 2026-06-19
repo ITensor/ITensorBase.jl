@@ -16,9 +16,8 @@ end
 ITensor(a::AbstractITensor, inds) = throw(ArgumentError("Already named."))
 ITensor(a::AbstractITensor) = ITensor(denamed(a), dimnames(a))
 
-# Minimal interface. The dimnames are stored as a `Vector{DimName}`, but the
-# accessor still returns a `LittleSet` over a `Tuple` (unchanged public behavior).
-dimnames(a::ITensor) = LittleSet(Tuple(a.dimnames))
+# Minimal interface. The dimnames are stored as (and returned as) a `Vector`.
+dimnames(a::ITensor) = a.dimnames
 denamed(a::ITensor) = a.denamed
 Base.parent(a::ITensor) = denamed(a)
 

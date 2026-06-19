@@ -53,8 +53,9 @@ denamed(a::AbstractITensor) = throw(MethodError(denamed, a))
 denamed(a::AbstractITensor, inds) = denamed(aligneddims(a, inds))
 dename(a::AbstractITensor, inds) = denamed(aligndims(a, inds))
 
-# Output the named axes/indices of the named dims array.
-inds(a::AbstractITensor) = LittleSet(named.(axes(denamed(a)), dimnames(a)))
+# Output the named axes/indices of the named dims array, as a `Tuple` (even though
+# the dimension names are stored as a `Vector`).
+inds(a::AbstractITensor) = named.(axes(denamed(a)), Tuple(dimnames(a)))
 inds(a::AbstractITensor, dim::Int) = inds(a)[dim]
 
 isnamed(::Type{<:AbstractITensor}) = true
@@ -297,14 +298,6 @@ function Base.similar(
     return similar_nameddims(a, elt, inds)
 end
 
-function Base.similar(a::AbstractArray, inds::LittleSet)
-    return similar_nameddims(a, eltype(a), inds)
-end
-
-function Base.similar(a::AbstractArray, elt::Type, inds::LittleSet)
-    return similar_nameddims(a, elt, inds)
-end
-
 # Same entry points with a named-tensor prototype. An `AbstractITensor` is no longer
 # an `AbstractArray`, so the methods above (which build a named tensor from a plain
 # array prototype) no longer cover it.
@@ -320,11 +313,6 @@ function Base.similar(
     )
     return similar_nameddims(a, elt, inds)
 end
-Base.similar(a::AbstractITensor, inds::LittleSet) = similar_nameddims(a, eltype(a), inds)
-function Base.similar(a::AbstractITensor, elt::Type, inds::LittleSet)
-    return similar_nameddims(a, elt, inds)
-end
-
 function setinds(a::AbstractITensor, inds)
     return nameddimsconstructorof(a)(denamed(a), inds)
 end
@@ -412,10 +400,6 @@ struct NamedDimsCartesianIndices{
         )
     end
 end
-function NamedDimsCartesianIndices(indices::LittleSet)
-    return NamedDimsCartesianIndices(Tuple(indices))
-end
-
 # The element type is no longer carried by the (rank-erased) supertype, so recover
 # it from the stored index-tuple parameter.
 function Base.eltype(
@@ -462,7 +446,7 @@ end
 # Base version ignores dimension names.
 # TODO: Use `mapreduce(isequal, &&, a1, a2)`?
 function Base.isequal(a1::AbstractITensor, a2::AbstractITensor)
-    (inds(a1) == inds(a2)) || return false
+    issetequal(inds(a1), inds(a2)) || return false
     return isequal(denamed(a1), denamed(a2, inds(a1)))
 end
 
@@ -470,13 +454,13 @@ end
 # TODO: Use `mapreduce(==, &&, a1, a2)`?
 # TODO: Handle `missing` values properly.
 function Base.:(==)(a1::AbstractITensor, a2::AbstractITensor)
-    (inds(a1) == inds(a2)) || return false
+    issetequal(inds(a1), inds(a2)) || return false
     return denamed(a1) == denamed(a2, inds(a1))
 end
 
 # Base version ignores dimension names.
 function Base.isapprox(a1::AbstractITensor, a2::AbstractITensor; kwargs...)
-    (inds(a1) == inds(a2)) || return false
+    issetequal(inds(a1), inds(a2)) || return false
     return isapprox(denamed(a1), denamed(a2, inds(a1)); kwargs...)
 end
 

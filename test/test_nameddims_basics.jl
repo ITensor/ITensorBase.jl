@@ -1,5 +1,5 @@
 using Combinatorics: Combinatorics
-using ITensorBase: @names, AbstractITensor, ITensor, LittleSet, Name, NameMismatch,
+using ITensorBase: @names, AbstractITensor, ITensor, Name, NameMismatch,
     NamedDimsCartesianIndex, NamedDimsCartesianIndices, aligndims, aligneddims, apply,
     dename, denamed, denamedtype, dim, dimnames, dimnametype, dims, fusednames, inds,
     isnamed, mapinds, name, named, nameddims, namedoneto, product, replacedimnames,
@@ -37,7 +37,7 @@ end
         @test inds(na) == (i, j)
         @test inds(na, 1) == i
         @test inds(na, 2) == j
-        @test dimnames(na) == ("i", "j")
+        @test dimnames(na) == ["i", "j"]
         @test dimnames(na, 1) == "i"
         @test dimnames(na, 2) == "j"
         @test dim(na, "i") == 1
@@ -108,9 +108,7 @@ end
         j = namedoneto(4, "j")
         for na′ in (
                 similar(na, Float32, (j, i)),
-                similar(na, Float32, LittleSet((j, i))),
                 similar(a, Float32, (j, i)),
-                similar(a, Float32, LittleSet((j, i))),
             )
             @test eltype(na′) ≡ Float32
             @test all(inds(na′) .== (j, i))
@@ -123,9 +121,7 @@ end
         j = namedoneto(4, "j")
         for na′ in (
                 similar(na, (j, i)),
-                similar(na, LittleSet((j, i))),
                 similar(a, (j, i)),
-                similar(a, LittleSet((j, i))),
             )
             @test eltype(na′) ≡ eltype(na)
             @test all(inds(na′) .== (j, i))
@@ -154,7 +150,7 @@ end
         a = randn(elt, 2)
         na = a[i]
         @test na isa ITensor{String}
-        @test dimnames(na) == ("i",)
+        @test dimnames(na) == ["i"]
         @test denamed(na) == a
 
         # slicing
@@ -415,39 +411,6 @@ end
             @test inds(na) == Base.oneto.((i, j))
             @test !iszero(na)
         end
-    end
-    @testset "LittleSet" begin
-        # Broadcasting
-        s = LittleSet((1, 2))
-        @test eltype(s) == Int
-        @test s .+ [3, 4] == [4, 6]
-        @test s .+ (3, 4) ≡ (4, 6)
-
-        s = LittleSet(("a", "b", "c"))
-        @test all(s .== ("a", "b", "c"))
-        @test values(s) == ("a", "b", "c")
-        @test Tuple(s) == ("a", "b", "c")
-        @test s[1] == "a"
-        @test s[2] == "b"
-        @test s[3] == "c"
-        for s′ in (
-                replace(x -> x == "b" ? "x" : x, s),
-                replace(s, "b" => "x"),
-                map(x -> x == "b" ? "x" : x, s),
-            )
-            @test s′ isa LittleSet
-            @test Tuple(s′) == ("a", "x", "c")
-            @test s′[1] == "a"
-            @test s′[2] == "x"
-            @test s′[3] == "c"
-        end
-
-        s = LittleSet((1, 2, 3))
-        @test LittleSet(s).values isa Tuple
-        @test LittleSet(s) == s
-        sp = LittleSet{NTuple{3, Float64}}(s)
-        @test eltype(sp) === Float64
-        @test values(sp) == (1.0, 2.0, 3.0)
     end
     @testset "show" begin
         a = ITensor([1 2; 3 4], ("i", "j"))

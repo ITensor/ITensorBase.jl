@@ -11,7 +11,10 @@ Mooncake.tangent_type(::Type{<:AbstractNamedUnitRange}) = Mooncake.NoTangent
 @zero_derivative DefaultCtx Tuple{typeof(blockedperm), AbstractITensor, Any, Any}
 @zero_derivative DefaultCtx Tuple{typeof(blockedperm_nameddims), Any, Any, Any}
 @zero_derivative DefaultCtx Tuple{typeof(combine_nameddimsconstructors), Any, Any}
-@zero_derivative DefaultCtx Tuple{typeof(dimnames), Any}
+# `dimnames(::ITensor)` returns the stored names `Vector` directly, so its output
+# aliases a field, where `@zero_derivative` is documented to be incorrect. Let
+# Mooncake differentiate it through the underlying `getfield`, whose built-in rule
+# preserves the aliasing (the names are non-differentiable, so the result is zero).
 @zero_derivative DefaultCtx Tuple{typeof(dimnames), Any, Any}
 @zero_derivative DefaultCtx Tuple{typeof(dimnames_setdiff), Any, Any}
 @zero_derivative DefaultCtx Tuple{typeof(inds), Any}
