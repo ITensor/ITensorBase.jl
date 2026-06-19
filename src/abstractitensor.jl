@@ -9,11 +9,12 @@ using TypeParameterAccessors: unspecify_type_parameters
 # https://github.com/mcabbott/NamedPlus.jl
 # https://pytorch.org/docs/stable/named_tensor.html
 
-abstract type AbstractITensor{DimName} <: AbstractArray{Any, Any} end
+abstract type AbstractITensor{DimName} end
 
-# Rank and element type live in the data, not the type. The `<: AbstractArray`
-# subtyping is kept for now to reuse generic array functionality, with `Any` for
-# both parameters since neither is fixed by the type.
+# Rank and element type live in the data, not the type, so the type-level `ndims`
+# is `Any` (like `eltype(Array)`). `AbstractITensor` is not an `AbstractArray`: the
+# array-like surface it needs (indexing, broadcasting, arithmetic, iteration) is
+# supplied directly below rather than inherited.
 Base.ndims(::Type{<:AbstractITensor}) = Any
 
 dimnames(a::AbstractITensor) = throw(MethodError(dimnames, a))
@@ -53,15 +54,15 @@ denamed(a::AbstractITensor, inds) = denamed(aligneddims(a, inds))
 dename(a::AbstractITensor, inds) = denamed(aligndims(a, inds))
 
 # Output the named axes/indices of the named dims array.
-inds(a::AbstractArray) = LittleSet(named.(axes(denamed(a)), dimnames(a)))
-inds(a::AbstractArray, dim::Int) = inds(a)[dim]
+inds(a::AbstractITensor) = LittleSet(named.(axes(denamed(a)), dimnames(a)))
+inds(a::AbstractITensor, dim::Int) = inds(a)[dim]
 
 isnamed(::Type{<:AbstractITensor}) = true
 
-function dim(a::AbstractArray, n)
+function dim(a::AbstractITensor, n)
     return findfirst(==(name(n)), dimnames(a))
 end
-dims(a::AbstractArray, ns) = Base.Fix1(dim, a).(ns)
+dims(a::AbstractITensor, ns) = Base.Fix1(dim, a).(ns)
 
 dimname_isequal(x) = Base.Fix1(dimname_isequal, x)
 dimname_isequal(x, y) = isequal(x, y)
@@ -80,7 +81,7 @@ dimname_isequal(r1, r2::AbstractNamedUnitRange) = r1 == name(r2)
 dimname_isequal(r1::AbstractNamedUnitRange, r2::Name) = name(r1) == name(r2)
 dimname_isequal(r1::Name, r2::AbstractNamedUnitRange) = name(r1) == name(r2)
 
-function to_inds(a::AbstractArray, dims)
+function to_inds(a::AbstractITensor, dims)
     is = Base.Fix1(dim, a).(name.(dims))
     return Base.Fix1(inds, a).(is)
 end
@@ -157,6 +158,11 @@ function checked_indexin(x::AbstractUnitRange, y::AbstractUnitRange)
 end
 
 Base.copy(a::AbstractITensor) = nameddimsof(a, copy(denamed(a)))
+Base.zero(a::AbstractITensor) = nameddimsof(a, zero(denamed(a)))
+
+# `CartesianIndices` of a named tensor is the parent's, via the named axes (as the
+# `AbstractArray` fallback did through `axes`).
+Base.CartesianIndices(a::AbstractITensor) = CartesianIndices(axes(a))
 
 # Forward `conj` to the underlying so that graded axes flip their sector arrows.
 # The default `AbstractArray` fallback would broadcast `conj` over elements without
@@ -169,6 +175,19 @@ Base.conj(a::AbstractITensor) = nameddimsof(a, conj(denamed(a)))
 function LinearAlgebra.normalize(a::AbstractITensor, p::Real = 2)
     return a / LinearAlgebra.norm(a, p)
 end
+function LinearAlgebra.normalize!(a::AbstractITensor, p::Real = 2)
+    LinearAlgebra.normalize!(denamed(a), p)
+    return a
+end
+
+# Elementwise and scalar arithmetic. `AbstractArray` routes these through
+# broadcasting; supply them directly now that the supertype is gone.
+Base.:+(a1::AbstractITensor, a2::AbstractITensor) = a1 .+ a2
+Base.:-(a1::AbstractITensor, a2::AbstractITensor) = a1 .- a2
+Base.:-(a::AbstractITensor) = broadcast(-, a)
+Base.:*(a::AbstractITensor, x::Number) = a .* x
+Base.:*(x::Number, a::AbstractITensor) = x .* a
+Base.:/(a::AbstractITensor, x::Number) = a ./ x
 
 # Forward `Random.randn!` / `Random.rand!` to the concrete storage so they
 # see the runtime eltype.
@@ -286,6 +305,26 @@ function Base.similar(a::AbstractArray, elt::Type, inds::LittleSet)
     return similar_nameddims(a, elt, inds)
 end
 
+# Same entry points with a named-tensor prototype. An `AbstractITensor` is no longer
+# an `AbstractArray`, so the methods above (which build a named tensor from a plain
+# array prototype) no longer cover it.
+function Base.similar(
+        a::AbstractITensor,
+        inds::Tuple{AbstractNamedUnitRange, Vararg{AbstractNamedUnitRange}}
+    )
+    return similar(a, eltype(a), inds)
+end
+function Base.similar(
+        a::AbstractITensor, elt::Type,
+        inds::Tuple{AbstractNamedUnitRange, Vararg{AbstractNamedUnitRange}}
+    )
+    return similar_nameddims(a, elt, inds)
+end
+Base.similar(a::AbstractITensor, inds::LittleSet) = similar_nameddims(a, eltype(a), inds)
+function Base.similar(a::AbstractITensor, elt::Type, inds::LittleSet)
+    return similar_nameddims(a, elt, inds)
+end
+
 function setinds(a::AbstractITensor, inds)
     return nameddimsconstructorof(a)(denamed(a), inds)
 end
@@ -319,6 +358,18 @@ Base.isempty(a::AbstractITensor) = isempty(denamed(a))
 # isn't known at compile time, like for the ITensor type.
 Base.IndexStyle(a::AbstractITensor) = IndexStyle(denamed(a))
 Base.eachindex(a::AbstractITensor) = eachindex(denamed(a))
+
+# Iteration, keys, and pairs forward to the parent (these were previously inherited
+# from `AbstractArray`).
+Base.iterate(a::AbstractITensor, state...) = iterate(denamed(a), state...)
+Base.keys(a::AbstractITensor) = keys(denamed(a))
+Base.pairs(a::AbstractITensor) = pairs(denamed(a))
+
+# Multi-argument `eachindex` dispatches on the named index style, as the
+# `AbstractArray` version did.
+function Base.eachindex(a1::AbstractITensor, a_rest::AbstractITensor...)
+    return eachindex(IndexStyle(a1, a_rest...), a1, a_rest...)
+end
 
 # Cartesian indices with names attached.
 struct NamedIndexCartesian <: IndexStyle end
@@ -387,7 +438,21 @@ function denamed(I::NamedDimsCartesianIndices)
     return CartesianIndices(denamed.(I.indices))
 end
 
-function Base.eachindex(::NamedIndexCartesian, a1::AbstractArray, a_rest::AbstractArray...)
+# Iterating yields `NamedDimsCartesianIndex`es. The generic `AbstractITensor`
+# iteration forwards to `denamed`, which here is a plain `CartesianIndices`, so
+# convert each parent index back through `getindex`.
+function Base.iterate(I::NamedDimsCartesianIndices, state...)
+    y = iterate(denamed(I), state...)
+    isnothing(y) && return nothing
+    cartesian, next_state = y
+    return I[Tuple(cartesian)...], next_state
+end
+
+function Base.eachindex(
+        ::NamedIndexCartesian,
+        a1::AbstractITensor,
+        a_rest::AbstractITensor...
+    )
     all(a -> issetequal(inds(a1), inds(a)), a_rest) ||
         throw(NameMismatch("Dimension name mismatch $(inds.((a1, a_rest...)))."))
     # TODO: Check the shapes match.
@@ -407,6 +472,12 @@ end
 function Base.:(==)(a1::AbstractITensor, a2::AbstractITensor)
     (inds(a1) == inds(a2)) || return false
     return denamed(a1) == denamed(a2, inds(a1))
+end
+
+# Base version ignores dimension names.
+function Base.isapprox(a1::AbstractITensor, a2::AbstractITensor; kwargs...)
+    (inds(a1) == inds(a2)) || return false
+    return isapprox(denamed(a1), denamed(a2, inds(a1)); kwargs...)
 end
 
 # Generalization of `Base.sort` to Tuples for Julia v1.10 compatibility.
@@ -641,7 +712,7 @@ function Base.view(a::AbstractITensor, I::ViewIndex...)
     return view_nameddims(a, I...)
 end
 
-function getindex_nameddims(a::AbstractArray, I...)
+function getindex_nameddims(a::AbstractITensor, I...)
     return copy(view(a, I...))
 end
 
@@ -686,7 +757,7 @@ end
 
 # Permute/align dimensions
 
-function aligndims(a::AbstractArray, dims)
+function aligndims(a::AbstractITensor, dims)
     new_dimnames = name.(dims)
     perm = Tuple(getperm(dimnames(a), new_dimnames))
     isperm(perm) || throw(
@@ -697,7 +768,7 @@ function aligndims(a::AbstractArray, dims)
     return nameddimsconstructorof(a)(permutedims(denamed(a), perm), new_dimnames)
 end
 
-function aligneddims(a::AbstractArray, dims)
+function aligneddims(a::AbstractITensor, dims)
     new_dimnames = name.(dims)
     perm = getperm(dimnames(a), new_dimnames)
     isperm(perm) || throw(
