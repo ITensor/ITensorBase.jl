@@ -79,32 +79,20 @@ function Base.show(io::IO, i::IndexName)
     return nothing
 end
 
-struct IndexVal{Value <: Integer} <: AbstractNamedInteger{Value, IndexName}
-    value::Value
-    name::IndexName
-end
-
-# Interface
-denamed(i::IndexVal) = i.value
-name(i::IndexVal) = i.name
-
-# Constructor
-named(i::Integer, name::IndexName) = IndexVal(i, name)
-
 struct Index{
-        T, Value <: AbstractUnitRange{T},
-    } <: AbstractNamedUnitRange{T, Value, IndexName}
-    value::Value
+        DenamedT, Denamed <: AbstractUnitRange{DenamedT},
+    } <: AbstractNamedUnitRange{IndexName, DenamedT}
+    value::Denamed
     name::IndexName
 end
 
-function Index{T, Value}(
-        r::AbstractUnitRange{T}; kwargs...
-    ) where {T, Value <: AbstractUnitRange{T}}
-    return Index{T, Value}(r, IndexName(; kwargs...))
+function Index{DenamedT, Denamed}(
+        r::AbstractUnitRange{DenamedT}; kwargs...
+    ) where {DenamedT, Denamed <: AbstractUnitRange{DenamedT}}
+    return Index{DenamedT, Denamed}(r, IndexName(; kwargs...))
 end
-function Index{T}(r::AbstractUnitRange{T}; kwargs...) where {T}
-    return Index{T, typeof(r)}(r; kwargs...)
+function Index{DenamedT}(r::AbstractUnitRange{DenamedT}; kwargs...) where {DenamedT}
+    return Index{DenamedT, typeof(r)}(r; kwargs...)
 end
 function Index(r::AbstractUnitRange; kwargs...)
     return Index{eltype(r)}(r; kwargs...)
@@ -162,17 +150,3 @@ function Base.show(io::IO, i::Index)
     print(io, str)
     return nothing
 end
-
-struct NoncontiguousIndex{T, Value <: AbstractVector{T}} <:
-    AbstractNamedVector{T, Value, IndexName}
-    value::Value
-    name::IndexName
-end
-
-# Interface
-# TODO: Overload `Base.parent` instead.
-denamed(i::NoncontiguousIndex) = i.value
-name(i::NoncontiguousIndex) = i.name
-
-# Constructor
-named(i::AbstractVector, name::IndexName) = NoncontiguousIndex(i, name)

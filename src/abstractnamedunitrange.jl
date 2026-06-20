@@ -1,5 +1,5 @@
-abstract type AbstractNamedUnitRange{T, Value <: AbstractUnitRange, Name} <:
-AbstractNamedArray{T, 1, Value, Name} end
+abstract type AbstractNamedUnitRange{Name, DenamedT <: Integer} <:
+AbstractNamedVector{Name, DenamedT} end
 
 # Minimal interface.
 denamed(r::AbstractNamedUnitRange) = throw(MethodError(denamed, Tuple{typeof(r)}))
@@ -45,7 +45,7 @@ function Base.getindex(r::AbstractNamedUnitRange, I)
 end
 # Fixes `r[begin]`/`r[end]`, since `firstindex` and `lastindex`
 # returned named indices.
-function Base.getindex(r::AbstractNamedUnitRange, I::AbstractNamedInteger)
+function Base.getindex(r::AbstractNamedUnitRange, I::NamedInteger)
     @assert name(r) == name(I)
     return getindex_named(r, denamed(I))
 end
@@ -66,7 +66,7 @@ function Base.AbstractUnitRange{Int}(r::AbstractNamedUnitRange)
     return AbstractUnitRange{Int}(denamed(r))
 end
 
-Base.oneto(length::AbstractNamedInteger) = named(Base.OneTo(denamed(length)), name(length))
+Base.oneto(length::NamedInteger) = named(Base.OneTo(denamed(length)), name(length))
 namedoneto(length::Integer, name) = Base.oneto(named(length, name))
 Base.iterate(r::AbstractNamedUnitRange) = isempty(r) ? nothing : (first(r), first(r))
 function Base.iterate(r::AbstractNamedUnitRange, i)

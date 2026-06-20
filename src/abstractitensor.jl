@@ -373,11 +373,11 @@ Base.IndexStyle(s1::IndexStyle, s2::NamedIndexCartesian) = NamedIndexCartesian()
 Base.IndexStyle(s1::NamedIndexCartesian, s2::IndexStyle) = NamedIndexCartesian()
 
 # Like CartesianIndex but with named dimensions.
-struct NamedDimsCartesianIndex{N, Index <: Tuple{Vararg{AbstractNamedInteger, N}}} <:
+struct NamedDimsCartesianIndex{N, Index <: Tuple{Vararg{NamedInteger, N}}} <:
     Base.AbstractCartesianIndex{N}
     I::Index
 end
-NamedDimsCartesianIndex(I::AbstractNamedInteger...) = NamedDimsCartesianIndex(I)
+NamedDimsCartesianIndex(I::NamedInteger...) = NamedDimsCartesianIndex(I)
 Base.Tuple(I::NamedDimsCartesianIndex) = I.I
 function Base.show(io::IO, I::NamedDimsCartesianIndex)
     print(io, "NamedDimsCartesianIndex")
@@ -390,7 +390,7 @@ struct NamedDimsCartesianIndices{
         N,
         DimName,
         Indices <: Tuple{Vararg{AbstractNamedUnitRange, N}},
-        Index <: Tuple{Vararg{AbstractNamedInteger, N}},
+        Index <: Tuple{Vararg{NamedInteger, N}},
     } <: AbstractITensor{DimName}
     indices::Indices
     function NamedDimsCartesianIndices(indices::Tuple{Vararg{AbstractNamedUnitRange}})
@@ -511,7 +511,7 @@ function Base.checkbounds(::Type{Bool}, a::AbstractITensor, I::Int...)
 end
 
 function Base.to_indices(
-        a::AbstractITensor, I::Tuple{AbstractNamedInteger, Vararg{AbstractNamedInteger}}
+        a::AbstractITensor, I::Tuple{NamedInteger, Vararg{NamedInteger}}
     )
     perm = getperm(name.(I), dimnames(a))
     # TODO: Throw a `NameMismatch` error.
@@ -545,7 +545,7 @@ function Base.getindex(a::AbstractITensor, I1::Int, Irest::Int...)
     return getindex(denamed(a), I1, Irest...)
 end
 function Base.getindex(
-        a::AbstractITensor, I1::AbstractNamedInteger, Irest::AbstractNamedInteger...
+        a::AbstractITensor, I1::NamedInteger, Irest::NamedInteger...
     )
     return getindex(a, to_indices(a, (I1, Irest...))...)
 end
@@ -567,8 +567,8 @@ function Base.setindex!(a::AbstractITensor, value, I::CartesianIndex)
 end
 
 function Base.setindex!(
-        a::AbstractITensor, value, I1::AbstractNamedInteger,
-        Irest::AbstractNamedInteger...
+        a::AbstractITensor, value, I1::NamedInteger,
+        Irest::NamedInteger...
     )
     setindex!(a, value, to_indices(a, (I1, Irest...))...)
     return a
@@ -599,7 +599,7 @@ end
 
 # Like `const ViewIndex = Union{Real,AbstractArray}`.
 const NamedViewIndex =
-    Union{AbstractNamedInteger, AbstractNamedUnitRange, AbstractNamedArray}
+    Union{NamedInteger, AbstractNamedUnitRange, AbstractNamedArray}
 
 using ArrayLayouts: ArrayLayouts, MemoryLayout
 
@@ -625,10 +625,10 @@ end
 function Base.getindex(a::AbstractArray, I1::NamedViewIndex, Irest::NamedViewIndex...)
     return copy(view(a, I1, Irest...))
 end
-# Disambiguate from `Base.getindex(A::Array, I::AbstractUnitRange{<:Integer})`.
-# The element type of a named unit range is an `AbstractNamedInteger`, which is not
-# an `Integer`.
-function Base.getindex(a::Array, I1::AbstractNamedUnitRange{<:AbstractNamedInteger})
+# A named unit range is an `AbstractArray`, so for a concrete `Array` the Base
+# `getindex(::Array, ::AbstractVector)` method would otherwise win over the generic
+# named `getindex` above. This restores the named behavior for `Array`.
+function Base.getindex(a::Array, I1::AbstractNamedUnitRange)
     return copy(view(a, I1))
 end
 function Base.view(a::AbstractArray, I1::NamedViewIndex, Irest::NamedViewIndex...)
@@ -803,12 +803,12 @@ for (f, f′) in [(:rand, :_rand), (:randn, :_randn)]
         function Base.$f(
                 rng::AbstractRNG,
                 elt::Type{<:Number},
-                dims::Tuple{AbstractNamedInteger, Vararg{AbstractNamedInteger}}
+                dims::Tuple{NamedInteger, Vararg{NamedInteger}}
             )
             return $f(rng, elt, Base.oneto.(dims))
         end
     end
-    for dimtype in [:AbstractNamedInteger, :AbstractNamedUnitRange]
+    for dimtype in [:NamedInteger, :AbstractNamedUnitRange]
         @eval begin
             function Base.$f(
                     rng::AbstractRNG, elt::Type{<:Number}, dim1::$dimtype,
@@ -827,7 +827,7 @@ for (f, f′) in [(:rand, :_rand), (:randn, :_randn)]
         end
     end
 end
-for f in [:zeros, :ones], dimtype in [:AbstractNamedInteger, :AbstractNamedUnitRange]
+for f in [:zeros, :ones], dimtype in [:NamedInteger, :AbstractNamedUnitRange]
     @eval begin
         function Base.$f(
                 elt::Type{<:Number}, ax::Tuple{$dimtype, Vararg{$dimtype}}
@@ -842,7 +842,7 @@ for f in [:zeros, :ones], dimtype in [:AbstractNamedInteger, :AbstractNamedUnitR
         Base.$f(dim1::$dimtype, dims::Vararg{$dimtype}) = $f((dim1, dims...))
     end
 end
-for dimtype in [:AbstractNamedInteger, :AbstractNamedUnitRange]
+for dimtype in [:NamedInteger, :AbstractNamedUnitRange]
     @eval begin
         function Base.fill(value, ax::Tuple{$dimtype, Vararg{$dimtype}})
             a = fill(value, denamed.(ax))
