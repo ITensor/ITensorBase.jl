@@ -7,8 +7,4 @@ using Test: @test, @testset
     @test i isa AbstractNamedInteger
     @test denamed(i) ≡ 3
     @test name(i) ≡ :i
-    for type in (Int32, Int64, Float32, Float64)
-        @test type(i) ≡ type(3)
-        @test convert(type, i) ≡ type(3)
-    end
 end

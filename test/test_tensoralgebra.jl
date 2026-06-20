@@ -104,7 +104,7 @@ using Test: @test, @test_broken, @testset
         a = randn(elt, i, j, k, l)
         u, s, v = svd(a, (i, k), (j, l); trunc = (; maxrank = 2))
         @test u * s * v ≉ a
-        @test Int.(Tuple(size(s))) == (2, 2)
+        @test denamed.(Tuple(size(s))) == (2, 2)
     end
     @testset "left_null/right_null" begin
         dims = (2, 2, 2, 2)

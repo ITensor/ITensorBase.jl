@@ -147,12 +147,6 @@ function Base.string(i::AbstractNamedInteger; kwargs...)
     return "named($(string(denamed(i); kwargs...)), $(repr(name(i))))"
 end
 
-(type::Type{<:Number})(i::AbstractNamedInteger) = type(denamed(i))
-# Converting to a plain number type converts the value and drops the name.
-function Base.convert(::Type{T}, i::AbstractNamedInteger) where {T <: Number}
-    return convert(T, denamed(i))
-end
-
 struct NameMismatch <: Exception
     message::String
 end

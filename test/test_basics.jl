@@ -57,7 +57,7 @@ const elts = (Float32, Float64, Complex{Float32}, Complex{Float64})
                 Index(2; tags = ("X" => "Y",)),
                 Index(2; tags = "X" => "Y"),
             )
-            @test Int(length(i)) == 2
+            @test denamed(length(i)) == 2
             @test hastag(i, "X")
             @test gettag(i, "X") == "Y"
             @test plev(i) == 0
@@ -137,8 +137,8 @@ const elts = (Float32, Float64, Complex{Float32}, Complex{Float64})
         @test j ∈ inds(y)
         @test eltype(x) === elt
         @test eltype(y) === elt
-        @test Int.(Tuple(size(x))) == (2, 2)
-        @test Int.(Tuple(size(y))) == (2, 2)
+        @test denamed.(Tuple(size(x))) == (2, 2)
+        @test denamed.(Tuple(size(y))) == (2, 2)
 
         i = Index(2)
         j = Index(2)
@@ -146,8 +146,8 @@ const elts = (Float32, Float64, Complex{Float32}, Complex{Float64})
         for kwargs in ((; rtol = 1.0e-2), (; cutoff = 1.0e-2))
             x, y = factorize(a, (i,); kwargs...)
             @test a ≈ x * y
-            @test Int.(Tuple(size(x))) == (2, 1)
-            @test Int.(Tuple(size(y))) == (1, 2)
+            @test denamed.(Tuple(size(x))) == (2, 1)
+            @test denamed.(Tuple(size(y))) == (1, 2)
         end
     end
 end
