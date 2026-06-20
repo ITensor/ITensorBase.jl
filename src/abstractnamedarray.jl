@@ -1,17 +1,18 @@
-using TypeParameterAccessors: unspecify_type_parameters
+# `Name` leads (matching `AbstractITensor{DimName}`); `DenamedT` is the unwrapped
+# element type and `N` the rank. The element type is always `Named{Name, DenamedT}`,
+# so it is hardcoded in the `AbstractArray` supertype rather than carried as a
+# parameter. The wrapped-container type lives only on the concrete subtypes.
+abstract type AbstractNamedArray{Name, DenamedT, N} <:
+AbstractArray{Named{Name, DenamedT}, N} end
 
-abstract type AbstractNamedArray{T, N, Value <: AbstractArray, Name} <: AbstractArray{T, N} end
-
-const AbstractNamedVector{T, Value <: AbstractVector, Name} =
-    AbstractNamedArray{T, 1, Value, Name}
-const AbstractNamedMatrix{T, Value <: AbstractVector, Name} =
-    AbstractNamedArray{T, 2, Value, Name}
+const AbstractNamedVector{Name, DenamedT} = AbstractNamedArray{Name, DenamedT, 1}
+const AbstractNamedMatrix{Name, DenamedT} = AbstractNamedArray{Name, DenamedT, 2}
 
 # Minimal interface.
 denamed(a::AbstractNamedArray) = throw(MethodError(denamed, Tuple{typeof(a)}))
 name(a::AbstractNamedArray) = throw(MethodError(name, Tuple{typeof(a)}))
 
-# This can be customized to output different named integer types,
+# This can be customized to output different named array types,
 # such as `namedarray(a::AbstractArray, name::IndexName) = Index(a, name)`.
 namedarray(a::AbstractArray, name) = NamedArray(a, name)
 
@@ -22,23 +23,24 @@ named(a::AbstractArray, name) = namedarray(a, name)
 # TODO: Use `Accessors.@set`?
 setname(a::AbstractNamedArray, name) = namedarray(denamed(a), name)
 
-# TODO: Use `TypeParameterAccessors`.
-denamedtype(::Type{<:AbstractNamedArray{<:Any, <:Any, Value}}) where {Value} = Value
-nametype(::Type{<:AbstractNamedArray{<:Any, <:Any, <:Any, Name}}) where {Name} = Name
+# `Name` leads, so `nametype` reads it from the abstract type. The wrapped
+# container type lives only on the concrete subtypes, so `denamedtype` is defined
+# per concrete type rather than here.
+nametype(::Type{<:AbstractNamedArray{Name}}) where {Name} = Name
 
 # Traits.
 isnamed(::Type{<:AbstractNamedArray}) = true
 
-# TODO: Should they also have the same base type?
+# Equality and hashing are type-agnostic across named array types, following Base's
+# array convention (`[1, 2, 3] == 1:3`, and they hash equally): two named arrays are
+# equal when their names and denamed values are equal, regardless of concrete type.
+# Hashing uses a single shared tag (not the concrete type) so that
+# `a == b => hash(a) == hash(b)` holds; there are no external subtypes that need to
+# override this.
 function Base.:(==)(a1::AbstractNamedArray, a2::AbstractNamedArray)
     return name(a1) == name(a2) && denamed(a1) == denamed(a2)
 end
-function Base.hash(a::AbstractNamedArray, h::UInt)
-    h = hash(Symbol(unspecify_type_parameters(typeof(a))), h)
-    # TODO: Double check how this is handling blocking/sector information.
-    h = hash(denamed(a), h)
-    return hash(name(a), h)
-end
+Base.hash(a::AbstractNamedArray, h::UInt) = hash_named(:NamedArray, a, h)
 
 getindex_named(a::AbstractArray, I...) = named(getindex(denamed(a), I...), name(a))
 
@@ -46,7 +48,7 @@ getindex_named(a::AbstractArray, I...) = named(getindex(denamed(a), I...), name(
 Base.size(a::AbstractNamedArray) = map(s -> named(s, name(a)), size(denamed(a)))
 Base.axes(a::AbstractNamedArray) = map(s -> named(s, name(a)), axes(denamed(a)))
 Base.eachindex(a::AbstractNamedArray) = eachindex(denamed(a))
-function Base.getindex(a::AbstractNamedArray{<:Any, N}, I::Vararg{Int, N}) where {N}
+function Base.getindex(a::AbstractNamedArray{<:Any, <:Any, N}, I::Vararg{Int, N}) where {N}
     return getindex_named(a, I...)
 end
 function Base.getindex(a::AbstractNamedArray, I::Int)
