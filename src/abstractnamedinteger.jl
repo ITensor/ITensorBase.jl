@@ -148,8 +148,7 @@ function Base.string(i::AbstractNamedInteger; kwargs...)
 end
 
 (type::Type{<:Number})(i::AbstractNamedInteger) = type(denamed(i))
-# `<: Integer` previously supplied this; with `AbstractNamedInteger` standalone,
-# converting to a plain number drops the name and converts the value.
+# Converting to a plain number type converts the value and drops the name.
 function Base.convert(::Type{T}, i::AbstractNamedInteger) where {T <: Number}
     return convert(T, denamed(i))
 end
