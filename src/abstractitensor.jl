@@ -626,8 +626,8 @@ function Base.getindex(a::AbstractArray, I1::NamedViewIndex, Irest::NamedViewInd
     return copy(view(a, I1, Irest...))
 end
 # Disambiguate from `Base.getindex(A::Array, I::AbstractUnitRange{<:Integer})`.
-# The element type of a named unit range is an `AbstractNamedInteger` (no longer an
-# `Integer`).
+# A named unit range's element type is an `AbstractNamedInteger`, which is itself no
+# longer an `Integer` subtype, so the constraint names `AbstractNamedInteger`.
 function Base.getindex(a::Array, I1::AbstractNamedUnitRange{<:AbstractNamedInteger})
     return copy(view(a, I1))
 end
