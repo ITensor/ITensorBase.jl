@@ -1,14 +1,19 @@
 module ITensorBaseBlockArraysExt
 using ArrayLayouts: ArrayLayouts
 using BlockArrays: Block, BlockRange
-using ITensorBase: AbstractITensor, AbstractNamedUnitRange, getindex_named, view_nameddims
+using ITensorBase: AbstractITensor, AbstractNamedInteger, AbstractNamedUnitRange,
+    getindex_named, view_nameddims
 
-function Base.getindex(r::AbstractNamedUnitRange{<:Integer}, I::Block{1})
+# The first parameter of `AbstractNamedUnitRange` is its element type, an
+# `AbstractNamedInteger`, which is not an `Integer`. These methods disambiguate
+# named-range block indexing from `BlockArrays`' generic `AbstractArray`
+# block-indexing methods.
+function Base.getindex(r::AbstractNamedUnitRange{<:AbstractNamedInteger}, I::Block{1})
     # TODO: Use `Derive.@interface NamedArrayInterface() r[I]` instead.
     return getindex_named(r, I)
 end
 
-function Base.getindex(r::AbstractNamedUnitRange{<:Integer}, I::BlockRange{1})
+function Base.getindex(r::AbstractNamedUnitRange{<:AbstractNamedInteger}, I::BlockRange{1})
     # TODO: Use `Derive.@interface NamedArrayInterface() r[I]` instead.
     return getindex_named(r, I)
 end

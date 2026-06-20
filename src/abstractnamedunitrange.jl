@@ -86,13 +86,13 @@ struct FirstIndex{Arr, Dim}
     array::Arr
     dim::Dim
 end
-Base.to_index(i::FirstIndex) = Int(first(axes(i.array, i.dim)))
+Base.to_index(i::FirstIndex) = denamed(first(axes(i.array, i.dim)))
 
 struct LastIndex{Arr, Dim}
     array::Arr
     dim::Dim
 end
-Base.to_index(i::LastIndex) = Int(last(axes(i.array, i.dim)))
+Base.to_index(i::LastIndex) = denamed(last(axes(i.array, i.dim)))
 
 function Base.getindex(r::AbstractNamedUnitRange, I::FirstIndex)
     return first(r)

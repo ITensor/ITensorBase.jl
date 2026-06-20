@@ -1,6 +1,10 @@
 using TypeParameterAccessors: unspecify_type_parameters
 
-abstract type AbstractNamedInteger{Value, Name} <: Integer end
+# A named integer is a tagged scalar, not a true `Integer`: mixed named/unnamed
+# arithmetic and operations like `i1 * i2` are not cleanly definable under the
+# `Integer` contract, and inherited `Integer` fallbacks risk silently dropping the
+# name. So it is standalone and supplies the integer-like surface it needs directly.
+abstract type AbstractNamedInteger{Value, Name} end
 
 # Minimal interface.
 denamed(i::AbstractNamedInteger) = throw(MethodError(dename, Tuple{typeof(i)}))
@@ -142,8 +146,6 @@ Base.unsigned(i::AbstractNamedInteger) = setvalue(i, unsigned(denamed(i)))
 function Base.string(i::AbstractNamedInteger; kwargs...)
     return "named($(string(denamed(i); kwargs...)), $(repr(name(i))))"
 end
-
-(type::Type{<:Number})(i::AbstractNamedInteger) = type(denamed(i))
 
 struct NameMismatch <: Exception
     message::String
