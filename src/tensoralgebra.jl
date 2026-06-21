@@ -10,10 +10,7 @@ function mul_nameddims(a1::AbstractITensor, a2::AbstractITensor)
     a_dest, dimnames_dest = TA.contract(
         denamed(a1), dimnames(a1), denamed(a2), dimnames(a2)
     )
-    nameddimstype = combine_nameddimsconstructors(
-        nameddimsconstructorof(a1), nameddimsconstructorof(a2)
-    )
-    return nameddimstype(a_dest, dimnames_dest)
+    return nameddims(a_dest, dimnames_dest)
 end
 
 # Left associative fold/reduction.

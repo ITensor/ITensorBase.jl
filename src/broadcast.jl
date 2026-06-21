@@ -1,22 +1,21 @@
 using ..ITensorBase: AbstractITensor, ITensorBase, NamedUnitRange, dename, denamed, getperm,
-    inds, name, named, nameddimsconstructorof
+    inds, name, named, nameddims
 using Base.Broadcast: Broadcast as BC, Broadcasted, broadcast_shape, broadcasted,
     check_broadcast_shape, combine_axes
 using TensorAlgebra: TensorAlgebra as TA
 
 abstract type AbstractITensorStyle{N} <: BC.AbstractArrayStyle{N} end
 
-struct ITensorStyle{N, NDA} <: AbstractITensorStyle{N} end
-ITensorStyle(::Val{N}) where {N} = ITensorStyle{N, ITensor}()
-ITensorStyle{M}(::Val{N}) where {M, N} = ITensorStyle{N, ITensor}()
-ITensorStyle{M, NDA}(::Val{N}) where {M, N, NDA} = ITensorStyle{N, NDA}()
-
-function nameddimstype(style::ITensorStyle{<:Any, NDA}) where {NDA}
-    return NDA
-end
+# Both `ITensorStyle` and `ITensorOperatorStyle` are dynamically-ranked
+# (`ndims(::AbstractITensor) === Any`), so the rank parameter `N` is `Any`. The
+# `Val{N}` constructors below are required by `Base.Broadcast` for ranked styles;
+# they preserve the style and ignore the inferred rank.
+struct ITensorStyle{N} <: AbstractITensorStyle{N} end
+ITensorStyle(::Val{N}) where {N} = ITensorStyle{N}()
+ITensorStyle{M}(::Val{N}) where {M, N} = ITensorStyle{N}()
 
 function BC.BroadcastStyle(arraytype::Type{<:AbstractITensor})
-    return ITensorStyle{ndims(arraytype), nameddimsconstructorof(arraytype)}()
+    return ITensorStyle{ndims(arraytype)}()
 end
 
 # An `AbstractITensor` broadcasts as itself (previously inherited from
@@ -134,7 +133,7 @@ function Base.similar(bc::Broadcasted{<:AbstractITensorStyle}, elt::Type, ax)
     inds_a = name.(ax)
     bc_denamed = broadcasted_denamed(bc, inds_a)
     a_denamed = similar(bc_denamed, elt)
-    return nameddimstype(bc.style)(a_denamed, inds_a)
+    return nameddims(a_denamed, inds_a)
 end
 
 inds(bc::Broadcasted) = name.(axes(bc))
@@ -161,7 +160,7 @@ function Base.copy(bc::Broadcasted{<:AbstractITensorStyle})
         dest_denamed = similar(denamed_prototype(bc), eltype(lb), dest_axes)
         copyto!(dest_denamed, lb)
     end
-    return nameddimstype(bc.style)(dest_denamed, inds_dest)
+    return nameddims(dest_denamed, inds_dest)
 end
 
 function Base.copyto!(dest::AbstractITensor, bc::Broadcasted{<:AbstractITensorStyle})
@@ -177,4 +176,53 @@ function Base.copyto!(dest::AbstractITensor, bc::Broadcasted{<:AbstractITensorSt
         copyto!(dest_denamed, lb)
     end
     return dest
+end
+
+# Operator-preserving broadcasting.
+#
+# An `ITensorOperator` broadcasts as itself (it does not peel to its `state`), so
+# `op .+ op`, `2 .* op`, etc. carry the `ITensorOperatorStyle`. The style-combination
+# rules below enforce the input rules declaratively:
+#   - operator ⊗ operator → operator (preserved),
+#   - operator ⊗ scalar → operator (`2 .* op` stays an operator),
+#   - operator ⊗ non-operator tensor → error.
+# The `BroadcastStyle(::Type{<:ITensorOperator})` mapping and the operator-specific
+# `copy` / `similar` (which unwrap, delegate to `ITensorStyle`, then rewrap) live in
+# `itensoroperator.jl`, where `ITensorOperator` is defined. `*` (contraction) is
+# unchanged and still decays to `state`.
+
+struct ITensorOperatorStyle{N} <: AbstractITensorStyle{N} end
+ITensorOperatorStyle(::Val{N}) where {N} = ITensorOperatorStyle{N}()
+ITensorOperatorStyle{M}(::Val{N}) where {M, N} = ITensorOperatorStyle{N}()
+
+# operator ⊗ operator stays an operator.
+function BC.BroadcastStyle(
+        ::ITensorOperatorStyle{M},
+        ::ITensorOperatorStyle{N}
+    ) where {M, N}
+    return ITensorOperatorStyle{M}()
+end
+# operator ⊗ scalar (`DefaultArrayStyle{0}`, e.g. `2 .* op`) stays an operator.
+function BC.BroadcastStyle(
+        style::ITensorOperatorStyle, ::BC.DefaultArrayStyle{0}
+    )
+    return style
+end
+# operator ⊗ non-operator named tensor is type-nonsense and is rejected.
+function BC.BroadcastStyle(::ITensorOperatorStyle, ::ITensorStyle)
+    return throw(
+        ArgumentError(
+            "Cannot broadcast an `ITensorOperator` together with a non-operator " *
+                "tensor. Wrap the tensor as an operator first, or unwrap the " *
+                "operator with `state`."
+        )
+    )
+end
+
+# Reinterpret an operator-style `Broadcasted` under `ITensorStyle`, the broadcast
+# over the operators' states, so the shared `ITensorStyle` implementation runs (its
+# `broadcasted_denamed` already peels each operator operand to its `state` via
+# `denamed`).
+function statebroadcasted(bc::Broadcasted{<:ITensorOperatorStyle})
+    return Broadcasted{ITensorStyle{Any}}(bc.f, bc.args, bc.axes)
 end
