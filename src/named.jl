@@ -59,10 +59,6 @@ function Base.show(io::IO, i::Named)
 end
 
 # Integer interface, for the named-integer case `NamedInteger`.
-# TODO: Should `*` make a random name, or require defining a way to combine names?
-function Base.:*(i1::NamedInteger, i2::NamedInteger)
-    return named(denamed(i1) * denamed(i2), fusednames(name(i1), name(i2)))
-end
 Base.:-(i::NamedInteger) = setvalue(i, -denamed(i))
 
 ## TODO: Support this, we need to define `NamedFloat`, `NamedReal`, `NamedNumber`, etc.
@@ -72,13 +68,6 @@ Base.:-(i::NamedInteger) = setvalue(i, -denamed(i))
 ## function Base.:*(i1::NamedInteger, i2::Number)
 ##   return named(denamed(i1) * i2, name(i1))
 ## end
-
-# For the sake of generic code, the name is ignored.
-# Used in `AbstractArray` `Base.show`.
-# TODO: See if we can delete this.
-Base.:+(i1::Int, i2::NamedInteger) = i1 + denamed(i2)
-
-Base.:*(i1::Int, i2::NamedInteger) = named(i1 * denamed(i2), name(i2))
 
 Base.zero(i::NamedInteger) = setvalue(i, zero(denamed(i)))
 Base.one(i::NamedInteger) = setvalue(i, one(denamed(i)))

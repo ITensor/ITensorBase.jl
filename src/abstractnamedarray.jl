@@ -48,6 +48,10 @@ getindex_named(a::AbstractArray, I...) = named(getindex(denamed(a), I...), name(
 Base.size(a::AbstractNamedArray) = map(s -> named(s, name(a)), size(denamed(a)))
 Base.axes(a::AbstractNamedArray) = map(s -> named(s, name(a)), axes(denamed(a)))
 Base.eachindex(a::AbstractNamedArray) = eachindex(denamed(a))
+# A named array carries a single name, so its length is that name attached to the
+# denamed length. No fusion is involved, unlike a multi-dim `AbstractITensor`, which
+# has no single name and so does not define `length`.
+Base.length(a::AbstractNamedArray) = named(length(denamed(a)), name(a))
 function Base.getindex(a::AbstractNamedArray{<:Any, <:Any, N}, I::Vararg{Int, N}) where {N}
     return getindex_named(a, I...)
 end
