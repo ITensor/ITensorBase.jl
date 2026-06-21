@@ -21,10 +21,10 @@ function IndexName(
     )
     return IndexName(id, Dict{String, String}(tags), plev)
 end
-function randname(rng::AbstractRNG, n::IndexName)
+function uniquename(rng::AbstractRNG, n::IndexName)
     return setid(n, rand(rng, UInt64))
 end
-function randname(rng::AbstractRNG, ::Type{<:IndexName})
+function uniquename(rng::AbstractRNG, ::Type{<:IndexName})
     return IndexName(rng)
 end
 
@@ -82,7 +82,7 @@ end
 # An `Index` is a named unit range whose name is an `IndexName` (carrying the id,
 # tags, and prime level), not a distinct type. Construction (`Index(3)`,
 # `Index(1:3)`) goes through the generic `NamedUnitRange{Name}` constructors, which
-# mint a fresh `IndexName` via `randname`. Attributes (tags, prime level) are set
+# mint a fresh `IndexName` via `uniquename`. Attributes (tags, prime level) are set
 # after construction with the modifier functions below.
 const Index = NamedUnitRange{IndexName}
 

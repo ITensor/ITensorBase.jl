@@ -46,8 +46,8 @@ function hash_named(typetag::Symbol, x, h::UInt)
 end
 Base.hash(i::Named, h::UInt) = hash_named(:Named, i, h)
 
-function randname(rng::AbstractRNG, i::Named)
-    return named(denamed(i), randname(name(i)))
+function uniquename(rng::AbstractRNG, i::Named)
+    return named(denamed(i), uniquename(name(i)))
 end
 
 function Base.string(i::Named; kwargs...)

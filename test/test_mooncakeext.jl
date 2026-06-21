@@ -1,6 +1,6 @@
 using ITensorBase: ITensor, Name, NamedUnitRange, blockedperm_nameddims,
     combine_nameddimsconstructors, dimnames, dimnames_setdiff, inds, name,
-    nameddimsconstructorof, randname, to_inds
+    nameddimsconstructorof, to_inds, uniquename
 using LinearAlgebra: mul!
 using Mooncake: Mooncake
 using Random: Random
@@ -44,8 +44,8 @@ using Test: @test, @testset
         )
         Mooncake.TestUtils.test_rule(rng, name, i; mode, is_primitive)
         Mooncake.TestUtils.test_rule(rng, nameddimsconstructorof, a1; mode, is_primitive)
-        Mooncake.TestUtils.test_rule(rng, randname, i; mode, is_primitive)
-        Mooncake.TestUtils.test_rule(rng, randname, rng, i; mode, is_primitive)
+        Mooncake.TestUtils.test_rule(rng, uniquename, i; mode, is_primitive)
+        Mooncake.TestUtils.test_rule(rng, uniquename, rng, i; mode, is_primitive)
         Mooncake.TestUtils.test_rule(rng, to_inds, a1, (i, j); mode, is_primitive)
     end
     @testset "contract" begin

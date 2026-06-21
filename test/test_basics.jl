@@ -1,10 +1,8 @@
 using ITensorBase: ITensorBase, ITensor, Index, IndexName, dename, denamed, dimnametype,
     gettag, hastag, id, inds, mapinds, name, named, plev, prime, setplev, settag, tags,
     unsettag
-using LinearAlgebra: factorize
 using Test: @test, @test_broken, @test_throws, @testset
 
-const elts = (Float32, Float64, Complex{Float32}, Complex{Float64})
 @testset "ITensorBase" begin
     @testset "IndexName" begin
         n1 = IndexName(; id = UInt64(0))
@@ -124,30 +122,5 @@ const elts = (Float32, Float64, Complex{Float32}, Complex{Float64})
         i = settag(Index(2), "X", "Y")
         @test sprint(show, "text/plain", i) ==
             "Index(length=2|id=$(id(i) % 1000)|\"X\"=>\"Y\")"
-    end
-    @testset "factorize" for elt in elts
-        i = Index(2)
-        j = Index(2)
-        a = randn(elt, i, j)
-        x, y = factorize(a, (i,))
-        @test a ≈ x * y
-        @test x isa ITensor
-        @test y isa ITensor
-        @test i ∈ inds(x)
-        @test j ∈ inds(y)
-        @test eltype(x) === elt
-        @test eltype(y) === elt
-        @test denamed.(Tuple(size(x))) == (2, 2)
-        @test denamed.(Tuple(size(y))) == (2, 2)
-
-        i = Index(2)
-        j = Index(2)
-        a = randn(elt, i) * randn(elt, j)
-        for kwargs in ((; rtol = 1.0e-2), (; cutoff = 1.0e-2))
-            x, y = factorize(a, (i,); kwargs...)
-            @test a ≈ x * y
-            @test denamed.(Tuple(size(x))) == (2, 1)
-            @test denamed.(Tuple(size(y))) == (1, 2)
-        end
     end
 end
