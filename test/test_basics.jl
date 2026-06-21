@@ -2,25 +2,26 @@ using ITensorBase: ITensorBase, ITensor, Index, IndexName, dename, denamed, dimn
     gettag, hastag, id, inds, mapinds, name, named, plev, prime, setplev, settag, tags,
     unsettag
 using Test: @test, @test_broken, @test_throws, @testset
+using UUIDs: UUID
 
 @testset "ITensorBase" begin
     @testset "IndexName" begin
-        n1 = IndexName(; id = UInt64(0))
-        n2 = IndexName(; id = UInt64(0))
+        n1 = IndexName(; id = UUID(0))
+        n2 = IndexName(; id = UUID(0))
         @test n1 == n2
         @test isequal(n1, n2)
         @test hash(n1) ≡ hash(n2)
 
-        n1 = IndexName(; id = UInt64(0))
-        n2 = IndexName(; id = UInt64(1))
+        n1 = IndexName(; id = UUID(0))
+        n2 = IndexName(; id = UUID(1))
         @test n1 ≠ n2
         @test !isequal(n1, n2)
         @test n1 < n2
         @test isless(n1, n2)
         @test hash(n1) ≠ hash(n2)
 
-        n1 = IndexName(; id = UInt64(0), plev = 0)
-        n2 = IndexName(; id = UInt64(0), plev = 1)
+        n1 = IndexName(; id = UUID(0), plev = 0)
+        n2 = IndexName(; id = UUID(0), plev = 1)
         @test n1 ≠ n2
         @test !isequal(n1, n2)
         @test n1 < n2
@@ -117,10 +118,11 @@ using Test: @test, @test_broken, @test_throws, @testset
     end
     @testset "show" begin
         i = Index(2)
-        @test sprint(show, "text/plain", i) == "Index(length=2|id=$(id(i) % 1000))"
+        @test sprint(show, "text/plain", i) ==
+            "Index(length=2|id=$(first(string(id(i)), 8)))"
 
         i = settag(Index(2), "X", "Y")
         @test sprint(show, "text/plain", i) ==
-            "Index(length=2|id=$(id(i) % 1000)|\"X\"=>\"Y\")"
+            "Index(length=2|id=$(first(string(id(i)), 8))|\"X\"=>\"Y\")"
     end
 end
