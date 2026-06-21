@@ -1,6 +1,6 @@
-using ITensorBase: AbstractNamedUnitRange, ITensor, Name, NamedUnitRange,
-    blockedperm_nameddims, combine_nameddimsconstructors, dimnames, dimnames_setdiff, inds,
-    name, nameddimsconstructorof, randname, to_inds
+using ITensorBase: ITensor, Name, NamedUnitRange, blockedperm_nameddims,
+    combine_nameddimsconstructors, dimnames, dimnames_setdiff, inds, name,
+    nameddimsconstructorof, randname, to_inds
 using LinearAlgebra: mul!
 using Mooncake: Mooncake
 using Random: Random
@@ -15,7 +15,6 @@ using Test: @test, @testset
     atol = eps(real(elt))^(3 / 4)
     rtol = eps(real(elt))^(3 / 4)
     @testset "zero derivatives" begin
-        @test Mooncake.tangent_type(AbstractNamedUnitRange) ≡ Mooncake.NoTangent
         @test Mooncake.tangent_type(NamedUnitRange) ≡ Mooncake.NoTangent
 
         i, j, k = Name.((:i, :j, :k))

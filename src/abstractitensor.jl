@@ -75,12 +75,12 @@ dimname_isequal(r1, r2::AbstractNamedArray) = r1 == name(r2)
 dimname_isequal(r1::AbstractNamedArray, r2::Name) = name(r1) == name(r2)
 dimname_isequal(r1::Name, r2::AbstractNamedArray) = name(r1) == name(r2)
 
-dimname_isequal(r1::AbstractNamedUnitRange, r2::AbstractNamedUnitRange) = isequal(r1, r2)
-dimname_isequal(r1::AbstractNamedUnitRange, r2) = name(r1) == r2
-dimname_isequal(r1, r2::AbstractNamedUnitRange) = r1 == name(r2)
+dimname_isequal(r1::NamedUnitRange, r2::NamedUnitRange) = isequal(r1, r2)
+dimname_isequal(r1::NamedUnitRange, r2) = name(r1) == r2
+dimname_isequal(r1, r2::NamedUnitRange) = r1 == name(r2)
 
-dimname_isequal(r1::AbstractNamedUnitRange, r2::Name) = name(r1) == name(r2)
-dimname_isequal(r1::Name, r2::AbstractNamedUnitRange) = name(r1) == name(r2)
+dimname_isequal(r1::NamedUnitRange, r2::Name) = name(r1) == name(r2)
+dimname_isequal(r1::Name, r2::NamedUnitRange) = name(r1) == name(r2)
 
 function to_inds(a::AbstractITensor, dims)
     is = Base.Fix1(dim, a).(name.(dims))
@@ -128,7 +128,7 @@ nameddimsconstructor(nameddim) = nameddimsconstructor(typeof(nameddim))
 # depending on the dimension name types, for example
 # output an `ITensor` if the dimension names are `IndexName`s.
 nameddimsconstructor(nameddimtype::Type) = ITensor
-function nameddimsconstructor(nameddimtype::Type{<:AbstractNamedUnitRange})
+function nameddimsconstructor(nameddimtype::Type{<:NamedUnitRange})
     return nameddimsconstructor(nametype(nameddimtype))
 end
 function combine_nameddimsconstructors(
@@ -286,14 +286,14 @@ end
 # This is defined explicitly since the Base version expects the eltype
 # to be known at compile time, which isn't true for ITensors.
 function Base.similar(
-        a::AbstractArray, inds::Tuple{AbstractNamedUnitRange, Vararg{AbstractNamedUnitRange}}
+        a::AbstractArray, inds::Tuple{NamedUnitRange, Vararg{NamedUnitRange}}
     )
     return similar(a, eltype(a), inds)
 end
 
 function Base.similar(
         a::AbstractArray, elt::Type,
-        inds::Tuple{AbstractNamedUnitRange, Vararg{AbstractNamedUnitRange}}
+        inds::Tuple{NamedUnitRange, Vararg{NamedUnitRange}}
     )
     return similar_nameddims(a, elt, inds)
 end
@@ -303,13 +303,13 @@ end
 # array prototype) no longer cover it.
 function Base.similar(
         a::AbstractITensor,
-        inds::Tuple{AbstractNamedUnitRange, Vararg{AbstractNamedUnitRange}}
+        inds::Tuple{NamedUnitRange, Vararg{NamedUnitRange}}
     )
     return similar(a, eltype(a), inds)
 end
 function Base.similar(
         a::AbstractITensor, elt::Type,
-        inds::Tuple{AbstractNamedUnitRange, Vararg{AbstractNamedUnitRange}}
+        inds::Tuple{NamedUnitRange, Vararg{NamedUnitRange}}
     )
     return similar_nameddims(a, elt, inds)
 end
@@ -389,11 +389,11 @@ end
 struct NamedDimsCartesianIndices{
         N,
         DimName,
-        Indices <: Tuple{Vararg{AbstractNamedUnitRange, N}},
+        Indices <: Tuple{Vararg{NamedUnitRange, N}},
         Index <: Tuple{Vararg{NamedInteger, N}},
     } <: AbstractITensor{DimName}
     indices::Indices
-    function NamedDimsCartesianIndices(indices::Tuple{Vararg{AbstractNamedUnitRange}})
+    function NamedDimsCartesianIndices(indices::Tuple{Vararg{NamedUnitRange}})
         dimname = eltype(name.(indices))
         return new{length(indices), dimname, typeof(indices), Tuple{eltype.(indices)...}}(
             indices
@@ -599,7 +599,7 @@ end
 
 # Like `const ViewIndex = Union{Real,AbstractArray}`.
 const NamedViewIndex =
-    Union{NamedInteger, AbstractNamedUnitRange, AbstractNamedArray}
+    Union{NamedInteger, NamedUnitRange, AbstractNamedArray}
 
 using ArrayLayouts: ArrayLayouts, MemoryLayout
 
@@ -628,7 +628,7 @@ end
 # A named unit range is an `AbstractArray`, so for a concrete `Array` the Base
 # `getindex(::Array, ::AbstractVector)` method would otherwise win over the generic
 # named `getindex` above. This restores the named behavior for `Array`.
-function Base.getindex(a::Array, I1::AbstractNamedUnitRange)
+function Base.getindex(a::Array, I1::NamedUnitRange)
     return copy(view(a, I1))
 end
 function Base.view(a::AbstractArray, I1::NamedViewIndex, Irest::NamedViewIndex...)
@@ -795,7 +795,7 @@ for (f, f′) in [(:rand, :_rand), (:randn, :_randn)]
         function Base.$f(
                 rng::AbstractRNG,
                 elt::Type{<:Number},
-                ax::Tuple{AbstractNamedUnitRange, Vararg{AbstractNamedUnitRange}}
+                ax::Tuple{NamedUnitRange, Vararg{NamedUnitRange}}
             )
             a = $f′(rng, elt, denamed.(ax))
             return a[Name.(name.(ax))...]
@@ -808,7 +808,7 @@ for (f, f′) in [(:rand, :_rand), (:randn, :_randn)]
             return $f(rng, elt, Base.oneto.(dims))
         end
     end
-    for dimtype in [:NamedInteger, :AbstractNamedUnitRange]
+    for dimtype in [:NamedInteger, :NamedUnitRange]
         @eval begin
             function Base.$f(
                     rng::AbstractRNG, elt::Type{<:Number}, dim1::$dimtype,
@@ -827,7 +827,7 @@ for (f, f′) in [(:rand, :_rand), (:randn, :_randn)]
         end
     end
 end
-for f in [:zeros, :ones], dimtype in [:NamedInteger, :AbstractNamedUnitRange]
+for f in [:zeros, :ones], dimtype in [:NamedInteger, :NamedUnitRange]
     @eval begin
         function Base.$f(
                 elt::Type{<:Number}, ax::Tuple{$dimtype, Vararg{$dimtype}}
@@ -842,7 +842,7 @@ for f in [:zeros, :ones], dimtype in [:NamedInteger, :AbstractNamedUnitRange]
         Base.$f(dim1::$dimtype, dims::Vararg{$dimtype}) = $f((dim1, dims...))
     end
 end
-for dimtype in [:NamedInteger, :AbstractNamedUnitRange]
+for dimtype in [:NamedInteger, :NamedUnitRange]
     @eval begin
         function Base.fill(value, ax::Tuple{$dimtype, Vararg{$dimtype}})
             a = fill(value, denamed.(ax))

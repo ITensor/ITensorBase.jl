@@ -1,12 +1,12 @@
 module ITensorBaseMooncakeExt
 
-using ITensorBase: AbstractITensor, AbstractNamedUnitRange, blockedperm_nameddims,
+using ITensorBase: AbstractITensor, NamedUnitRange, blockedperm_nameddims,
     combine_nameddimsconstructors, dimnames, dimnames_setdiff, inds, name,
     nameddimsconstructorof, randname, to_inds
 using Mooncake: Mooncake, @zero_derivative, DefaultCtx
 using TensorAlgebra: blockedperm
 
-Mooncake.tangent_type(::Type{<:AbstractNamedUnitRange}) = Mooncake.NoTangent
+Mooncake.tangent_type(::Type{<:NamedUnitRange}) = Mooncake.NoTangent
 
 @zero_derivative DefaultCtx Tuple{typeof(blockedperm), AbstractITensor, Any, Any}
 @zero_derivative DefaultCtx Tuple{typeof(blockedperm_nameddims), Any, Any, Any}

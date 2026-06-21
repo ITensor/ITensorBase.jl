@@ -1,5 +1,5 @@
-using ..ITensorBase: AbstractITensor, AbstractNamedUnitRange, ITensorBase, dename, denamed,
-    getperm, inds, name, named, nameddimsconstructorof
+using ..ITensorBase: AbstractITensor, ITensorBase, NamedUnitRange, dename, denamed, getperm,
+    inds, name, named, nameddimsconstructorof
 using Base.Broadcast: Broadcast as BC, Broadcasted, broadcast_shape, broadcasted,
     check_broadcast_shape, combine_axes
 using TensorAlgebra: TensorAlgebra as TA
@@ -33,46 +33,46 @@ function BC.combine_axes(a1::AbstractITensor, a2::AbstractITensor)
 end
 BC.combine_axes(a::AbstractITensor) = axes(a)
 
-# The named axes are a `Tuple` of `AbstractNamedUnitRange`s. Dispatch the
+# The named axes are a `Tuple` of `NamedUnitRange`s. Dispatch the
 # name-aware shape combination on that tuple form (the elements are not
 # `AbstractUnitRange`s, so Base's positional tuple-shape methods do not apply).
 function BC.broadcast_shape(
-        ax1::Tuple{AbstractNamedUnitRange, Vararg{AbstractNamedUnitRange}},
-        ax2::Tuple{AbstractNamedUnitRange, Vararg{AbstractNamedUnitRange}},
-        ax_rest::Tuple{AbstractNamedUnitRange, Vararg{AbstractNamedUnitRange}}...
+        ax1::Tuple{NamedUnitRange, Vararg{NamedUnitRange}},
+        ax2::Tuple{NamedUnitRange, Vararg{NamedUnitRange}},
+        ax_rest::Tuple{NamedUnitRange, Vararg{NamedUnitRange}}...
     )
     return broadcast_shape(broadcast_shape(ax1, ax2), ax_rest...)
 end
 
 function BC.broadcast_shape(
-        ax1::Tuple{AbstractNamedUnitRange, Vararg{AbstractNamedUnitRange}},
-        ax2::Tuple{AbstractNamedUnitRange, Vararg{AbstractNamedUnitRange}}
+        ax1::Tuple{NamedUnitRange, Vararg{NamedUnitRange}},
+        ax2::Tuple{NamedUnitRange, Vararg{NamedUnitRange}}
     )
     return promote_shape(ax1, ax2)
 end
 
 # Handle scalar values.
 function BC.broadcast_shape(
-        ax1::Tuple{}, ax2::Tuple{AbstractNamedUnitRange, Vararg{AbstractNamedUnitRange}}
+        ax1::Tuple{}, ax2::Tuple{NamedUnitRange, Vararg{NamedUnitRange}}
     )
     return ax2
 end
 function BC.broadcast_shape(
-        ax1::Tuple{AbstractNamedUnitRange, Vararg{AbstractNamedUnitRange}}, ax2::Tuple{}
+        ax1::Tuple{NamedUnitRange, Vararg{NamedUnitRange}}, ax2::Tuple{}
     )
     return ax1
 end
 
 function Base.promote_shape(
-        ax1::Tuple{AbstractNamedUnitRange, Vararg{AbstractNamedUnitRange}},
-        ax2::Tuple{AbstractNamedUnitRange, Vararg{AbstractNamedUnitRange}}
+        ax1::Tuple{NamedUnitRange, Vararg{NamedUnitRange}},
+        ax2::Tuple{NamedUnitRange, Vararg{NamedUnitRange}}
     )
     return set_promote_shape(ax1, ax2)
 end
 
 function set_promote_shape(
-        ax1::Tuple{AbstractNamedUnitRange, Vararg{AbstractNamedUnitRange, N}},
-        ax2::Tuple{AbstractNamedUnitRange, Vararg{AbstractNamedUnitRange, N}}
+        ax1::Tuple{NamedUnitRange, Vararg{NamedUnitRange, N}},
+        ax2::Tuple{NamedUnitRange, Vararg{NamedUnitRange, N}}
     ) where {N}
     perm = getperm(ax2, ax1)
     ax2_aligned = map(i -> ax2[i], perm)
@@ -84,7 +84,7 @@ end
 # TODO: Decide if this should be a general definition for `AbstractITensor`,
 # or just for `AbstractITensor`.
 function set_promote_shape(
-        ax1::Tuple{}, ax2::Tuple{AbstractNamedUnitRange, Vararg{AbstractNamedUnitRange}}
+        ax1::Tuple{}, ax2::Tuple{NamedUnitRange, Vararg{NamedUnitRange}}
     )
     return ax2
 end
@@ -93,14 +93,14 @@ end
 # TODO: Decide if this should be a general definition for `AbstractITensor`,
 # or just for `AbstractITensor`.
 function set_promote_shape(
-        ax1::Tuple{AbstractNamedUnitRange, Vararg{AbstractNamedUnitRange}}, ax2::Tuple{}
+        ax1::Tuple{NamedUnitRange, Vararg{NamedUnitRange}}, ax2::Tuple{}
     )
     return ax1
 end
 
 function BC.check_broadcast_shape(
-        ax1::Tuple{AbstractNamedUnitRange, Vararg{AbstractNamedUnitRange}},
-        ax2::Tuple{AbstractNamedUnitRange, Vararg{AbstractNamedUnitRange}}
+        ax1::Tuple{NamedUnitRange, Vararg{NamedUnitRange}},
+        ax2::Tuple{NamedUnitRange, Vararg{NamedUnitRange}}
     )
     return set_check_broadcast_shape(ax1, ax2)
 end
