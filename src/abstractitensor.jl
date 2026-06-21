@@ -240,9 +240,8 @@ function Base.size(a::AbstractITensor)
     return length.(axes(a))
 end
 
-function Base.length(a::AbstractITensor)
-    return prod(size(a); init = 1)
-end
+# `length` is intentionally not defined: an ITensor's dimensions are named and
+# unordered, so there is no canonical linearization into `1:length`.
 
 # Circumvent issue when ndims isn't known at compile time.
 Base.axes(a::AbstractITensor, d) = axes(a)[d]

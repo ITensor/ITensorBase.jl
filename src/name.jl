@@ -53,27 +53,6 @@ function _parse_name(ex)
     end
 end
 
-# vcat that works with combinations of tuples
-# and vectors.
-generic_vcat(v1, v2) = vcat(v1, v2)
-generic_vcat(v1::Tuple, v2) = vcat([v1...], v2)
-generic_vcat(v1, v2::Tuple) = vcat(v1, [v2...])
-generic_vcat(v1::Tuple, v2::Tuple) = (v1..., v2...)
-
-struct FusedNames{Names} <: AbstractName
-    names::Names
-end
-fusednames(name1, name2) = FusedNames((name1, name2))
-function fusednames(name1::FusedNames, name2::FusedNames)
-    return FusedNames(generic_vcat(name1.names, name2.names))
-end
-fusednames(name1, name2::FusedNames) = fusednames(FusedNames((name1,)), name2)
-fusednames(name1::FusedNames, name2) = fusednames(name1, FusedNames((name2,)))
-
-function Base.:(==)(n1::FusedNames, n2::FusedNames)
-    return mapreduce(==, &, n1.names, n2.names)
-end
-
 struct NameMismatch <: Exception
     message::String
 end

@@ -1,9 +1,8 @@
 using Combinatorics: Combinatorics
 using ITensorBase: @names, AbstractITensor, ITensor, Name, NameMismatch,
     NamedDimsCartesianIndex, NamedDimsCartesianIndices, aligndims, aligneddims, apply,
-    dename, denamed, denamedtype, dim, dimnames, dimnametype, dims, fusednames, inds,
-    isnamed, mapinds, name, named, nameddims, namedoneto, product, replacedimnames,
-    replaceinds, setinds
+    dename, denamed, denamedtype, dim, dimnames, dimnametype, dims, inds, isnamed, mapinds,
+    name, named, nameddims, namedoneto, product, replacedimnames, replaceinds, setinds
 using LinearAlgebra: LinearAlgebra
 using Test: @test, @test_throws, @testset
 using VectorInterface: scalartype
@@ -230,7 +229,8 @@ end
         na[1, 1] = 11
         @test na[1, 1] == 11
         @test Tuple(size(na)) == (named(3, "i"), named(4, "j"))
-        @test length(na) == named(12, fusednames("i", "j"))
+        # An ITensor has named, unordered dims, so `length` (a linearization) errors.
+        @test_throws MethodError length(na)
         @test Tuple(axes(na)) == (named(1:3, "i"), named(1:4, "j"))
         @test randn(named.((3, 4), ("i", "j"))) isa ITensor
         @test na["i" => 1, "j" => 2] == a[1, 2]

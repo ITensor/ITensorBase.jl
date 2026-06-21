@@ -40,7 +40,7 @@ Base.conj(r::NamedUnitRange) = named(conj(denamed(r)), name(r))
 # Unit range functionality.
 Base.first(r::NamedUnitRange) = named(first(denamed(r)), name(r))
 Base.last(r::NamedUnitRange) = named(last(denamed(r)), name(r))
-Base.length(r::NamedUnitRange) = named(length(denamed(r)), name(r))
+# `length` is inherited from the `AbstractNamedArray` generic (identical definition).
 Base.size(r::NamedUnitRange) = (named(length(denamed(r)), name(r)),)
 Base.axes(r::NamedUnitRange) = (named(only(axes(denamed(r))), name(r)),)
 Base.step(r::NamedUnitRange) = named(step(denamed(r)), name(r))
