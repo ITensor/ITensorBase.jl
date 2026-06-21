@@ -225,7 +225,6 @@ end
         nb = mapinds(n -> n == named(1:3, "i") ? named(1:3, "k") : n, na)
         @test inds(nb) == (named(1:3, "k"), named(1:4, "j"))
         @test denamed(nb) == a
-        nb = setdimnames(na, named(3, "i") => named(3, "k"))
         na[1, 1] = 11
         @test na[1, 1] == 11
         @test Tuple(size(na)) == (named(3, "i"), named(4, "j"))
