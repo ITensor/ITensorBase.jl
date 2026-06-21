@@ -2,7 +2,7 @@ using Combinatorics: Combinatorics
 using ITensorBase: @names, AbstractITensor, ITensor, Name, NameMismatch,
     NamedDimsCartesianIndex, NamedDimsCartesianIndices, aligndims, aligneddims, apply,
     dename, denamed, denamedtype, dim, dimnames, dimnametype, dims, inds, isnamed, mapinds,
-    name, named, nameddims, namedoneto, product, replacedimnames, replaceinds, setinds
+    name, named, nameddims, namedoneto, product, replacedimnames, replaceinds, setdimnames
 using LinearAlgebra: LinearAlgebra
 using Test: @test, @test_throws, @testset
 using VectorInterface: scalartype
@@ -210,7 +210,7 @@ end
         a′ = denamed(na, ("j", "i"))
         @test a′ isa PermutedDimsArray{elt}
         @test a′ == transpose(a)
-        nb = setinds(na, ("k", "j"))
+        nb = setdimnames(na, ("k", "j"))
         @test inds(nb) == (named(1:3, "k"), named(1:4, "j"))
         @test denamed(nb) == a
         nb = replacedimnames(na, "i" => "k")
@@ -225,7 +225,7 @@ end
         nb = mapinds(n -> n == named(1:3, "i") ? named(1:3, "k") : n, na)
         @test inds(nb) == (named(1:3, "k"), named(1:4, "j"))
         @test denamed(nb) == a
-        nb = setinds(na, named(3, "i") => named(3, "k"))
+        nb = setdimnames(na, named(3, "i") => named(3, "k"))
         na[1, 1] = 11
         @test na[1, 1] == 11
         @test Tuple(size(na)) == (named(3, "i"), named(4, "j"))

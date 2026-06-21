@@ -1,6 +1,5 @@
-using ITensorBase: ITensor, Name, NamedUnitRange, blockedperm_nameddims,
-    combine_nameddimsconstructors, dimnames, dimnames_setdiff, inds, name,
-    nameddimsconstructorof, to_inds, uniquename
+using ITensorBase: ITensor, Name, NamedUnitRange, blockedperm_nameddims, dimnames,
+    dimnames_setdiff, inds, name, to_inds, uniquename
 using LinearAlgebra: mul!
 using Mooncake: Mooncake
 using Random: Random
@@ -26,10 +25,6 @@ using Test: @test, @testset
         Mooncake.TestUtils.test_rule(
             rng, blockedperm_nameddims, a1, (i,), (j,); mode, is_primitive
         )
-        Mooncake.TestUtils.test_rule(
-            rng, combine_nameddimsconstructors, ITensor, ITensor;
-            mode, is_primitive
-        )
         Mooncake.TestUtils.test_rule(rng, dimnames, a1; mode, is_primitive)
         Mooncake.TestUtils.test_rule(rng, dimnames, a1, 1; mode, is_primitive)
         Mooncake.TestUtils.test_rule(rng, inds, a1; mode, is_primitive)
@@ -43,7 +38,6 @@ using Test: @test, @testset
             is_primitive
         )
         Mooncake.TestUtils.test_rule(rng, name, i; mode, is_primitive)
-        Mooncake.TestUtils.test_rule(rng, nameddimsconstructorof, a1; mode, is_primitive)
         Mooncake.TestUtils.test_rule(rng, uniquename, i; mode, is_primitive)
         Mooncake.TestUtils.test_rule(rng, uniquename, rng, i; mode, is_primitive)
         Mooncake.TestUtils.test_rule(rng, to_inds, a1, (i, j); mode, is_primitive)

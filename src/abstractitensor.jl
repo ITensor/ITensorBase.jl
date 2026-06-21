@@ -94,48 +94,18 @@ end
 Construct a named dimensions array from an denamed array `a` and named dimensions `inds`.
 """
 function nameddims(a::AbstractArray, inds)
-    return nameddimsconstructor(a, inds)(a, inds)
+    return ITensor(a, inds)
 end
 
 #=
     nameddimsof(a::AbstractITensor, b::AbstractArray)
 
 Construct a named dimensions array with the dimension names of `a`
-and based on the type of `a` but with the data from `b`.
+and with the data from `b`.
 =#
 function nameddimsof(a::AbstractITensor, b::AbstractArray)
-    return nameddimsconstructorof(a)(b, dimnames(a))
+    return nameddims(b, dimnames(a))
 end
-
-# Interface inspired by
-# [ConstructionBase.constructorof](https://github.com/JuliaObjects/ConstructionBase.jl).
-nameddimsconstructorof(a::AbstractITensor) = nameddimsconstructorof(typeof(a))
-function nameddimsconstructorof(type::Type{<:AbstractITensor})
-    return Base.typename(type).wrapper
-end
-
-# Output a constructor for a named dims array (that should accept and denamed array and
-# a set of named dimensions/axes/indices) based on the dimension names.
-function nameddimsconstructor(a::AbstractArray, dims)
-    dimnames = name.(dims)
-    isempty(dimnames) && return ITensor
-    return mapreduce(nameddimsconstructor, combine_nameddimsconstructors, dimnames)
-end
-
-nameddimsconstructor(nameddim) = nameddimsconstructor(typeof(nameddim))
-# Can overload this to get custom named dims array wrapper
-# depending on the dimension name types, for example
-# output an `ITensor` if the dimension names are `IndexName`s.
-nameddimsconstructor(nameddimtype::Type) = ITensor
-function nameddimsconstructor(nameddimtype::Type{<:NamedUnitRange})
-    return nameddimsconstructor(nametype(nameddimtype))
-end
-function combine_nameddimsconstructors(
-        ::Type{<:AbstractITensor}, ::Type{<:AbstractITensor}
-    )
-    return ITensor
-end
-combine_nameddimsconstructors(::Type{T}, ::Type{T}) where {T <: AbstractITensor} = T
 
 # TODO: Move to `utils.jl` file.
 # TODO: Use `Base.indexin`?
@@ -263,7 +233,7 @@ Base.axes(a::AbstractITensor, dimname::Name) = axes(a, dim(a, dimname))
 Base.size(a::AbstractITensor, dimname::Name) = size(a, dim(a, dimname))
 
 function similar_nameddims(a::AbstractITensor, elt::Type, ax)
-    return nameddimsconstructorof(a)(
+    return nameddims(
         similar(denamed(a), elt, denamed.(Tuple(ax))),
         name.(ax)
     )
@@ -311,8 +281,8 @@ function Base.similar(
     )
     return similar_nameddims(a, elt, inds)
 end
-function setinds(a::AbstractITensor, inds)
-    return nameddimsconstructorof(a)(denamed(a), inds)
+function setdimnames(a::AbstractITensor, dimnames)
+    return nameddims(denamed(a), dimnames)
 end
 
 function replacedimnames(a::AbstractITensor, replacements::Pair...)
@@ -693,7 +663,7 @@ isscalarindex(I::Real) = true
 function view_nameddims(a::AbstractITensor, I...)
     nonscalar_dims = filter(dim -> !isscalarindex(I[dim]), ntuple(identity, ndims(a)))
     nonscalar_dimnames = map(dim -> dimnames(a, dim), nonscalar_dims)
-    return nameddimsconstructorof(a)(view(denamed(a), I...), nonscalar_dimnames)
+    return nameddims(view(denamed(a), I...), nonscalar_dimnames)
 end
 
 function Base.view(a::AbstractITensor, I::ViewIndex...)
@@ -724,7 +694,7 @@ function Base.setindex!(
         Irest::NamedViewIndex...
     )
     I = (I1, Irest...)
-    a[I...] = nameddimsconstructorof(a)(value, name.(I))
+    a[I...] = nameddims(value, name.(I))
     return a
 end
 function Base.setindex!(
@@ -753,7 +723,7 @@ function aligndims(a::AbstractITensor, dims)
             "Dimension name mismatch $(dimnames(a)), $(new_dimnames)."
         )
     )
-    return nameddimsconstructorof(a)(permutedims(denamed(a), perm), new_dimnames)
+    return nameddims(permutedims(denamed(a), perm), new_dimnames)
 end
 
 function aligneddims(a::AbstractITensor, dims)
@@ -764,7 +734,7 @@ function aligneddims(a::AbstractITensor, dims)
             "Dimension name mismatch $(dimnames(a)), $(new_dimnames)."
         )
     )
-    return nameddimsconstructorof(a)(
+    return nameddims(
         permuteddims(denamed(a), perm), new_dimnames
     )
 end

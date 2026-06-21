@@ -45,7 +45,7 @@ using Test: @test, @testset
     @test ov ≈ replacedimnames(o * v, "i'" => "i", "j'" => "j")
 end
 
-@testset "one(::AbstractITensorOperator)" begin
+@testset "one(::ITensorOperator)" begin
     # Identity-operator construction: matricized form is the identity matrix.
     i, j, k, l = namedoneto.((2, 3, 2, 3), ("i", "j", "k", "l"))
     op = operator(randn(i, j, k, l), ("i", "j"), ("k", "l"))
@@ -98,7 +98,7 @@ end
     @test eltype(op) === ComplexF32
 end
 
-@testset "randn!(::AbstractITensorOperator) / rand!" begin
+@testset "randn!(::ITensorOperator) / rand!" begin
     op = operator(zeros(3, 3), ("i'",), ("i",))
     rng = StableRNG(123)
     Random.randn!(rng, op)
@@ -109,32 +109,44 @@ end
     @test all(0 .≤ denamed(state(op)) .≤ 1)
 end
 
-@testset "operator linear algebra peels to state" begin
-    # `+`, `-`, and scalar multiplication lower to broadcasting, which peels an
-    # operator to its underlying state (via `broadcastable`), so the result drops
-    # the operator wrapper, matching `*`. Without that, the generic broadcast path
-    # reads `ndims` off the type and throws for a dynamically-ranked parent such as
-    # an `ITensor`. A future version may keep the result an operator instead; this
-    # pins the current contract.
+@testset "operator-preserving broadcasting" begin
+    # `+`, `-`, and scalar multiplication lower to broadcasting. An operator
+    # broadcasts as itself (it is not peeled to its `state`), so these operations
+    # preserve the `ITensorOperator` wrapper and its codomain/domain bijection. `*`
+    # (contraction) is unchanged and still decays to the underlying state.
     o = operator(randn(2, 2), ("i'",), ("i",))
     s = state(o)
     nms = ("i'", "i")
 
-    for r in (o + o, o - o, -o, 2 * o, o * 2, 2 .* o, o .* 2)
-        @test r isa ITensor
-        @test !(r isa ITensorOperator)
+    for r in (o + o, o - o, -o, 2 * o, o * 2, 2 .* o, o .* 2, o ./ 2)
+        @test r isa ITensorOperator
+        @test issetequal(codomainnames(r), ("i'",))
+        @test issetequal(domainnames(r), ("i",))
     end
 
-    @test dename(o + o, nms) ≈ 2 .* dename(s, nms)
-    @test all(iszero, dename(o - o, nms))
-    @test dename(-o, nms) ≈ -dename(s, nms)
-    @test dename(2 * o, nms) ≈ 2 .* dename(s, nms)
-    @test dename(o * 2, nms) ≈ 2 .* dename(s, nms)
-    @test dename(2 .* o, nms) ≈ 2 .* dename(s, nms)
-    @test dename(o .* 2, nms) ≈ 2 .* dename(s, nms)
+    @test dename(state(o + o), nms) ≈ 2 .* dename(s, nms)
+    @test all(iszero, dename(state(o - o), nms))
+    @test dename(state(-o), nms) ≈ -dename(s, nms)
+    @test dename(state(2 * o), nms) ≈ 2 .* dename(s, nms)
+    @test dename(state(o * 2), nms) ≈ 2 .* dename(s, nms)
+    @test dename(state(2 .* o), nms) ≈ 2 .* dename(s, nms)
+    @test dename(state(o .* 2), nms) ≈ 2 .* dename(s, nms)
+    @test dename(state(o ./ 2), nms) ≈ dename(s, nms) ./ 2
+
+    # `*` (contraction) still decays to a plain tensor.
+    @test !((o * o) isa ITensorOperator)
+
+    # Operator combined with a non-operator tensor is rejected.
+    plain = ITensor(randn(2, 2), ("i'", "i"))
+    @test_throws ArgumentError o .+ plain
+
+    # Two operators whose name sets match but whose codomain/domain split differs
+    # are rejected (the split would otherwise be ambiguous).
+    o_swapped = operator(randn(2, 2), ("i",), ("i'",))
+    @test_throws ArgumentError o .+ o_swapped
 end
 
-@testset "gram_eigh_full on AbstractITensorOperator" begin
+@testset "gram_eigh_full on ITensorOperator" begin
     n = 5
     B = randn(n, n)
     A = B * B'  # Hermitian PSD
