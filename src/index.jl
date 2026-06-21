@@ -1,5 +1,6 @@
 using Accessors: @set
-using Random: Random, AbstractRNG
+using Random: AbstractRNG, RandomDevice
+using UUIDs: UUID, uuid4
 
 tagpairstring(pair::Pair) = repr(first(pair)) * "=>" * repr(last(pair))
 function tagsstring(tags::Dict{String, String})
@@ -11,18 +12,18 @@ function tagsstring(tags::Dict{String, String})
 end
 
 struct IndexName <: AbstractName
-    id::UInt64
+    id::UUID
     tags::Dict{String, String}
     plev::Int
 end
 function IndexName(
-        rng::AbstractRNG = Random.default_rng(); id::UInt64 = rand(rng, UInt64),
+        rng::AbstractRNG = RandomDevice(); id::UUID = uuid4(rng),
         tags = Dict{String, String}(), plev::Int = 0
     )
     return IndexName(id, Dict{String, String}(tags), plev)
 end
 function uniquename(rng::AbstractRNG, n::IndexName)
-    return setid(n, rand(rng, UInt64))
+    return setid(n, uuid4(rng))
 end
 function uniquename(rng::AbstractRNG, ::Type{<:IndexName})
     return IndexName(rng)
@@ -70,8 +71,14 @@ end
 prime(n::IndexName) = setplev(n, plev(n) + 1)
 noprime(n::IndexName) = setplev(n, 0)
 
+# Show a short prefix of the `UUID` id rather than the full 36-character string,
+# enough to disambiguate indices at a glance without dominating the output. A
+# leading prefix (here the first hyphen-delimited group) is the usual short-id
+# convention, as in git short hashes and Docker short ids.
+shortid(id::UUID) = first(string(id), 8)
+
 function Base.show(io::IO, i::IndexName)
-    idstr = "id=$(id(i) % 1000)"
+    idstr = "id=$(shortid(id(i)))"
     tagsstr = !isempty(tags(i)) ? "|$(tagsstring(tags(i)))" : ""
     primestr = primestring(plev(i))
     str = "IndexName($(idstr)$(tagsstr))$(primestr)"
@@ -119,7 +126,7 @@ end
 
 function Base.show(io::IO, i::Index)
     lenstr = "length=$(denamed(length(i)))"
-    idstr = "|id=$(id(i) % 1000)"
+    idstr = "|id=$(shortid(id(i)))"
     tagsstr = !isempty(tags(i)) ? "|$(tagsstring(tags(i)))" : ""
     primestr = primestring(plev(i))
     str = "Index($(lenstr)$(idstr)$(tagsstr))$(primestr)"
