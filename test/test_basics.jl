@@ -1,5 +1,6 @@
 using ITensorBase: ITensorBase, ITensor, Index, IndexName, dename, denamed, dimnametype,
-    gettag, hastag, inds, mapinds, name, named, plev, prime, setplev, settag, tags, unsettag
+    gettag, hastag, id, inds, mapinds, name, named, plev, prime, setplev, settag, tags,
+    unsettag
 using LinearAlgebra: factorize
 using Test: @test, @test_broken, @test_throws, @testset
 
@@ -27,6 +28,13 @@ const elts = (Float32, Float64, Complex{Float32}, Complex{Float64})
         @test n1 < n2
         @test isless(n1, n2)
         @test hash(n1) ≠ hash(n2)
+
+        for tagspec in (Dict(["X" => "Y"]), ["X" => "Y"], ("X" => "Y",), "X" => "Y")
+            n = IndexName(; tags = tagspec)
+            @test hastag(n, "X")
+            @test gettag(n, "X") == "Y"
+            @test length(tags(n)) == 1
+        end
     end
     @testset "Index basics" begin
         i = Index(2)
@@ -51,18 +59,12 @@ const elts = (Float32, Float64, Complex{Float32}, Complex{Float64})
         @test plev(i) == 0
         @test length(tags(i)) == 0
 
-        for i in (
-                Index(2; tags = Dict(["X" => "Y"])),
-                Index(2; tags = ["X" => "Y"]),
-                Index(2; tags = ("X" => "Y",)),
-                Index(2; tags = "X" => "Y"),
-            )
-            @test denamed(length(i)) == 2
-            @test hastag(i, "X")
-            @test gettag(i, "X") == "Y"
-            @test plev(i) == 0
-            @test length(tags(i)) == 1
-        end
+        i = settag(Index(2), "X", "Y")
+        @test denamed(length(i)) == 2
+        @test hastag(i, "X")
+        @test gettag(i, "X") == "Y"
+        @test plev(i) == 0
+        @test length(tags(i)) == 1
     end
     @testset "ITensor basics" begin
         elt = Float64
@@ -116,14 +118,12 @@ const elts = (Float32, Float64, Complex{Float32}, Complex{Float64})
         @test dimnametype(ITensor) === Any
     end
     @testset "show" begin
-        id = rand(UInt64)
-        i = Index(2; id)
-        @test sprint(show, "text/plain", i) == "Index(length=2|id=$(id % 1000))"
+        i = Index(2)
+        @test sprint(show, "text/plain", i) == "Index(length=2|id=$(id(i) % 1000))"
 
-        id = rand(UInt64)
-        i = Index(2; id, tags = ["X" => "Y"])
+        i = settag(Index(2), "X", "Y")
         @test sprint(show, "text/plain", i) ==
-            "Index(length=2|id=$(id % 1000)|\"X\"=>\"Y\")"
+            "Index(length=2|id=$(id(i) % 1000)|\"X\"=>\"Y\")"
     end
     @testset "factorize" for elt in elts
         i = Index(2)

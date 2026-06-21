@@ -79,28 +79,12 @@ function Base.show(io::IO, i::IndexName)
     return nothing
 end
 
-struct Index{
-        DenamedT, Denamed <: AbstractUnitRange{DenamedT},
-    } <: AbstractNamedUnitRange{IndexName, DenamedT}
-    value::Denamed
-    name::IndexName
-end
-
-function Index{DenamedT, Denamed}(
-        r::AbstractUnitRange{DenamedT}; kwargs...
-    ) where {DenamedT, Denamed <: AbstractUnitRange{DenamedT}}
-    return Index{DenamedT, Denamed}(r, IndexName(; kwargs...))
-end
-function Index{DenamedT}(r::AbstractUnitRange{DenamedT}; kwargs...) where {DenamedT}
-    return Index{DenamedT, typeof(r)}(r; kwargs...)
-end
-function Index(r::AbstractUnitRange; kwargs...)
-    return Index{eltype(r)}(r; kwargs...)
-end
-
-function Index(length::Int; kwargs...)
-    return Index(Base.OneTo(length); kwargs...)
-end
+# An `Index` is a named unit range whose name is an `IndexName` (carrying the id,
+# tags, and prime level), not a distinct type. Construction (`Index(3)`,
+# `Index(1:3)`) goes through the generic `NamedUnitRange{Name}` constructors, which
+# mint a fresh `IndexName` via `randname`. Attributes (tags, prime level) are set
+# after construction with the modifier functions below.
+const Index = NamedUnitRange{IndexName}
 
 # TODO: Define for `NamedViewIndex`.
 id(i::Index) = id(name(i))
@@ -119,14 +103,6 @@ unsettag(i::Index, tagname::String) = setname(i, unsettag(name(i), tagname))
 setplev(i::Index, plev) = setname(i, setplev(name(i), plev))
 prime(i::Index) = setname(i, prime(name(i)))
 noprime(i::Index) = setname(i, noprime(name(i)))
-
-# Interface
-# TODO: Overload `Base.parent` instead.
-denamed(i::Index) = i.value
-name(i::Index) = i.name
-
-# Constructor
-named(i::AbstractUnitRange, name::IndexName) = Index(i, name)
 
 function primestring(plev)
     if plev < 0
