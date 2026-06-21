@@ -8,7 +8,7 @@ using Compat: @compat
 
 # Named-array machinery (relocated from NamedDimsArrays.jl).
 include("isnamed.jl")
-include("randname.jl")
+include("uniquename.jl")
 include("name.jl")
 include("named.jl")
 include("abstractnamedarray.jl")

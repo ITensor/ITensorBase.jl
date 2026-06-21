@@ -10,9 +10,11 @@ name(i::NamedUnitRange) = i.name
 denamedtype(::Type{<:NamedUnitRange{<:Any, <:Any, Denamed}}) where {Denamed} = Denamed
 
 # Construct from a range or length, minting a fresh name of the requested flavor.
-# Generic over the name type via `randname`, so `Index(3)` (with `Index` a
+# Generic over the name type via `uniquename`, so `Index(3)` (with `Index` a
 # `NamedUnitRange{IndexName}` alias) needs no `Index`-specific constructor.
-NamedUnitRange{Name}(r::AbstractUnitRange) where {Name} = NamedUnitRange(r, randname(Name))
+function NamedUnitRange{Name}(r::AbstractUnitRange) where {Name}
+    return NamedUnitRange(r, uniquename(Name))
+end
 function NamedUnitRange{Name}(length::Integer) where {Name}
     return NamedUnitRange{Name}(Base.OneTo(length))
 end
@@ -26,7 +28,7 @@ named(r::AbstractUnitRange, name) = namedunitrange(r, name)
 # Derived interface. `setname` differs from the `AbstractNamedArray` method: it
 # rebuilds through `named` so the result stays a named unit range, not a named
 # array. The rest of the named interface (`==`, `hash`, `isnamed`, `denamedtype`,
-# `nametype`, `randname`, `show`, `isempty`) is inherited from `AbstractNamedArray`.
+# `nametype`, `uniquename`, `show`, `isempty`) is inherited from `AbstractNamedArray`.
 # TODO: Use `Accessors.@set`?
 setname(r::NamedUnitRange, name) = named(denamed(r), name)
 

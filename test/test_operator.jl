@@ -81,7 +81,7 @@ end
     @test issetequal(codomainnames(op), ("i'",))
     @test issetequal(domainnames(op), ("i",))
 
-    # Codomain names default to fresh `randname` outputs.
+    # Codomain names default to fresh `uniquename` outputs.
     op = similar_operator(randn(3, 3), Float64, (Base.OneTo(3),), ("i",))
     @test op isa ITensorOperator{String}
     @test issetequal(domainnames(op), ("i",))

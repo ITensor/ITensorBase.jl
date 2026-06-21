@@ -1,7 +1,6 @@
 using LinearAlgebra: LinearAlgebra
 using Random: Random
 using TensorAlgebra: permuteddims
-using TypeParameterAccessors: unspecify_type_parameters
 
 # Some of the interface is inspired by:
 # https://github.com/ITensor/ITensors.jl
@@ -112,7 +111,7 @@ end
 # [ConstructionBase.constructorof](https://github.com/JuliaObjects/ConstructionBase.jl).
 nameddimsconstructorof(a::AbstractITensor) = nameddimsconstructorof(typeof(a))
 function nameddimsconstructorof(type::Type{<:AbstractITensor})
-    return unspecify_type_parameters(type)
+    return Base.typename(type).wrapper
 end
 
 # Output a constructor for a named dims array (that should accept and denamed array and
@@ -603,6 +602,10 @@ const NamedViewIndex =
 
 using ArrayLayouts: ArrayLayouts, MemoryLayout
 
+# Parent array type. Methods are defined per concrete type (`ITensor`,
+# `ITensorOperator`); declared here since `MemoryLayout` below dispatches on it.
+function parenttype end
+
 abstract type AbstractITensorLayout <: MemoryLayout end
 struct ITensorLayout{ParentLayout} <: AbstractITensorLayout end
 
@@ -898,7 +901,6 @@ function dims_to_string(d)
     return join(map(string, d), '×')
 end
 
-using TypeParameterAccessors: type_parameters, unspecify_type_parameters
 function concretetype_to_string_truncated(
         type::Type;
         param_truncation_length = typemax(Int)
@@ -906,7 +908,7 @@ function concretetype_to_string_truncated(
     isconcretetype(type) || throw(ArgumentError("Type must be concrete."))
     alias = Base.make_typealias(type)
     base_type, params = if isnothing(alias)
-        unspecify_type_parameters(type), type_parameters(type)
+        Base.typename(type).wrapper, type.parameters
     else
         base_type_globalref, params_svec = alias
         base_type_globalref.name, params_svec

@@ -53,7 +53,7 @@ end
 function product(x::AbstractITensor, y::AbstractITensor)
     c = codomainnames(x)
     d = domainnames(x)
-    c′ = randname.(c)
+    c′ = uniquename.(c)
     x′_map = merge(Dict(c .=> c′), Dict(d .=> c))
     x′ = mapdimnames(parent(x)) do i
         return get(x′_map, i, i)
@@ -258,7 +258,7 @@ end
 #
 # Allocate an operator with the user-supplied axes as the domain (input). The
 # codomain (output) shares the domain direction and either takes
-# explicitly-supplied names or fresh `randname` outputs. The 5-arg form is
+# explicitly-supplied names or fresh `uniquename` outputs. The 5-arg form is
 # canonical, the others fill in defaults. The bra/ket flip on the storage side
 # is handled inside `TA.similar_map`.
 
@@ -269,7 +269,7 @@ end
 Allocate an operator-shaped named array with undefined data, with the
 user-supplied side as the domain (input) and a matching codomain (output).
 Element type defaults to `eltype(prototype)`. Codomain names default to fresh
-`randname`-generated names. The first form takes unnamed (raw) axes and
+`uniquename`-generated names. The first form takes unnamed (raw) axes and
 explicit names, the second takes already-named axes and reuses their names as
 the domain. Storage layout (including the bra/ket flip on the domain side for
 graded axes) is delegated to `TensorAlgebra.similar_map`.
@@ -285,7 +285,7 @@ end
 function similar_operator(
         prototype, ::Type{T}, unnamed_domain_axes, domain_names
     ) where {T}
-    codomain_names = randname.(domain_names)
+    codomain_names = uniquename.(domain_names)
     return similar_operator(
         prototype, T, unnamed_domain_axes, codomain_names, domain_names
     )
@@ -335,10 +335,7 @@ function ITensorOperator(a::AbstractITensor, codomainnames, domainnames)
     return ITensorOperator(a, Bijection(domainnames, codomainnames))
 end
 
-using TypeParameterAccessors: TypeParameterAccessors, parenttype
-function TypeParameterAccessors.parenttype(type::Type{<:ITensorOperator})
-    return fieldtype(type, :parent)
-end
+parenttype(type::Type{<:ITensorOperator}) = fieldtype(type, :parent)
 statetype(type::Type{<:ITensorOperator}) = parenttype(type)
 
 function nameddimsof(a::ITensorOperator, b::AbstractArray)

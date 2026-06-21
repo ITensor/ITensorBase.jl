@@ -138,41 +138,8 @@ function unmatricize_nameddims(na::AbstractITensor, splitters::Vararg{Pair, 2})
     return nameddims(a_split, names_split)
 end
 
-# See: https://github.com/JuliaLang/julia/blob/v1.11.4/base/namedtuple.jl#L269
-# `filter(f, ::NamedTuple)` is available in Julia v1.11, delete once
-# we drop support for Julia v1.10.
-filter_namedtuple(f, xs::NamedTuple) = xs[filter(k -> f(xs[k]), keys(xs))]
-
-# `factorize` additionally accepts the legacy ITensors.jl keyword names
-# (`ortho` / `cutoff` / `maxdim`) and maps them to the
-# MatrixAlgebraKit.jl / TensorAlgebra.jl names (`orth` / `rtol` / `maxrank`).
-function translate_factorize_kwargs(;
-        # MatrixAlgebraKit.jl/TensorAlgebra.jl kwargs.
-        orth = nothing,
-        rtol = nothing,
-        maxrank = nothing,
-        # ITensors.jl kwargs.
-        ortho = nothing,
-        cutoff = nothing,
-        maxdim = nothing,
-        kwargs...
-    )
-    orth = Symbol(@something orth ortho :left)
-    rtol = @something rtol cutoff Some(nothing)
-    maxrank = @something maxrank maxdim Some(nothing)
-    trunc = (; rtol, maxrank)
-    return filter_namedtuple(!isnothing, (; orth, trunc, kwargs...))
-end
-
-# Other factorizations pass their keywords through unchanged; only `factorize`
-# does the ITensors.jl keyword translation.
-translate_factorization_kwargs(f, kwargs) = kwargs
-function translate_factorization_kwargs(::typeof(TA.factorize), kwargs)
-    return translate_factorize_kwargs(; kwargs...)
-end
-
 for f in [
-        :factorize, :left_orth, :left_polar, :lq, :orth, :polar, :qr, :right_orth,
+        :left_orth, :left_polar, :lq, :orth, :polar, :qr, :right_orth,
         :right_polar,
     ]
     f_nameddims = Symbol(f, "_nameddims")
@@ -180,10 +147,7 @@ for f in [
         function TA.$f(
                 a::AbstractITensor, dimnames_codomain, dimnames_domain; kwargs...
             )
-            return $f_nameddims(
-                a, dimnames_codomain, dimnames_domain;
-                translate_factorization_kwargs(TA.$f, kwargs)...
-            )
+            return $f_nameddims(a, dimnames_codomain, dimnames_domain; kwargs...)
         end
         function $f_nameddims(
                 a::AbstractITensor, dimnames_codomain, dimnames_domain; kwargs...
@@ -192,7 +156,7 @@ for f in [
             domain = name.(dimnames_domain)
             x_denamed, y_denamed =
                 TA.$f(denamed(a), dimnames(a), codomain, domain; kwargs...)
-            name_x = randname(dimnames(a, 1))
+            name_x = uniquename(dimnames(a, 1))
             name_y = name_x
             dimnames_x = (codomain..., name_x)
             dimnames_y = (name_y, domain...)
@@ -201,9 +165,7 @@ for f in [
             return x, y
         end
         function TA.$f(a::AbstractITensor, dimnames_codomain; kwargs...)
-            return $f_nameddims(
-                a, dimnames_codomain; translate_factorization_kwargs(TA.$f, kwargs)...
-            )
+            return $f_nameddims(a, dimnames_codomain; kwargs...)
         end
         function $f_nameddims(a::AbstractITensor, dimnames_codomain; kwargs...)
             codomain = name.(dimnames_codomain)
@@ -219,9 +181,6 @@ function LA.qr(a::AbstractITensor, args...; kwargs...)
 end
 function LA.lq(a::AbstractITensor, args...; kwargs...)
     return TA.lq(a, args...; kwargs...)
-end
-function LA.factorize(a::AbstractITensor, args...; kwargs...)
-    return TA.factorize(a, args...; kwargs...)
 end
 
 #
@@ -241,8 +200,8 @@ function svd_nameddims(
     u_denamed, s_denamed, v_denamed = TA.svd(
         denamed(a), dimnames(a), codomain, domain; kwargs...
     )
-    name_u = randname(dimnames(a, 1))
-    name_v = randname(dimnames(a, 1))
+    name_u = uniquename(dimnames(a, 1))
+    name_v = uniquename(dimnames(a, 1))
     dimnames_u = (codomain..., name_u)
     dimnames_s = (name_u, name_v)
     dimnames_v = (name_v, domain...)
@@ -307,8 +266,8 @@ function eigen_nameddims(
     codomain = name.(dimnames_codomain)
     domain = name.(dimnames_domain)
     d_denamed, v_denamed = TA.eigen(denamed(a), dimnames(a), codomain, domain; kwargs...)
-    name_d = randname(dimnames(a, 1))
-    name_d′ = randname(name_d)
+    name_d = uniquename(dimnames(a, 1))
+    name_d′ = uniquename(name_d)
     name_v = name_d
     dimnames_d = (name_d′, name_d)
     dimnames_v = (domain..., name_v)
@@ -349,7 +308,7 @@ function left_null_nameddims(
     codomain = name.(dimnames_codomain)
     domain = name.(dimnames_domain)
     n_denamed = TA.left_null(denamed(a), dimnames(a), codomain, domain; kwargs...)
-    name_n = randname(dimnames(a, 1))
+    name_n = uniquename(dimnames(a, 1))
     dimnames_n = (codomain..., name_n)
     return nameddims(n_denamed, dimnames_n)
 end
@@ -374,7 +333,7 @@ function right_null_nameddims(
     codomain = name.(dimnames_codomain)
     domain = name.(dimnames_domain)
     n_denamed = TA.right_null(denamed(a), dimnames(a), codomain, domain; kwargs...)
-    name_n = randname(dimnames(a, 1))
+    name_n = uniquename(dimnames(a, 1))
     dimnames_n = (name_n, domain...)
     return nameddims(n_denamed, dimnames_n)
 end
@@ -431,7 +390,7 @@ function gram_eigh_full_nameddims(
     codomain = name.(dimnames_codomain)
     domain = name.(dimnames_domain)
     x_denamed = TA.gram_eigh_full(denamed(a), dimnames(a), codomain, domain; kwargs...)
-    name_x = randname(dimnames(a, 1))
+    name_x = uniquename(dimnames(a, 1))
     dimnames_x = (domain..., name_x)
     return nameddims(x_denamed, dimnames_x)
 end
@@ -487,7 +446,7 @@ function gram_eigh_full_with_pinv_nameddims(
     x_denamed, y_denamed = TA.gram_eigh_full_with_pinv(
         denamed(a), dimnames(a), codomain, domain; kwargs...
     )
-    name_xy = randname(dimnames(a, 1))
+    name_xy = uniquename(dimnames(a, 1))
     dimnames_x = (domain..., name_xy)
     dimnames_y = (name_xy, domain...)
     return nameddims(x_denamed, dimnames_x), nameddims(y_denamed, dimnames_y)

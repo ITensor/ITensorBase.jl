@@ -1,5 +1,3 @@
-using TypeParameterAccessors: TypeParameterAccessors, parenttype
-
 # TODO: Check `allunique(dimnames)`?
 struct ITensor{DimName} <: AbstractITensor{DimName}
     denamed::AbstractArray
@@ -28,5 +26,5 @@ dimnametype(::Type{<:ITensor{DimName}}) where {DimName} = DimName
 # methods recover the concrete type while the type methods report `AbstractArray`.
 denamedtype(a::ITensor) = typeof(denamed(a))
 denamedtype(::Type{<:ITensor}) = AbstractArray
-TypeParameterAccessors.parenttype(a::ITensor) = typeof(parent(a))
-TypeParameterAccessors.parenttype(::Type{<:ITensor}) = AbstractArray
+parenttype(a::ITensor) = typeof(parent(a))
+parenttype(::Type{<:ITensor}) = AbstractArray

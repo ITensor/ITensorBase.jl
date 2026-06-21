@@ -1,6 +1,6 @@
 using ITensorBase:
-    ITensorBase, dename, denamed, dimnames, inds, namedoneto, randname, replacedimnames
-using LinearAlgebra: LinearAlgebra, factorize, lq, norm, qr, svd
+    ITensorBase, dename, denamed, dimnames, inds, namedoneto, replacedimnames, uniquename
+using LinearAlgebra: LinearAlgebra, lq, norm, qr, svd
 using StableRNGs: StableRNG
 using TensorAlgebra: TensorAlgebra, contract, gram_eigh_full, gram_eigh_full_with_pinv,
     left_null, left_orth, left_polar, matricize, orth, polar, right_null, right_orth,
@@ -72,7 +72,7 @@ using Test: @test, @test_broken, @testset
         # TODO: Should this be allowed?
         # TODO: Add support for specifying new name.
         for f in
-            (factorize, left_orth, left_polar, lq, orth, polar, qr, right_orth, right_polar)
+            (left_orth, left_polar, lq, orth, polar, qr, right_orth, right_polar)
             x, y = f(a, (i,))
             @test x * y ≈ a
         end
@@ -80,7 +80,7 @@ using Test: @test, @test_broken, @testset
         a = randn(elt, i, j, k, l)
         # TODO: Add support for specifying new name.
         for f in
-            (factorize, left_orth, left_polar, lq, orth, polar, qr, right_orth, right_polar)
+            (left_orth, left_polar, lq, orth, polar, qr, right_orth, right_polar)
             x, y = f(a, (i, k), (j, l))
             @test x * y ≈ a
         end
@@ -145,7 +145,7 @@ using Test: @test, @test_broken, @testset
             # Rename one rank dimension so `Y * X` contracts only on
             # the shared domain names `(j, l)` and leaves a
             # (rank × rank) named identity.
-            fresh_rank = randname(rank_name)
+            fresh_rank = uniquename(rank_name)
             X_fresh = replacedimnames(X, rank_name => fresh_rank)
             YXmat = dename(Y * X_fresh, (rank_name, fresh_rank))
             @test YXmat ≈ LinearAlgebra.I(size(YXmat, 1))
