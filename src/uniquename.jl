@@ -11,8 +11,6 @@ uniquename(rng::AbstractRNG, type::Type) = rand(rng, type)
 uniquename(name; kwargs...) = uniquename(RandomDevice(), name; kwargs...)
 uniquename(rng::AbstractRNG, name; kwargs...) = uniquename(rng, typeof(name); kwargs...)
 
-# Encode 128 random bits in base 62 (`[0-9A-Za-z]`), giving a 22-character name
-# rather than the 36-character dashed hexadecimal of a UUID string.
 function uniquename(rng::AbstractRNG, ::Type{<:AbstractString})
     return string(rand(rng, UInt128); base = 62)
 end
