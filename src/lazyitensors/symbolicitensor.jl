@@ -1,26 +1,27 @@
 # Expression leaf with no array payload, so it defines no `denamed`/`getindex`.
-# It mirrors a plain `ITensor`'s `denamed` + `dimnames` split, but without an
-# array: `denamed_axes` stands in for `axes(denamed(a))` (the underlying ranges)
-# and `dimnames` holds the names, with `inds` reconstructed from the two.
-# The axes are stored as a field rather than a type parameter, so symbolic
-# tensors of different rank share one concrete type and a flat `Mul` over them
-# stays concretely typed.
+# A symbolic tensor is a placeholder substituted with a real tensor before
+# contraction, so it only needs what drives contraction-order selection: the
+# `dimnames` and the index `size`s (the cost model uses lengths). `inds` is
+# reconstructed as plain ranges of those sizes. Storing sizes and dimnames as
+# fields rather than type parameters lets symbolic tensors of different rank
+# share one concrete type so a flat `Mul` over them stays concretely typed.
 struct SymbolicITensor{DimName, Name} <: AbstractITensor{DimName}
     name::Name
-    denamed_axes::Tuple
+    size::Vector{Int}
     dimnames::Vector{DimName}
 end
 function SymbolicITensor(symname, inds)
     dnames = collect(name.(inds))
     DimName = isempty(inds) ? typeof(symname) : eltype(dnames)
-    return SymbolicITensor{DimName, typeof(symname)}(symname, denamed.(inds), dnames)
+    sizes = Int[length(denamed(i)) for i in inds]
+    return SymbolicITensor{DimName, typeof(symname)}(symname, sizes, dnames)
 end
 
 symname(a::SymbolicITensor) = getfield(a, :name)
 
 dimnames(a::SymbolicITensor) = getfield(a, :dimnames)
 function inds(a::SymbolicITensor)
-    return named.(getfield(a, :denamed_axes), Tuple(getfield(a, :dimnames)))
+    return named.(Tuple(Base.OneTo.(getfield(a, :size))), Tuple(getfield(a, :dimnames)))
 end
 dimnametype(::Type{<:SymbolicITensor{DimName}}) where {DimName} = DimName
 Base.ndims(a::SymbolicITensor) = length(getfield(a, :dimnames))
