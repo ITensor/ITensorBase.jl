@@ -1,5 +1,4 @@
 using Random: AbstractRNG, RandomDevice
-using UUIDs: uuid4
 
 # Generate a new unique name, for example in matrix factorizations.
 # The randomness defaults to `Random.RandomDevice()` (OS entropy) rather than
@@ -12,5 +11,9 @@ uniquename(rng::AbstractRNG, type::Type) = rand(rng, type)
 uniquename(name; kwargs...) = uniquename(RandomDevice(), name; kwargs...)
 uniquename(rng::AbstractRNG, name; kwargs...) = uniquename(rng, typeof(name); kwargs...)
 
-uniquename(rng::AbstractRNG, ::Type{<:AbstractString}) = string(uuid4(rng))
+# Encode 128 random bits in base 62 (`[0-9A-Za-z]`), giving a 22-character name
+# rather than the 36-character dashed hexadecimal of a UUID string.
+function uniquename(rng::AbstractRNG, ::Type{<:AbstractString})
+    return string(rand(rng, UInt128); base = 62)
+end
 uniquename(rng::AbstractRNG, ::Type{Symbol}) = Symbol(uniquename(rng, String))
