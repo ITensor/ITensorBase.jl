@@ -405,31 +405,34 @@ function Base.eachindex(
         a1::AbstractITensor,
         a_rest::AbstractITensor...
     )
-    all(a -> issetequal(inds(a1), inds(a)), a_rest) ||
-        throw(NameMismatch("Dimension name mismatch $(inds.((a1, a_rest...)))."))
+    all(a -> issetequal(dimnames(a1), dimnames(a)), a_rest) ||
+        throw(NameMismatch("Dimension name mismatch $(dimnames.((a1, a_rest...)))."))
     # TODO: Check the shapes match.
     return NamedDimsCartesianIndices(inds(a1))
 end
 
+# `dename` (eager), not `denamed` (lazy view): reducing over a lazy permuted view
+# scalar-indexes, which graded arrays forbid.
+
 # Base version ignores dimension names.
 # TODO: Use `mapreduce(isequal, &&, a1, a2)`?
 function Base.isequal(a1::AbstractITensor, a2::AbstractITensor)
-    issetequal(inds(a1), inds(a2)) || return false
-    return isequal(denamed(a1), denamed(a2, inds(a1)))
+    issetequal(dimnames(a1), dimnames(a2)) || return false
+    return isequal(denamed(a1), dename(a2, dimnames(a1)))
 end
 
 # Base version ignores dimension names.
 # TODO: Use `mapreduce(==, &&, a1, a2)`?
 # TODO: Handle `missing` values properly.
 function Base.:(==)(a1::AbstractITensor, a2::AbstractITensor)
-    issetequal(inds(a1), inds(a2)) || return false
-    return denamed(a1) == denamed(a2, inds(a1))
+    issetequal(dimnames(a1), dimnames(a2)) || return false
+    return denamed(a1) == dename(a2, dimnames(a1))
 end
 
 # Base version ignores dimension names.
 function Base.isapprox(a1::AbstractITensor, a2::AbstractITensor; kwargs...)
-    issetequal(inds(a1), inds(a2)) || return false
-    return isapprox(denamed(a1), denamed(a2, inds(a1)); kwargs...)
+    issetequal(dimnames(a1), dimnames(a2)) || return false
+    return isapprox(denamed(a1), dename(a2, dimnames(a1)); kwargs...)
 end
 
 # Generalization of `Base.sort` to Tuples for Julia v1.10 compatibility.
