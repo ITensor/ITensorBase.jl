@@ -12,6 +12,8 @@ uniquename(name; kwargs...) = uniquename(RandomDevice(), name; kwargs...)
 uniquename(rng::AbstractRNG, name; kwargs...) = uniquename(rng, typeof(name); kwargs...)
 
 function uniquename(rng::AbstractRNG, ::Type{T}) where {T <: AbstractString}
+    # Base 62 (`[0-9A-Za-z]`) is the largest radix `string` supports, giving the
+    # most compact identifier-safe name: 22 characters for 128 random bits.
     return convert(T, string(rand(rng, UInt128); base = 62))
 end
 uniquename(rng::AbstractRNG, ::Type{Symbol}) = Symbol(uniquename(rng, String))
