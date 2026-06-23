@@ -1,10 +1,10 @@
 [deps]
 ITensorBase = "4795dd04-0d67-49bb-8f44-b89c448a1dc7"
-LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
+TensorAlgebra = "68bd88dc-f39d-4e12-b2ca-f046b68fcc6a"
 
 [sources.ITensorBase]
 path = ".."
 
 [compat]
 ITensorBase = "0.7"
-LinearAlgebra = "1.10"
+TensorAlgebra = "0.10"

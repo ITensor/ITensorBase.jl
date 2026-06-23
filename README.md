@@ -43,7 +43,7 @@ julia> Pkg.add("ITensorBase")
 
 ````julia
 using ITensorBase: ITensorBase, ITensor, Index, aligndims, dename
-using LinearAlgebra: qr
+using TensorAlgebra: qr_compact
 using Test: @test
 i = Index(2)
 j = Index(2)
@@ -58,7 +58,7 @@ c = a * b
 d = a + a′
 @test dename(d, (i, j)) ≈ dename(a, (i, j)) + dename(a′, (i, j))
 @test a ≈ aligndims(a, (j, i))
-q, r = qr(a, (i,))
+q, r = qr_compact(a, (i,))
 @test q * r ≈ a
 ````
 
