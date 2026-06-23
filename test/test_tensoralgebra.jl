@@ -1,10 +1,10 @@
 using ITensorBase:
     ITensorBase, dename, denamed, dimnames, inds, namedoneto, replacedimnames, uniquename
-using LinearAlgebra: LinearAlgebra, lq, norm, qr, svd
+using LinearAlgebra: LinearAlgebra, norm
 using StableRNGs: StableRNG
 using TensorAlgebra: TensorAlgebra, contract, gram_eigh_full, gram_eigh_full_with_pinv,
-    left_null, left_orth, left_polar, matricize, orth, polar, right_null, right_orth,
-    right_polar, unmatricize
+    left_null, left_orth, left_polar, lq_compact, lq_full, matricize, qr_compact, qr_full,
+    right_null, right_orth, right_polar, svd_compact, svd_trunc, unmatricize
 using Test: @test, @test_broken, @testset
 
 @testset "TensorAlgebra (eltype=$(elt))" for elt in
@@ -71,16 +71,20 @@ using Test: @test, @test_broken, @testset
         a = randn(elt, i, j)
         # TODO: Should this be allowed?
         # TODO: Add support for specifying new name.
-        for f in
-            (left_orth, left_polar, lq, orth, polar, qr, right_orth, right_polar)
+        for f in (
+                left_orth, left_polar, lq_compact, lq_full, qr_compact, qr_full,
+                right_orth, right_polar,
+            )
             x, y = f(a, (i,))
             @test x * y ≈ a
         end
 
         a = randn(elt, i, j, k, l)
         # TODO: Add support for specifying new name.
-        for f in
-            (left_orth, left_polar, lq, orth, polar, qr, right_orth, right_polar)
+        for f in (
+                left_orth, left_polar, lq_compact, lq_full, qr_compact, qr_full,
+                right_orth, right_polar,
+            )
             x, y = f(a, (i, k), (j, l))
             @test x * y ≈ a
         end
@@ -92,17 +96,17 @@ using Test: @test, @test_broken, @testset
         a = randn(elt, i, j)
         # TODO: Should this be allowed?
         # TODO: Add support for specifying new name.
-        u, s, v = svd(a, (i,))
+        u, s, v = svd_compact(a, (i,))
         @test u * s * v ≈ a
 
         a = randn(elt, i, j, k, l)
         # TODO: Add support for specifying new name.
-        u, s, v = svd(a, (i, k), (j, l))
+        u, s, v = svd_compact(a, (i, k), (j, l))
         @test u * s * v ≈ a
 
         # Test truncation.
         a = randn(elt, i, j, k, l)
-        u, s, v = svd(a, (i, k), (j, l); trunc = (; maxrank = 2))
+        u, s, v = svd_trunc(a, (i, k), (j, l); trunc = (; maxrank = 2))
         @test u * s * v ≉ a
         @test denamed.(Tuple(size(s))) == (2, 2)
     end
