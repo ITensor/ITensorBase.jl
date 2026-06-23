@@ -107,7 +107,7 @@ end
 state(a::AbstractITensor) = a
 state(a::ITensorOperator) = a.parent
 Base.parent(a::ITensorOperator) = state(a)
-denamed(a::ITensorOperator) = denamed(state(a))
+unnamed(a::ITensorOperator) = unnamed(state(a))
 dimnames(a::ITensorOperator) = dimnames(state(a))
 
 function ITensorOperator(a::AbstractITensor, codomainnames, domainnames)
@@ -151,7 +151,7 @@ Base.:*(a::AbstractITensor, b::ITensorOperator) = state(a) * state(b)
 # `2 .* op`, etc. carry `ITensorOperatorStyle`; `+` / `-` / scalar `*` inherit
 # preservation since they lower to broadcasting. `copy` / `similar` unwrap each
 # operator operand to its `state` (the shared `ITensorStyle` machinery does this via
-# `denamed`), build the `ITensor` result, then rewrap as an operator using the
+# `unnamed`), build the `ITensor` result, then rewrap as an operator using the
 # codomain/domain split recovered from the operands.
 function BC.BroadcastStyle(arraytype::Type{<:ITensorOperator})
     return ITensorOperatorStyle{ndims(arraytype)}()
@@ -217,7 +217,7 @@ end
 # don't share enough structure to warrant `$($f)`-interpolation.
 
 const _gram_eigh_full_operator_docstring = """
-    TensorAlgebra.gram_eigh_full(a::ITensorOperator; kwargs...) -> x
+    TensorAlgebra.MatrixAlgebra.gram_eigh_full(a::ITensorOperator; kwargs...) -> x
 
 Gram factorization of a Hermitian positive semi-definite named operator
 `a`, returning `x` such that `x * x_cod ≈ state(a)`, where `x_cod` is
@@ -226,7 +226,7 @@ codomain names of `a`. `x` carries `a`'s domain dimension names and a
 fresh trailing rank name. The codomain and domain partition is taken from
 `codomainnames(a)` and `domainnames(a)`.
 
-`kwargs` are forwarded to `TensorAlgebra.gram_eigh_full` on the
+`kwargs` are forwarded to `TensorAlgebra.MatrixAlgebra.gram_eigh_full` on the
 underlying named array (e.g. `atol`, `rtol`).
 
 # Examples
@@ -234,7 +234,7 @@ underlying named array (e.g. `atol`, `rtol`).
 ```jldoctest
 julia> using ITensorBase: namedoneto, operator, replacedimnames, state
 
-julia> using TensorAlgebra: gram_eigh_full
+julia> using TensorAlgebra.MatrixAlgebra: gram_eigh_full
 
 julia> i, j, k, l, aux = namedoneto.((2, 2, 2, 2, 8), ("i", "j", "k", "l", "aux"));
 
@@ -250,9 +250,9 @@ true
 """
 
 const _gram_eigh_full_with_pinv_operator_docstring = """
-    TensorAlgebra.gram_eigh_full_with_pinv(a::ITensorOperator; kwargs...) -> x, y
+    TensorAlgebra.MatrixAlgebra.gram_eigh_full_with_pinv(a::ITensorOperator; kwargs...) -> x, y
 
-Like `TensorAlgebra.gram_eigh_full`, but additionally returns a
+Like `TensorAlgebra.MatrixAlgebra.gram_eigh_full`, but additionally returns a
 named array `y` that is a left inverse of `x`: `y * x ≈ I` on the
 rank subspace (equal to the identity when `a` is full rank). The
 codomain and domain partition is taken from `codomainnames(a)` and
@@ -263,9 +263,9 @@ codomain and domain partition is taken from `codomainnames(a)` and
 ```jldoctest
 julia> using LinearAlgebra: I
 
-julia> using ITensorBase: dename, dimnames, namedoneto, operator, replacedimnames
+julia> using ITensorBase: unname, dimnames, namedoneto, operator, replacedimnames
 
-julia> using TensorAlgebra: gram_eigh_full_with_pinv
+julia> using TensorAlgebra.MatrixAlgebra: gram_eigh_full_with_pinv
 
 julia> i, j, k, l, aux = namedoneto.((2, 2, 2, 2, 8), ("i", "j", "k", "l", "aux"));
 
@@ -277,8 +277,8 @@ julia> x, y = gram_eigh_full_with_pinv(a);
 
 julia> rname = only(setdiff(dimnames(x), ("j", "l")));
 
-julia> reshape(dename(y, (rname, "j", "l")), :, 4) *
-       reshape(dename(x, ("j", "l", rname)), 4, :) ≈ I
+julia> reshape(unname(y, (rname, "j", "l")), :, 4) *
+       reshape(unname(x, ("j", "l", rname)), 4, :) ≈ I
 true
 ```
 """
@@ -286,8 +286,8 @@ true
 for f in (:gram_eigh_full, :gram_eigh_full_with_pinv)
     doc_sym = Symbol("_", f, "_operator_docstring")
     @eval begin
-        @doc $doc_sym function TA.$f(a::ITensorOperator; kwargs...)
-            return TA.$f(state(a), codomainnames(a), domainnames(a); kwargs...)
+        @doc $doc_sym function MA.$f(a::ITensorOperator; kwargs...)
+            return MA.$f(state(a), codomainnames(a), domainnames(a); kwargs...)
         end
     end
 end
@@ -362,7 +362,7 @@ function similar_operator(
 end
 function similar_operator(prototype, ::Type{T}, named_domain_axes) where {T}
     return similar_operator(
-        prototype, T, denamed.(named_domain_axes), name.(named_domain_axes)
+        prototype, T, unnamed.(named_domain_axes), name.(named_domain_axes)
     )
 end
 function similar_operator(prototype, unnamed_domain_axes, codomain_names, domain_names)

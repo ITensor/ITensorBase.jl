@@ -1,8 +1,8 @@
 using Combinatorics: Combinatorics
 using ITensorBase: @names, AbstractITensor, ITensor, Name, NameMismatch,
-    NamedDimsCartesianIndex, NamedDimsCartesianIndices, aligndims, aligneddims, apply,
-    dename, denamed, denamedtype, dim, dimnames, dimnametype, dims, inds, isnamed, mapinds,
-    name, named, nameddims, namedoneto, product, replacedimnames, replaceinds, setdimnames
+    NamedDimsCartesianIndex, NamedDimsCartesianIndices, aligndims, aligneddims, apply, dim,
+    dimnames, dimnametype, dims, inds, isnamed, mapinds, name, named, nameddims, namedoneto,
+    product, replacedimnames, replaceinds, setdimnames, unname, unnamed, unnamedtype
 using LinearAlgebra: LinearAlgebra
 using Test: @test, @test_throws, @testset
 using VectorInterface: scalartype
@@ -20,10 +20,10 @@ end
         @test na isa AbstractITensor{String}
         @test eltype(na) === elt
         @test ndims(na) == 2
-        @test_throws MethodError denamed(a)
-        @test_throws MethodError dename(a, ("i", "j"))
-        @test_throws MethodError denamed(a, ("i", "j"))
-        @test denamed(na) == a
+        @test_throws MethodError unnamed(a)
+        @test_throws MethodError unname(a, ("i", "j"))
+        @test_throws MethodError unnamed(a, ("i", "j"))
+        @test unnamed(na) == a
         si, sj = size(na)
         ai, aj = axes(na)
         i = namedoneto(3, "i")
@@ -45,8 +45,8 @@ end
         @test na[1, 1] == a[1, 1]
         # The parent array's concrete type is erased from the type but is still
         # recoverable from an instance.
-        @test denamedtype(na) === typeof(a)
-        @test denamedtype(typeof(na)) === AbstractArray
+        @test unnamedtype(na) === typeof(a)
+        @test unnamedtype(typeof(na)) === AbstractArray
         @test dimnametype(typeof(na)) === String
         @test dimnametype(na) === String
 
@@ -98,8 +98,8 @@ end
         nb = nameddims(b, ("k", "i", "j"))
         copyto!(na, nb)
         @test na == nb
-        @test denamed(na) == dename(nb, ("i", "j", "k"))
-        @test denamed(na) == permutedims(denamed(nb), (2, 3, 1))
+        @test unnamed(na) == unname(nb, ("i", "j", "k"))
+        @test unnamed(na) == permutedims(unnamed(nb), (2, 3, 1))
 
         a = randn(elt, 3, 4)
         na = nameddims(a, ("i", "j"))
@@ -150,15 +150,15 @@ end
         na = a[i]
         @test na isa ITensor{String}
         @test dimnames(na) == ["i"]
-        @test denamed(na) == a
+        @test unnamed(na) == a
 
         # slicing
         a = randn(elt, 3, 3)
         na = ITensor(a, ("i", "j"))
         for na′ in (na[named(2:3, "i"), named(2:3, "j")], na["i" => 2:3, "j" => 2:3])
             @test inds(na′) == (named(1:2, "i"), named(1:2, "j"))
-            @test denamed(na′) == a[2:3, 2:3]
-            @test denamed(na′) isa typeof(a)
+            @test unnamed(na′) == a[2:3, 2:3]
+            @test unnamed(na′) isa typeof(a)
         end
 
         # view slicing
@@ -167,9 +167,9 @@ end
         for na′ in
             (@view(na[named(2:3, "i"), named(2:3, "j")]), @view(na["i" => 2:3, "j" => 2:3]))
             @test inds(na′) == (named(1:2, "i"), named(1:2, "j"))
-            @test copy(denamed(na′)) == a[2:3, 2:3]
-            @test denamed(na′) ≡ @view(a[2:3, 2:3])
-            @test denamed(na′) isa SubArray{elt, 2}
+            @test copy(unnamed(na′)) == a[2:3, 2:3]
+            @test unnamed(na′) ≡ @view(a[2:3, 2:3])
+            @test unnamed(na′) isa SubArray{elt, 2}
         end
 
         # aliasing
@@ -201,30 +201,30 @@ end
 
         a = randn(elt, 3, 4)
         na = nameddims(a, ("i", "j"))
-        a′ = denamed(na)
+        a′ = unnamed(na)
         @test a′ isa Matrix{elt}
         @test a′ == a
-        a′ = dename(na, ("j", "i"))
+        a′ = unname(na, ("j", "i"))
         @test a′ isa Matrix{elt}
         @test a′ == transpose(a)
-        a′ = denamed(na, ("j", "i"))
+        a′ = unnamed(na, ("j", "i"))
         @test a′ isa PermutedDimsArray{elt}
         @test a′ == transpose(a)
         nb = setdimnames(na, ("k", "j"))
         @test inds(nb) == (named(1:3, "k"), named(1:4, "j"))
-        @test denamed(nb) == a
+        @test unnamed(nb) == a
         nb = replacedimnames(na, "i" => "k")
         @test inds(nb) == (named(1:3, "k"), named(1:4, "j"))
-        @test denamed(nb) == a
+        @test unnamed(nb) == a
         nb = replaceinds(na, named(1:3, "i") => named(1:3, "k"))
         @test inds(nb) == (named(1:3, "k"), named(1:4, "j"))
-        @test denamed(nb) == a
+        @test unnamed(nb) == a
         nb = replaceinds(n -> n == named(1:3, "i") ? named(1:3, "k") : n, na)
         @test inds(nb) == (named(1:3, "k"), named(1:4, "j"))
-        @test denamed(nb) == a
+        @test unnamed(nb) == a
         nb = mapinds(n -> n == named(1:3, "i") ? named(1:3, "k") : n, na)
         @test inds(nb) == (named(1:3, "k"), named(1:4, "j"))
-        @test denamed(nb) == a
+        @test unnamed(nb) == a
         na[1, 1] = 11
         @test na[1, 1] == 11
         @test Tuple(size(na)) == (named(3, "i"), named(4, "j"))
@@ -240,17 +240,17 @@ end
         na[j => 1, i => 2] = 21
         @test na[2, 1] == 21
         na′ = aligndims(na, ("j", "i"))
-        @test denamed(na′) isa Matrix{elt}
-        @test a == permutedims(denamed(na′), (2, 1))
+        @test unnamed(na′) isa Matrix{elt}
+        @test a == permutedims(unnamed(na′), (2, 1))
         na′ = aligneddims(na, ("j", "i"))
-        @test denamed(na′) isa PermutedDimsArray{elt}
-        @test a == permutedims(denamed(na′), (2, 1))
+        @test unnamed(na′) isa PermutedDimsArray{elt}
+        @test a == permutedims(unnamed(na′), (2, 1))
         na′ = aligndims(na, (j, i))
-        @test denamed(na′) isa Matrix{elt}
-        @test a == permutedims(denamed(na′), (2, 1))
+        @test unnamed(na′) isa Matrix{elt}
+        @test a == permutedims(unnamed(na′), (2, 1))
         na′ = aligneddims(na, (j, i))
-        @test denamed(na′) isa PermutedDimsArray{elt}
-        @test a == permutedims(denamed(na′), (2, 1))
+        @test unnamed(na′) isa PermutedDimsArray{elt}
+        @test a == permutedims(unnamed(na′), (2, 1))
 
         na = nameddims(randn(elt, 2, 3), (:i, :j))
         nb = nameddims(randn(elt, 3, 2), (:j, :i))
@@ -263,24 +263,24 @@ end
             @test issetequal(name.(Tuple(I)), (:i, :j))
             nc[I] = na[I] + nb[I]
         end
-        @test dename(nc, (:i, :j)) ≈ dename(na, (:i, :j)) + dename(nb, (:i, :j))
+        @test unname(nc, (:i, :j)) ≈ unname(na, (:i, :j)) + unname(nb, (:i, :j))
 
         a = nameddims(randn(elt, 2, 3), (:i, :j))
         b = nameddims(randn(elt, 3, 2), (:j, :i))
         c = a + b
-        @test dename(c, (:i, :j)) ≈ dename(a, (:i, :j)) + dename(b, (:i, :j))
+        @test unname(c, (:i, :j)) ≈ unname(a, (:i, :j)) + unname(b, (:i, :j))
         c = a .+ b
-        @test dename(c, (:i, :j)) ≈ dename(a, (:i, :j)) + dename(b, (:i, :j))
+        @test unname(c, (:i, :j)) ≈ unname(a, (:i, :j)) + unname(b, (:i, :j))
         c = map(+, a, b)
-        @test dename(c, (:i, :j)) ≈ dename(a, (:i, :j)) + dename(b, (:i, :j))
+        @test unname(c, (:i, :j)) ≈ unname(a, (:i, :j)) + unname(b, (:i, :j))
         c = nameddims(Array{elt}(undef, 2, 3), (:i, :j))
         c = map!(+, c, a, b)
-        @test dename(c, (:i, :j)) ≈ dename(a, (:i, :j)) + dename(b, (:i, :j))
+        @test unname(c, (:i, :j)) ≈ unname(a, (:i, :j)) + unname(b, (:i, :j))
         c = a .+ 2 .* b
-        @test dename(c, (:i, :j)) ≈ dename(a, (:i, :j)) + 2 * dename(b, (:i, :j))
+        @test unname(c, (:i, :j)) ≈ unname(a, (:i, :j)) + 2 * unname(b, (:i, :j))
         c = nameddims(Array{elt}(undef, 2, 3), (:i, :j))
         c .= a .+ 2 .* b
-        @test dename(c, (:i, :j)) ≈ dename(a, (:i, :j)) + 2 * dename(b, (:i, :j))
+        @test unname(c, (:i, :j)) ≈ unname(a, (:i, :j)) + 2 * unname(b, (:i, :j))
 
         # Regression test for proper permutations.
         a = nameddims(randn(elt, 2, 3, 4), (:i, :j, :k))
@@ -307,13 +307,13 @@ end
         # arrows on the axes flip. For plain ranges the axis-level `conj` is a
         # no-op and the test reduces to element-wise conjugation.
         ca = conj(a)
-        @test denamed(ca) == conj(denamed(a))
+        @test unnamed(ca) == conj(unnamed(a))
         @test dimnames(ca) == dimnames(a)
 
         # `fill!` forwards to the underlying storage.
         b = randn(elt, i, j)
         @test fill!(b, zero(elt)) === b
-        @test all(iszero, denamed(b))
+        @test all(iszero, unnamed(b))
     end
     @testset "promote_leaf_eltypes (eltype=$elt)" for elt in TestBasicsUtils.elts
         # `LinearAlgebra.promote_leaf_eltypes` is called from `isapprox`; the
@@ -323,17 +323,17 @@ end
         i, j = namedoneto.((2, 3), ("i", "j"))
         a = randn(elt, i, j)
         @test LinearAlgebra.promote_leaf_eltypes(a) ===
-            LinearAlgebra.promote_leaf_eltypes(denamed(a))
+            LinearAlgebra.promote_leaf_eltypes(unnamed(a))
     end
     @testset "sum/mapreduce (eltype=$elt)" for elt in TestBasicsUtils.elts
         # Reductions delegate to the underlying storage. `sum` is routed directly
         # rather than left to the generic `mapreduce` fallback because some backends
         # (such as graded arrays) define `Base.sum` without the general `mapreduce`,
-        # so summing the denamed data is the path that works for them.
+        # so summing the unnamed data is the path that works for them.
         i, j = namedoneto.((2, 3), ("i", "j"))
         a = randn(elt, i, j)
-        @test sum(a) == sum(denamed(a))
-        @test mapreduce(identity, +, a) == mapreduce(identity, +, denamed(a))
+        @test sum(a) == sum(unnamed(a))
+        @test mapreduce(identity, +, a) == mapreduce(identity, +, unnamed(a))
     end
     @testset "begin/end (eltype=$elt)" for elt in TestBasicsUtils.elts
         i, j = namedoneto.((2, 3), ("i", "j"))

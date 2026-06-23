@@ -1,10 +1,11 @@
 using ITensorBase: ITensorBase as NDA, ITensor, ITensorOperator, apply, codomainnames,
-    dename, denamed, dimnames, domainnames, nameddims, namedoneto, operator, product,
-    replacedimnames, similar_operator, state
+    dimnames, domainnames, nameddims, namedoneto, operator, product, replacedimnames,
+    similar_operator, state, unname, unnamed
 using LinearAlgebra: I, norm
 using Random: Random
 using StableRNGs: StableRNG
-using TensorAlgebra: gram_eigh_full, gram_eigh_full_with_pinv, matricize
+using TensorAlgebra.MatrixAlgebra: gram_eigh_full, gram_eigh_full_with_pinv
+using TensorAlgebra: matricize
 using Test: @test, @testset
 
 @testset "operator" begin
@@ -54,7 +55,7 @@ end
     @test codomainnames(Id) == codomainnames(op)
     @test domainnames(Id) == domainnames(op)
     Id_mat = matricize(state(Id), (i, j) => "row", (k, l) => "col")
-    @test dename(Id_mat, ("row", "col")) ≈ I(6)
+    @test unname(Id_mat, ("row", "col")) ≈ I(6)
 end
 
 @testset "one(::AbstractITensor, codomain, domain)" begin
@@ -63,7 +64,7 @@ end
     a = randn(i, j, k, l)
     Id = one(a, (i, j), (k, l))
     Id_mat = matricize(Id, (i, j) => "row", (k, l) => "col")
-    @test dename(Id_mat, ("row", "col")) ≈ I(6)
+    @test unname(Id_mat, ("row", "col")) ≈ I(6)
 
     # Non-trivial axis ordering: codomain/domain are interleaved in `a`.
     p, q, r, s = namedoneto.((2, 4, 2, 4), ("p", "q", "r", "s"))
@@ -71,7 +72,7 @@ end
     Id = one(a, (p, q), (r, s))
     @test issetequal(dimnames(Id), ("p", "r", "q", "s"))
     Id_mat = matricize(Id, (p, q) => "row", (r, s) => "col")
-    @test dename(Id_mat, ("row", "col")) ≈ I(8)
+    @test unname(Id_mat, ("row", "col")) ≈ I(8)
 end
 
 @testset "similar_operator" begin
@@ -102,11 +103,11 @@ end
     op = operator(zeros(3, 3), ("i'",), ("i",))
     rng = StableRNG(123)
     Random.randn!(rng, op)
-    @test !all(iszero, denamed(state(op)))
+    @test !all(iszero, unnamed(state(op)))
 
     Random.rand!(rng, op)
-    @test !all(iszero, denamed(state(op)))
-    @test all(0 .≤ denamed(state(op)) .≤ 1)
+    @test !all(iszero, unnamed(state(op)))
+    @test all(0 .≤ unnamed(state(op)) .≤ 1)
 end
 
 @testset "operator-preserving broadcasting" begin
@@ -124,14 +125,14 @@ end
         @test issetequal(domainnames(r), ("i",))
     end
 
-    @test dename(state(o + o), nms) ≈ 2 .* dename(s, nms)
-    @test all(iszero, dename(state(o - o), nms))
-    @test dename(state(-o), nms) ≈ -dename(s, nms)
-    @test dename(state(2 * o), nms) ≈ 2 .* dename(s, nms)
-    @test dename(state(o * 2), nms) ≈ 2 .* dename(s, nms)
-    @test dename(state(2 .* o), nms) ≈ 2 .* dename(s, nms)
-    @test dename(state(o .* 2), nms) ≈ 2 .* dename(s, nms)
-    @test dename(state(o ./ 2), nms) ≈ dename(s, nms) ./ 2
+    @test unname(state(o + o), nms) ≈ 2 .* unname(s, nms)
+    @test all(iszero, unname(state(o - o), nms))
+    @test unname(state(-o), nms) ≈ -unname(s, nms)
+    @test unname(state(2 * o), nms) ≈ 2 .* unname(s, nms)
+    @test unname(state(o * 2), nms) ≈ 2 .* unname(s, nms)
+    @test unname(state(2 .* o), nms) ≈ 2 .* unname(s, nms)
+    @test unname(state(o .* 2), nms) ≈ 2 .* unname(s, nms)
+    @test unname(state(o ./ 2), nms) ≈ unname(s, nms) ./ 2
 
     # `*` (contraction) still decays to a plain tensor.
     @test !((o * o) isa ITensorOperator)

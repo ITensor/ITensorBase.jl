@@ -1,5 +1,5 @@
 using ITensorBase:
-    ITensorBase, dename, denamed, dimnames, inds, namedoneto, replacedimnames, uniquename
+    ITensorBase, dimnames, inds, namedoneto, replacedimnames, uniquename, unname, unnamed
 using LinearAlgebra: LinearAlgebra, norm
 using MatrixAlgebraKit: left_null, left_orth, left_polar, lq_compact, lq_full, qr_compact,
     qr_full, right_null, right_orth, right_polar, svd_compact, svd_trunc
@@ -23,18 +23,18 @@ using Test: @test, @test_broken, @testset
         na2 = randn(elt, j, k)
         na_dest = na1 * na2
         @test eltype(na_dest) ≡ elt
-        @test dename(na_dest, (i, k)) ≈ denamed(na1) * denamed(na2)
+        @test unname(na_dest, (i, k)) ≈ unnamed(na1) * unnamed(na2)
     end
     @testset "matricize" begin
         i, j, k, l = namedoneto.((2, 3, 4, 5), ("i", "j", "k", "l"))
         na = randn(elt, i, j, k, l)
         na_fused = matricize(na, (k, i) => "a", (j, l) => "b")
         # Fuse all dimensions.
-        @test dename(na_fused, ("a", "b")) ≈ reshape(
-            dename(na, (k, i, j, l)),
+        @test unname(na_fused, ("a", "b")) ≈ reshape(
+            unname(na, (k, i, j, l)),
             (
-                denamed(length(k)) * denamed(length(i)),
-                denamed(length(j)) * denamed(length(l)),
+                unnamed(length(k)) * unnamed(length(i)),
+                unnamed(length(j)) * unnamed(length(l)),
             )
         )
     end
@@ -44,10 +44,10 @@ using Test: @test, @test_broken, @testset
         na = randn(elt, a, b)
         # Split all dimensions.
         na_split = unmatricize(na, "a" => (k, i), "b" => (j, l))
-        @test dename(na_split, ("k", "i", "j", "l")) ≈
+        @test unname(na_split, ("k", "i", "j", "l")) ≈
             reshape(
-            dename(na, ("a", "b")),
-            (denamed(k), denamed(i), denamed(j), denamed(l))
+            unname(na, ("a", "b")),
+            (unnamed(k), unnamed(i), unnamed(j), unnamed(l))
         )
     end
     @testset "Matrix functions" begin
@@ -59,8 +59,8 @@ using Test: @test, @test_broken, @testset
                 rng = StableRNG(123)
                 a = randn(rng, $elt, (i, j, k, l))
                 fa = $f(a, (j, l), (k, i))
-                m = dename(matricize(a, (j, l) => "a", (k, i) => "b"), ("a", "b"))
-                fm = dename(matricize(fa, (j, l) => "a", (k, i) => "b"), ("a", "b"))
+                m = unname(matricize(a, (j, l) => "a", (k, i) => "b"), ("a", "b"))
+                fm = unname(matricize(fa, (j, l) => "a", (k, i) => "b"), ("a", "b"))
                 @test fm ≈ $f(m)
             end
         end
@@ -109,7 +109,7 @@ using Test: @test, @test_broken, @testset
         a = randn(elt, i, j, k, l)
         u, s, v = svd_trunc(a, (i, k), (j, l); trunc = (; maxrank = 2))
         @test u * s * v ≉ a
-        @test denamed.(Tuple(size(s))) == (2, 2)
+        @test unnamed.(Tuple(size(s))) == (2, 2)
     end
     @testset "left_null/right_null" begin
         dims = (2, 2, 2, 2)
@@ -152,7 +152,7 @@ using Test: @test, @test_broken, @testset
             # (rank × rank) named identity.
             fresh_rank = uniquename(rank_name)
             X_fresh = replacedimnames(X, rank_name => fresh_rank)
-            YXmat = dename(Y * X_fresh, (rank_name, fresh_rank))
+            YXmat = unname(Y * X_fresh, (rank_name, fresh_rank))
             @test YXmat ≈ LinearAlgebra.I(size(YXmat, 1))
         end
     end

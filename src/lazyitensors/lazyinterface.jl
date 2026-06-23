@@ -203,10 +203,10 @@ function inds_lazy(a)
         return error("Variant not supported.")
     end
 end
-function denamed_lazy(a)
+function unnamed_lazy(a)
     u = unwrap(a)
     if !iscall(u)
-        return denamed(u)
+        return unnamed(u)
     else
         return error("Variant not supported.")
     end

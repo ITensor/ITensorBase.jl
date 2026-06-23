@@ -1,4 +1,4 @@
-# Expression leaf with no array payload, so it defines no `denamed`/`getindex`.
+# Expression leaf with no array payload, so it defines no `unnamed`/`getindex`.
 # A symbolic tensor is a placeholder substituted with a real tensor before
 # contraction, so it only needs what drives contraction-order selection: the
 # `dimnames` and the index `size`s (the cost model uses lengths). `inds` is
@@ -13,7 +13,7 @@ end
 function SymbolicITensor(symname, inds)
     dnames = collect(name.(inds))
     DimName = isempty(inds) ? typeof(symname) : eltype(dnames)
-    sizes = Int[length(denamed(i)) for i in inds]
+    sizes = Int[length(unnamed(i)) for i in inds]
     return SymbolicITensor{DimName, typeof(symname)}(symname, sizes, dnames)
 end
 
