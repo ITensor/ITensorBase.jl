@@ -45,13 +45,15 @@ Base.hash(a::AbstractNamedArray, h::UInt) = hash_named(:NamedArray, a, h)
 getindex_named(a::AbstractArray, I...) = named(getindex(unnamed(a), I...), name(a))
 
 # Array funcionality.
-Base.size(a::AbstractNamedArray) = map(s -> named(s, name(a)), size(unnamed(a)))
-Base.axes(a::AbstractNamedArray) = map(s -> named(s, name(a)), axes(unnamed(a)))
+Base.size(a::AbstractNamedArray) = size(unnamed(a))
+# `axes`/`eachindex` are the positional index layer and stay plain (unnamed),
+# satisfying the `AbstractArray` contract that `axes` are `AbstractUnitRange{Int}`.
+# Names appear on the elements (`getindex`, `first`, `last`, iteration), not here.
+Base.axes(a::AbstractNamedArray) = axes(unnamed(a))
 Base.eachindex(a::AbstractNamedArray) = eachindex(unnamed(a))
-# A named array carries a single name, so its length is that name attached to the
-# unnamed length. No fusion is involved, unlike a multi-dim `AbstractITensor`, which
-# has no single name and so does not define `length`.
-Base.length(a::AbstractNamedArray) = named(length(unnamed(a)), name(a))
+# `length` and `size` are plain counts: the name lives on the axes and on the named
+# elements (`a[i]`, `first`, `last`, iteration), not on the scalar count.
+Base.length(a::AbstractNamedArray) = length(unnamed(a))
 function Base.getindex(a::AbstractNamedArray{<:Any, <:Any, N}, I::Vararg{Int, N}) where {N}
     return getindex_named(a, I...)
 end

@@ -33,8 +33,8 @@ using Test: @test, @test_broken, @testset
         @test unname(na_fused, ("a", "b")) ≈ reshape(
             unname(na, (k, i, j, l)),
             (
-                unnamed(length(k)) * unnamed(length(i)),
-                unnamed(length(j)) * unnamed(length(l)),
+                length(k) * length(i),
+                length(j) * length(l),
             )
         )
     end
@@ -109,7 +109,7 @@ using Test: @test, @test_broken, @testset
         a = randn(elt, i, j, k, l)
         u, s, v = svd_trunc(a, (i, k), (j, l); trunc = (; maxrank = 2))
         @test u * s * v ≉ a
-        @test unnamed.(Tuple(size(s))) == (2, 2)
+        @test size(s) == (2, 2)
     end
     @testset "left_null/right_null" begin
         dims = (2, 2, 2, 2)

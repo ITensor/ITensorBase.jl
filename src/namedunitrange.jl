@@ -40,9 +40,9 @@ Base.conj(r::NamedUnitRange) = named(conj(unnamed(r)), name(r))
 # Unit range functionality.
 Base.first(r::NamedUnitRange) = named(first(unnamed(r)), name(r))
 Base.last(r::NamedUnitRange) = named(last(unnamed(r)), name(r))
-# `length` is inherited from the `AbstractNamedArray` generic (identical definition).
-Base.size(r::NamedUnitRange) = (named(length(unnamed(r)), name(r)),)
-Base.axes(r::NamedUnitRange) = (named(only(axes(unnamed(r))), name(r)),)
+# `length`, `size`, and `axes` are inherited from the `AbstractNamedArray` generic:
+# the count and the positional axes are plain (unnamed). The element-layer methods
+# (`first`, `last`, `step`, indexing, iteration) stay named.
 Base.step(r::NamedUnitRange) = named(step(unnamed(r)), name(r))
 Base.getindex(r::NamedUnitRange, I::Int) = getindex_named(r, I)
 # Fix ambiguity error.

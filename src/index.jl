@@ -125,7 +125,7 @@ function primestring(plev)
 end
 
 function Base.show(io::IO, i::Index)
-    lenstr = "length=$(unnamed(length(i)))"
+    lenstr = "length=$(length(i))"
     idstr = "|id=$(shortid(id(i)))"
     tagsstr = !isempty(tags(i)) ? "|$(tagsstring(tags(i)))" : ""
     primestr = primestring(plev(i))

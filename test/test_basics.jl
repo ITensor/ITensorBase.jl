@@ -52,14 +52,14 @@ using UUIDs: UUID
         @test !hastag(i, "Y")
 
         i = Index(Base.OneTo(2))
-        @test length(i) == named(2, name(i))
-        @test unnamed(length(i)) == 2
+        @test length(i) == 2
+        @test length(i) isa Int
         @test unnamed(i) == 1:2
         @test plev(i) == 0
         @test length(tags(i)) == 0
 
         i = settag(Index(2), "X", "Y")
-        @test unnamed(length(i)) == 2
+        @test length(i) == 2
         @test hastag(i, "X")
         @test gettag(i, "X") == "Y"
         @test plev(i) == 0

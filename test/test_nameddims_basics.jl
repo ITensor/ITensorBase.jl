@@ -28,8 +28,8 @@ end
         ai, aj = axes(na)
         i = namedoneto(3, "i")
         j = namedoneto(4, "j")
-        @test name(si) == "i"
-        @test name(sj) == "j"
+        @test si == 3
+        @test sj == 4
         @test name(ai) == "i"
         @test name(aj) == "j"
         @test isnamed(na)
@@ -227,9 +227,9 @@ end
         @test unnamed(nb) == a
         na[1, 1] = 11
         @test na[1, 1] == 11
-        @test Tuple(size(na)) == (named(3, "i"), named(4, "j"))
-        # An ITensor has named, unordered dims, so `length` (a linearization) errors.
-        @test_throws MethodError length(na)
+        @test size(na) == (3, 4)
+        # An ITensor's `length` is the plain element count (product of its size).
+        @test length(na) == 12
         @test Tuple(axes(na)) == (named(1:3, "i"), named(1:4, "j"))
         @test randn(named.((3, 4), ("i", "j"))) isa ITensor
         @test na["i" => 1, "j" => 2] == a[1, 2]
