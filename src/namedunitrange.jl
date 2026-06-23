@@ -1,13 +1,13 @@
-struct NamedUnitRange{Name, DenamedT <: Integer, Denamed <: AbstractUnitRange{DenamedT}} <:
-    AbstractNamedVector{Name, DenamedT}
-    value::Denamed
+struct NamedUnitRange{Name, UnnamedT <: Integer, Unnamed <: AbstractUnitRange{UnnamedT}} <:
+    AbstractNamedVector{Name, UnnamedT}
+    value::Unnamed
     name::Name
 end
 
 # Minimal interface.
-denamed(i::NamedUnitRange) = i.value
+unnamed(i::NamedUnitRange) = i.value
 name(i::NamedUnitRange) = i.name
-denamedtype(::Type{<:NamedUnitRange{<:Any, <:Any, Denamed}}) where {Denamed} = Denamed
+unnamedtype(::Type{<:NamedUnitRange{<:Any, <:Any, Unnamed}}) where {Unnamed} = Unnamed
 
 # Construct from a range or length, minting a fresh name of the requested flavor.
 # Generic over the name type via `uniquename`, so `Index(3)` (with `Index` a
@@ -27,23 +27,23 @@ named(r::AbstractUnitRange, name) = namedunitrange(r, name)
 
 # Derived interface. `setname` differs from the `AbstractNamedArray` method: it
 # rebuilds through `named` so the result stays a named unit range, not a named
-# array. The rest of the named interface (`==`, `hash`, `isnamed`, `denamedtype`,
+# array. The rest of the named interface (`==`, `hash`, `isnamed`, `unnamedtype`,
 # `nametype`, `uniquename`, `show`, `isempty`) is inherited from `AbstractNamedArray`.
 # TODO: Use `Accessors.@set`?
-setname(r::NamedUnitRange, name) = named(denamed(r), name)
+setname(r::NamedUnitRange, name) = named(unnamed(r), name)
 
 # Forward `conj` to the underlying range so graded axes flip their sector
 # arrows. The `Base.conj(::AbstractArray{<:Real}) = x` fallback would
 # otherwise short-circuit before the inner range is touched.
-Base.conj(r::NamedUnitRange) = named(conj(denamed(r)), name(r))
+Base.conj(r::NamedUnitRange) = named(conj(unnamed(r)), name(r))
 
 # Unit range functionality.
-Base.first(r::NamedUnitRange) = named(first(denamed(r)), name(r))
-Base.last(r::NamedUnitRange) = named(last(denamed(r)), name(r))
-# `length` is inherited from the `AbstractNamedArray` generic (identical definition).
-Base.size(r::NamedUnitRange) = (named(length(denamed(r)), name(r)),)
-Base.axes(r::NamedUnitRange) = (named(only(axes(denamed(r))), name(r)),)
-Base.step(r::NamedUnitRange) = named(step(denamed(r)), name(r))
+Base.first(r::NamedUnitRange) = named(first(unnamed(r)), name(r))
+Base.last(r::NamedUnitRange) = named(last(unnamed(r)), name(r))
+# `length`, `size`, and `axes` are inherited from the `AbstractNamedArray` generic:
+# the count and the positional axes are plain (unnamed). The element-layer methods
+# (`first`, `last`, `step`, indexing, iteration) stay named.
+Base.step(r::NamedUnitRange) = named(step(unnamed(r)), name(r))
 Base.getindex(r::NamedUnitRange, I::Int) = getindex_named(r, I)
 # Fix ambiguity error.
 function Base.getindex(r::NamedUnitRange, I::AbstractUnitRange{<:Integer})
@@ -60,38 +60,38 @@ end
 # returned named indices.
 function Base.getindex(r::NamedUnitRange, I::NamedInteger)
     @assert name(r) == name(I)
-    return getindex_named(r, denamed(I))
+    return getindex_named(r, unnamed(I))
 end
 
 # Named ranges are not `AbstractUnitRange`s, so `CartesianIndices` over a tuple of
-# them has no Base method; dename to the parent ranges so `CartesianIndices` of a
+# them has no Base method; unname to the parent ranges so `CartesianIndices` of a
 # named tensor matches the parent's.
 function Base.CartesianIndices(
         rs::Tuple{NamedUnitRange, Vararg{NamedUnitRange}}
     )
-    return CartesianIndices(denamed.(rs))
+    return CartesianIndices(unnamed.(rs))
 end
 
 # Show compactly; the inherited `AbstractNamedArray` text/plain show is multiline.
 Base.show(io::IO, ::MIME"text/plain", r::NamedUnitRange) = show(io, r)
 
 function Base.AbstractUnitRange{Int}(r::NamedUnitRange)
-    return AbstractUnitRange{Int}(denamed(r))
+    return AbstractUnitRange{Int}(unnamed(r))
 end
 
-Base.oneto(length::NamedInteger) = named(Base.OneTo(denamed(length)), name(length))
+Base.oneto(length::NamedInteger) = named(Base.OneTo(unnamed(length)), name(length))
 namedoneto(length::Integer, name) = Base.oneto(named(length, name))
 Base.iterate(r::NamedUnitRange) = isempty(r) ? nothing : (first(r), first(r))
 function Base.iterate(r::NamedUnitRange, i)
     i == last(r) && return nothing
-    next = named(denamed(i) + denamed(step(r)), name(r))
+    next = named(unnamed(i) + unnamed(step(r)), name(r))
     return (next, next)
 end
 
 struct NamedColon{Name} <: Function
     name::Name
 end
-denamed(c::NamedColon) = Colon()
+unnamed(c::NamedColon) = Colon()
 name(c::NamedColon) = c.name
 named(::Colon, name) = NamedColon(name)
 
@@ -99,13 +99,13 @@ struct FirstIndex{Arr, Dim}
     array::Arr
     dim::Dim
 end
-Base.to_index(i::FirstIndex) = denamed(first(axes(i.array, i.dim)))
+Base.to_index(i::FirstIndex) = unnamed(first(axes(i.array, i.dim)))
 
 struct LastIndex{Arr, Dim}
     array::Arr
     dim::Dim
 end
-Base.to_index(i::LastIndex) = denamed(last(axes(i.array, i.dim)))
+Base.to_index(i::LastIndex) = unnamed(last(axes(i.array, i.dim)))
 
 function Base.getindex(r::NamedUnitRange, I::FirstIndex)
     return first(r)

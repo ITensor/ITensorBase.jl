@@ -1,5 +1,5 @@
-using ..ITensorBase: AbstractITensor, ITensorBase, NamedUnitRange, dename, denamed, getperm,
-    inds, name, named, nameddims
+using ..ITensorBase: AbstractITensor, ITensorBase, NamedUnitRange, getperm, inds, name,
+    named, nameddims, unname, unnamed
 using Base.Broadcast: Broadcast as BC, Broadcasted, broadcast_shape, broadcasted,
     check_broadcast_shape, combine_axes
 using TensorAlgebra: TensorAlgebra as TA
@@ -75,7 +75,7 @@ function set_promote_shape(
     ) where {N}
     perm = getperm(ax2, ax1)
     ax2_aligned = map(i -> ax2[i], perm)
-    ax_promoted = promote_shape(denamed.(ax1), denamed.(ax2_aligned))
+    ax_promoted = promote_shape(unnamed.(ax1), unnamed.(ax2_aligned))
     return named.(ax_promoted, name.(ax1))
 end
 
@@ -110,30 +110,30 @@ function set_check_broadcast_shape(
     ) where {N}
     perm = getperm(ax2, ax1)
     ax2_aligned = map(i -> ax2[i], perm)
-    check_broadcast_shape(denamed.(ax1), denamed.(ax2_aligned))
+    check_broadcast_shape(unnamed.(ax1), unnamed.(ax2_aligned))
     return nothing
 end
 set_check_broadcast_shape(ax1::Tuple{}, ax2::Tuple{}) = nothing
 
-broadcasted_denamed(x::Number, inds) = x
-broadcasted_denamed(a::AbstractITensor, inds) = denamed(a, inds)
-function broadcasted_denamed(bc::Broadcasted, inds)
-    return broadcasted(bc.f, Base.Fix2(broadcasted_denamed, inds).(bc.args)...)
+broadcasted_unnamed(x::Number, inds) = x
+broadcasted_unnamed(a::AbstractITensor, inds) = unnamed(a, inds)
+function broadcasted_unnamed(bc::Broadcasted, inds)
+    return broadcasted(bc.f, Base.Fix2(broadcasted_unnamed, inds).(bc.args)...)
 end
 
 # A bare (unnamed) array operand, used as an allocation prototype so a broadcast
 # result inherits the operands' backend (e.g. graded) rather than a lazy permuted
 # wrapper's `similar` (which can drop the backend).
-denamed_prototype(bc::Broadcasted) = denamed_prototype(bc.args...)
-denamed_prototype(arg::AbstractITensor, args...) = denamed(arg)
-denamed_prototype(arg::Broadcasted, args...) = denamed_prototype(arg.args..., args...)
-denamed_prototype(arg, args...) = denamed_prototype(args...)
+unnamed_prototype(bc::Broadcasted) = unnamed_prototype(bc.args...)
+unnamed_prototype(arg::AbstractITensor, args...) = unnamed(arg)
+unnamed_prototype(arg::Broadcasted, args...) = unnamed_prototype(arg.args..., args...)
+unnamed_prototype(arg, args...) = unnamed_prototype(args...)
 
 function Base.similar(bc::Broadcasted{<:AbstractITensorStyle}, elt::Type, ax)
     inds_a = name.(ax)
-    bc_denamed = broadcasted_denamed(bc, inds_a)
-    a_denamed = similar(bc_denamed, elt)
-    return nameddims(a_denamed, inds_a)
+    bc_unnamed = broadcasted_unnamed(bc, inds_a)
+    a_unnamed = similar(bc_unnamed, elt)
+    return nameddims(a_unnamed, inds_a)
 end
 
 inds(bc::Broadcasted) = name.(axes(bc))
@@ -144,36 +144,36 @@ function Base.copy(bc::Broadcasted{<:AbstractITensorStyle})
     # copyto!(similar(bc, elt), bc)
     # ```
     # but `combine_eltypes` is based on type inference, which might fail.
-    # Calling broadcasted on the denamed arrays reuses the code logic in
+    # Calling broadcasted on the unnamed arrays reuses the code logic in
     # Base.Broadcast for handling cases where type inference fails by determining
     # the output element type at runtime with widening.
     inds_dest = inds(bc)
-    bc_denamed = broadcasted_denamed(bc, inds_dest)
-    lb = TA.tryflattenlinear(bc_denamed)
+    bc_unnamed = broadcasted_unnamed(bc, inds_dest)
+    lb = TA.tryflattenlinear(bc_unnamed)
     if isnothing(lb)
         # Not a linear combination: ordinary fused broadcast.
-        dest_denamed = copy(bc_denamed)
+        dest_unnamed = copy(bc_unnamed)
     else
         # Linear: lower to bipermutedimsopadd!. Allocate from an operand so the
         # result keeps the backend, using the backend's result axes (not `lb`'s).
-        dest_axes = denamed.(Tuple(axes(bc)))
-        dest_denamed = similar(denamed_prototype(bc), eltype(lb), dest_axes)
-        copyto!(dest_denamed, lb)
+        dest_axes = unnamed.(Tuple(axes(bc)))
+        dest_unnamed = similar(unnamed_prototype(bc), eltype(lb), dest_axes)
+        copyto!(dest_unnamed, lb)
     end
-    return nameddims(dest_denamed, inds_dest)
+    return nameddims(dest_unnamed, inds_dest)
 end
 
 function Base.copyto!(dest::AbstractITensor, bc::Broadcasted{<:AbstractITensorStyle})
-    dest_denamed = denamed(dest)
+    dest_unnamed = unnamed(dest)
     inds_dest = inds(dest)
-    bc_denamed = broadcasted_denamed(bc, inds_dest)
-    lb = TA.tryflattenlinear(bc_denamed)
+    bc_unnamed = broadcasted_unnamed(bc, inds_dest)
+    lb = TA.tryflattenlinear(bc_unnamed)
     if isnothing(lb)
         # Not a linear combination: ordinary fused broadcast.
-        copyto!(dest_denamed, bc_denamed)
+        copyto!(dest_unnamed, bc_unnamed)
     else
         # Linear: lower to bipermutedimsopadd! into the existing dest.
-        copyto!(dest_denamed, lb)
+        copyto!(dest_unnamed, lb)
     end
     return dest
 end
@@ -221,8 +221,8 @@ end
 
 # Reinterpret an operator-style `Broadcasted` under `ITensorStyle`, the broadcast
 # over the operators' states, so the shared `ITensorStyle` implementation runs (its
-# `broadcasted_denamed` already peels each operator operand to its `state` via
-# `denamed`).
+# `broadcasted_unnamed` already peels each operator operand to its `state` via
+# `unnamed`).
 function statebroadcasted(bc::Broadcasted{<:ITensorOperatorStyle})
     return Broadcasted{ITensorStyle{Any}}(bc.f, bc.args, bc.axes)
 end

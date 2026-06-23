@@ -16,16 +16,16 @@ end
 function time_complexity(
         ::typeof(*), t1::AbstractITensor, t2::AbstractITensor
     )
-    return prod(length ∘ denamed, (inds(t1) ∪ inds(t2)))
+    return prod(length, (inds(t1) ∪ inds(t2)))
 end
 function time_complexity(
         ::typeof(+), t1::AbstractITensor, t2::AbstractITensor
     )
     @assert issetequal(dimnames(t1), dimnames(t2))
-    return prod(denamed, size(t1))
+    return prod(size(t1))
 end
 function time_complexity(::typeof(*), c::Number, t::AbstractITensor)
-    return prod(denamed, size(t))
+    return prod(size(t))
 end
 function time_complexity(::typeof(*), t::AbstractITensor, c::Number)
     return time_complexity(*, c, t)

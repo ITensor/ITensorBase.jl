@@ -42,8 +42,8 @@ julia> Pkg.add("ITensorBase")
 ## Examples
 
 ````julia
-using ITensorBase: ITensorBase, ITensor, Index, aligndims, dename
-using LinearAlgebra: qr
+using ITensorBase: ITensorBase, ITensor, Index, aligndims, unname
+using MatrixAlgebraKit: qr_compact
 using Test: @test
 i = Index(2)
 j = Index(2)
@@ -54,11 +54,11 @@ a = randn(i, j)
 a′ = randn(j, i)
 b = randn(j, k)
 c = a * b
-@test dename(c, (i, k)) ≈ dename(a, (i, j)) * dename(b, (j, k))
+@test unname(c, (i, k)) ≈ unname(a, (i, j)) * unname(b, (j, k))
 d = a + a′
-@test dename(d, (i, j)) ≈ dename(a, (i, j)) + dename(a′, (i, j))
+@test unname(d, (i, j)) ≈ unname(a, (i, j)) + unname(a′, (i, j))
 @test a ≈ aligndims(a, (j, i))
-q, r = qr(a, (i,))
+q, r = qr_compact(a, (i,))
 @test q * r ≈ a
 ````
 

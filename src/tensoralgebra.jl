@@ -1,4 +1,6 @@
 using LinearAlgebra: LinearAlgebra as LA
+using MatrixAlgebraKit: MatrixAlgebraKit as MAK
+using TensorAlgebra.MatrixAlgebra: MatrixAlgebra as MA
 using TensorAlgebra: TensorAlgebra as TA
 using TupleTools: TupleTools
 
@@ -8,7 +10,7 @@ dimnames_setdiff(s1, s2) = setdiff(s1, s2)
 Base.:*(a1::AbstractITensor, a2::AbstractITensor) = mul_nameddims(a1, a2)
 function mul_nameddims(a1::AbstractITensor, a2::AbstractITensor)
     a_dest, dimnames_dest = TA.contract(
-        denamed(a1), dimnames(a1), denamed(a2), dimnames(a2)
+        unnamed(a1), dimnames(a1), unnamed(a2), dimnames(a2)
     )
     return nameddims(a_dest, dimnames_dest)
 end
@@ -46,9 +48,9 @@ function mul!_nameddims(
         α::Number, β::Number
     )
     TA.contractadd!(
-        denamed(a_dest), dimnames(a_dest),
-        denamed(a1), dimnames(a1),
-        denamed(a2), dimnames(a2),
+        unnamed(a_dest), dimnames(a_dest),
+        unnamed(a1), dimnames(a1),
+        unnamed(a2), dimnames(a2),
         α, β
     )
     return a_dest
@@ -65,9 +67,9 @@ function mul!_nameddims(
         a1::AbstractITensor, a2::AbstractITensor
     )
     TA.contract!(
-        denamed(a_dest), dimnames(a_dest),
-        denamed(a1), dimnames(a1),
-        denamed(a2), dimnames(a2)
+        unnamed(a_dest), dimnames(a_dest),
+        unnamed(a1), dimnames(a1),
+        unnamed(a2), dimnames(a2)
     )
     return a_dest
 end
@@ -106,7 +108,7 @@ function matricize_nameddims(na::AbstractITensor, fusions::Vararg{Pair, 2})
         )
     end
     perm = TA.blockedperm(na, dimnames_fuse...)
-    a_fused = TA.matricize(denamed(na), perm)
+    a_fused = TA.matricize(unnamed(na), perm)
     return nameddims(a_fused, dimnames_fused)
 end
 
@@ -116,14 +118,14 @@ end
 function unmatricize_nameddims(na::AbstractITensor, splitters::Vararg{Pair, 2})
     splitters = name.(first.(splitters)) .=> last.(splitters)
     split_namedlengths = last.(splitters)
-    splitters_denamed = map(splitters) do splitter
+    splitters_unnamed = map(splitters) do splitter
         fused_name, split_namedlengths = splitter
         fused_dim = findfirst(isequal(fused_name), dimnames(na))
-        split_lengths = denamed.(split_namedlengths)
+        split_lengths = unnamed.(split_namedlengths)
         return fused_dim => split_lengths
     end
-    blocked_axes = last.(TupleTools.sort(splitters_denamed; by = first))
-    a_split = TA.unmatricize(denamed(na), blocked_axes...)
+    blocked_axes = last.(TupleTools.sort(splitters_unnamed; by = first))
+    a_split = TA.unmatricize(unnamed(na), blocked_axes...)
     names_split = Any[tuple.(dimnames(na))...]
     for splitter in splitters
         fused_name, split_namedlengths = splitter
@@ -136,12 +138,12 @@ function unmatricize_nameddims(na::AbstractITensor, splitters::Vararg{Pair, 2})
 end
 
 for f in [
-        :left_orth, :left_polar, :lq, :orth, :polar, :qr, :right_orth,
-        :right_polar,
+        :left_orth, :left_polar, :lq_compact, :lq_full, :qr_compact, :qr_full,
+        :right_orth, :right_polar,
     ]
     f_nameddims = Symbol(f, "_nameddims")
     @eval begin
-        function TA.$f(
+        function MAK.$f(
                 a::AbstractITensor, dimnames_codomain, dimnames_domain; kwargs...
             )
             return $f_nameddims(a, dimnames_codomain, dimnames_domain; kwargs...)
@@ -151,87 +153,85 @@ for f in [
             )
             codomain = name.(dimnames_codomain)
             domain = name.(dimnames_domain)
-            x_denamed, y_denamed =
-                TA.$f(denamed(a), dimnames(a), codomain, domain; kwargs...)
+            x_unnamed, y_unnamed =
+                TA.$f(unnamed(a), dimnames(a), codomain, domain; kwargs...)
             name_x = uniquename(dimnames(a, 1))
             name_y = name_x
             dimnames_x = (codomain..., name_x)
             dimnames_y = (name_y, domain...)
-            x = nameddims(x_denamed, dimnames_x)
-            y = nameddims(y_denamed, dimnames_y)
+            x = nameddims(x_unnamed, dimnames_x)
+            y = nameddims(y_unnamed, dimnames_y)
             return x, y
         end
-        function TA.$f(a::AbstractITensor, dimnames_codomain; kwargs...)
+        function MAK.$f(a::AbstractITensor, dimnames_codomain; kwargs...)
             return $f_nameddims(a, dimnames_codomain; kwargs...)
         end
         function $f_nameddims(a::AbstractITensor, dimnames_codomain; kwargs...)
             codomain = name.(dimnames_codomain)
             domain = dimnames_setdiff(dimnames(a), codomain)
-            return TA.$f(a, codomain, domain; kwargs...)
+            return MAK.$f(a, codomain, domain; kwargs...)
         end
     end
 end
 
-# Overload LinearAlgebra functions where relevant.
-function LA.qr(a::AbstractITensor, args...; kwargs...)
-    return TA.qr(a, args...; kwargs...)
-end
-function LA.lq(a::AbstractITensor, args...; kwargs...)
-    return TA.lq(a, args...; kwargs...)
+#
+# SVD (three-output).
+#
+
+for f in [:svd_compact, :svd_full, :svd_trunc]
+    f_nameddims = Symbol(f, "_nameddims")
+    @eval begin
+        function MAK.$f(
+                a::AbstractITensor, dimnames_codomain, dimnames_domain; kwargs...
+            )
+            return $f_nameddims(a, dimnames_codomain, dimnames_domain; kwargs...)
+        end
+        function $f_nameddims(
+                a::AbstractITensor, dimnames_codomain, dimnames_domain; kwargs...
+            )
+            codomain = name.(dimnames_codomain)
+            domain = name.(dimnames_domain)
+            u_unnamed, s_unnamed, v_unnamed = TA.$f(
+                unnamed(a), dimnames(a), codomain, domain; kwargs...
+            )
+            name_u = uniquename(dimnames(a, 1))
+            name_v = uniquename(dimnames(a, 1))
+            dimnames_u = (codomain..., name_u)
+            dimnames_s = (name_u, name_v)
+            dimnames_v = (name_v, domain...)
+            u = nameddims(u_unnamed, dimnames_u)
+            s = nameddims(s_unnamed, dimnames_s)
+            v = nameddims(v_unnamed, dimnames_v)
+            return u, s, v
+        end
+        function MAK.$f(a::AbstractITensor, dimnames_codomain; kwargs...)
+            return $f_nameddims(a, dimnames_codomain; kwargs...)
+        end
+        function $f_nameddims(a::AbstractITensor, dimnames_codomain; kwargs...)
+            return MAK.$f(
+                a,
+                dimnames_codomain,
+                dimnames_setdiff(dimnames(a), name.(dimnames_codomain));
+                kwargs...
+            )
+        end
+    end
 end
 
 #
-# Non-binary factorizations.
+# Singular values.
 #
 
-function TA.svd(
+function MAK.svd_vals(
         a::AbstractITensor, dimnames_codomain, dimnames_domain; kwargs...
     )
-    return svd_nameddims(a, dimnames_codomain, dimnames_domain; kwargs...)
+    return svd_vals_nameddims(a, dimnames_codomain, dimnames_domain; kwargs...)
 end
-function svd_nameddims(
+function svd_vals_nameddims(
         a::AbstractITensor, dimnames_codomain, dimnames_domain; kwargs...
     )
-    codomain = name.(dimnames_codomain)
-    domain = name.(dimnames_domain)
-    u_denamed, s_denamed, v_denamed = TA.svd(
-        denamed(a), dimnames(a), codomain, domain; kwargs...
-    )
-    name_u = uniquename(dimnames(a, 1))
-    name_v = uniquename(dimnames(a, 1))
-    dimnames_u = (codomain..., name_u)
-    dimnames_s = (name_u, name_v)
-    dimnames_v = (name_v, domain...)
-    u = nameddims(u_denamed, dimnames_u)
-    s = nameddims(s_denamed, dimnames_s)
-    v = nameddims(v_denamed, dimnames_v)
-    return u, s, v
-end
-function TA.svd(a::AbstractITensor, dimnames_codomain; kwargs...)
-    return svd_nameddims(a, dimnames_codomain; kwargs...)
-end
-function svd_nameddims(a::AbstractITensor, dimnames_codomain; kwargs...)
-    return TA.svd(
-        a,
-        dimnames_codomain,
-        dimnames_setdiff(dimnames(a), name.(dimnames_codomain));
-        kwargs...
-    )
-end
-function LA.svd(a::AbstractITensor, args...; kwargs...)
-    return TA.svd(a, args...; kwargs...)
-end
-
-function TA.svdvals(
-        a::AbstractITensor, dimnames_codomain, dimnames_domain; kwargs...
-    )
-    return svdvals_nameddims(a, dimnames_codomain, dimnames_domain; kwargs...)
-end
-function svdvals_nameddims(
-        a::AbstractITensor, dimnames_codomain, dimnames_domain; kwargs...
-    )
-    return TA.svdvals(
-        denamed(a),
+    return TA.svd_vals(
+        unnamed(a),
         dimnames(a),
         name.(dimnames_codomain),
         name.(dimnames_domain);
@@ -239,62 +239,70 @@ function svdvals_nameddims(
     )
 end
 
-function TA.svdvals(a::AbstractITensor, dimnames_codomain; kwargs...)
-    return svdvals_nameddims(a, dimnames_codomain; kwargs...)
+function MAK.svd_vals(a::AbstractITensor, dimnames_codomain; kwargs...)
+    return svd_vals_nameddims(a, dimnames_codomain; kwargs...)
 end
-function svdvals_nameddims(a::AbstractITensor, dimnames_codomain; kwargs...)
+function svd_vals_nameddims(a::AbstractITensor, dimnames_codomain; kwargs...)
     codomain = name.(dimnames_codomain)
     domain = dimnames_setdiff(dimnames(a), codomain)
-    return TA.svdvals(a, codomain, domain; kwargs...)
+    return MAK.svd_vals(a, codomain, domain; kwargs...)
 end
 
-function LA.svdvals(a::AbstractITensor, args...; kwargs...)
-    return TA.svdvals(a, args...; kwargs...)
+#
+# Eigendecomposition (two-output).
+#
+
+for f in [:eigh_full, :eig_full, :eigh_trunc, :eig_trunc]
+    f_nameddims = Symbol(f, "_nameddims")
+    @eval begin
+        function MAK.$f(
+                a::AbstractITensor, dimnames_codomain, dimnames_domain; kwargs...
+            )
+            return $f_nameddims(a, dimnames_codomain, dimnames_domain; kwargs...)
+        end
+        function $f_nameddims(
+                a::AbstractITensor, dimnames_codomain, dimnames_domain; kwargs...
+            )
+            codomain = name.(dimnames_codomain)
+            domain = name.(dimnames_domain)
+            d_unnamed, v_unnamed = TA.$f(
+                unnamed(a), dimnames(a), codomain, domain; kwargs...
+            )
+            name_d = uniquename(dimnames(a, 1))
+            name_d′ = uniquename(name_d)
+            name_v = name_d
+            dimnames_d = (name_d′, name_d)
+            dimnames_v = (domain..., name_v)
+            d = nameddims(d_unnamed, dimnames_d)
+            v = nameddims(v_unnamed, dimnames_v)
+            return d, v
+        end
+    end
 end
 
-function TA.eigen(
-        a::AbstractITensor, dimnames_codomain, dimnames_domain; kwargs...
-    )
-    return eigen_nameddims(a, dimnames_codomain, dimnames_domain; kwargs...)
-end
-function eigen_nameddims(
-        a::AbstractITensor, dimnames_codomain, dimnames_domain; kwargs...
-    )
-    codomain = name.(dimnames_codomain)
-    domain = name.(dimnames_domain)
-    d_denamed, v_denamed = TA.eigen(denamed(a), dimnames(a), codomain, domain; kwargs...)
-    name_d = uniquename(dimnames(a, 1))
-    name_d′ = uniquename(name_d)
-    name_v = name_d
-    dimnames_d = (name_d′, name_d)
-    dimnames_v = (domain..., name_v)
-    d = nameddims(d_denamed, dimnames_d)
-    v = nameddims(v_denamed, dimnames_v)
-    return d, v
+#
+# Eigenvalues.
+#
+
+for f in [:eigh_vals, :eig_vals]
+    f_nameddims = Symbol(f, "_nameddims")
+    @eval begin
+        function MAK.$f(
+                a::AbstractITensor, dimnames_codomain, dimnames_domain; kwargs...
+            )
+            return $f_nameddims(a, dimnames_codomain, dimnames_domain; kwargs...)
+        end
+        function $f_nameddims(
+                a::AbstractITensor, dimnames_codomain, dimnames_domain; kwargs...
+            )
+            codomain = name.(dimnames_codomain)
+            domain = name.(dimnames_domain)
+            return TA.$f(unnamed(a), dimnames(a), codomain, domain; kwargs...)
+        end
+    end
 end
 
-function LA.eigen(a::AbstractITensor, args...; kwargs...)
-    return TA.eigen(a, args...; kwargs...)
-end
-
-function TA.eigvals(
-        a::AbstractITensor, dimnames_codomain, dimnames_domain; kwargs...
-    )
-    return eigvals_nameddims(a, dimnames_codomain, dimnames_domain; kwargs...)
-end
-function eigvals_nameddims(
-        a::AbstractITensor, dimnames_codomain, dimnames_domain; kwargs...
-    )
-    codomain = name.(dimnames_codomain)
-    domain = name.(dimnames_domain)
-    return TA.eigvals(denamed(a), dimnames(a), codomain, domain; kwargs...)
-end
-
-function LA.eigvals(a::AbstractITensor, args...; kwargs...)
-    return TA.eigvals(a, args...; kwargs...)
-end
-
-function TA.left_null(
+function MAK.left_null(
         a::AbstractITensor, dimnames_codomain, dimnames_domain; kwargs...
     )
     return left_null_nameddims(a, dimnames_codomain, dimnames_domain; kwargs...)
@@ -304,22 +312,22 @@ function left_null_nameddims(
     )
     codomain = name.(dimnames_codomain)
     domain = name.(dimnames_domain)
-    n_denamed = TA.left_null(denamed(a), dimnames(a), codomain, domain; kwargs...)
+    n_unnamed = TA.left_null(unnamed(a), dimnames(a), codomain, domain; kwargs...)
     name_n = uniquename(dimnames(a, 1))
     dimnames_n = (codomain..., name_n)
-    return nameddims(n_denamed, dimnames_n)
+    return nameddims(n_unnamed, dimnames_n)
 end
 
-function TA.left_null(a::AbstractITensor, dimnames_codomain; kwargs...)
+function MAK.left_null(a::AbstractITensor, dimnames_codomain; kwargs...)
     return left_null_nameddims(a, dimnames_codomain; kwargs...)
 end
 function left_null_nameddims(a::AbstractITensor, dimnames_codomain; kwargs...)
     codomain = name.(dimnames_codomain)
     domain = dimnames_setdiff(dimnames(a), codomain)
-    return TA.left_null(a, codomain, domain; kwargs...)
+    return MAK.left_null(a, codomain, domain; kwargs...)
 end
 
-function TA.right_null(
+function MAK.right_null(
         a::AbstractITensor, dimnames_codomain, dimnames_domain; kwargs...
     )
     return right_null_nameddims(a, dimnames_codomain, dimnames_domain; kwargs...)
@@ -329,23 +337,23 @@ function right_null_nameddims(
     )
     codomain = name.(dimnames_codomain)
     domain = name.(dimnames_domain)
-    n_denamed = TA.right_null(denamed(a), dimnames(a), codomain, domain; kwargs...)
+    n_unnamed = TA.right_null(unnamed(a), dimnames(a), codomain, domain; kwargs...)
     name_n = uniquename(dimnames(a, 1))
     dimnames_n = (name_n, domain...)
-    return nameddims(n_denamed, dimnames_n)
+    return nameddims(n_unnamed, dimnames_n)
 end
 
-function TA.right_null(a::AbstractITensor, dimnames_codomain; kwargs...)
+function MAK.right_null(a::AbstractITensor, dimnames_codomain; kwargs...)
     return right_null_nameddims(a, dimnames_codomain; kwargs...)
 end
 function right_null_nameddims(a::AbstractITensor, dimnames_codomain; kwargs...)
     codomain = name.(dimnames_codomain)
     domain = dimnames_setdiff(dimnames(a), codomain)
-    return TA.right_null(a, codomain, domain; kwargs...)
+    return MAK.right_null(a, codomain, domain; kwargs...)
 end
 
 """
-    TensorAlgebra.gram_eigh_full(a::AbstractITensor, dimnames_codomain, dimnames_domain; kwargs...) -> x
+    TensorAlgebra.MatrixAlgebra.gram_eigh_full(a::AbstractITensor, dimnames_codomain, dimnames_domain; kwargs...) -> x
 
 Gram factorization of a Hermitian positive semi-definite named array `a`,
 returning `x` such that `a ≈ x * x_cod`, where `x_cod` is `conj(x)` with
@@ -362,7 +370,7 @@ unnamed array (e.g. `atol`, `rtol`).
 ```jldoctest
 julia> using ITensorBase: dimnames, namedoneto, replacedimnames
 
-julia> using TensorAlgebra: gram_eigh_full
+julia> using TensorAlgebra.MatrixAlgebra: gram_eigh_full
 
 julia> i, j, k, l, aux = namedoneto.((2, 2, 2, 2, 8), ("i", "j", "k", "l", "aux"));
 
@@ -376,7 +384,7 @@ julia> replacedimnames(x, "j" => "i", "l" => "k") * conj(x) ≈ a
 true
 ```
 """
-function TA.gram_eigh_full(
+function MA.gram_eigh_full(
         a::AbstractITensor, dimnames_codomain, dimnames_domain; kwargs...
     )
     return gram_eigh_full_nameddims(a, dimnames_codomain, dimnames_domain; kwargs...)
@@ -386,16 +394,16 @@ function gram_eigh_full_nameddims(
     )
     codomain = name.(dimnames_codomain)
     domain = name.(dimnames_domain)
-    x_denamed = TA.gram_eigh_full(denamed(a), dimnames(a), codomain, domain; kwargs...)
+    x_unnamed = TA.gram_eigh_full(unnamed(a), dimnames(a), codomain, domain; kwargs...)
     name_x = uniquename(dimnames(a, 1))
     dimnames_x = (domain..., name_x)
-    return nameddims(x_denamed, dimnames_x)
+    return nameddims(x_unnamed, dimnames_x)
 end
 
 """
-    TensorAlgebra.gram_eigh_full_with_pinv(a::AbstractITensor, dimnames_codomain, dimnames_domain; kwargs...) -> x, y
+    TensorAlgebra.MatrixAlgebra.gram_eigh_full_with_pinv(a::AbstractITensor, dimnames_codomain, dimnames_domain; kwargs...) -> x, y
 
-Like `TensorAlgebra.gram_eigh_full`, but additionally returns a
+Like `TensorAlgebra.MatrixAlgebra.gram_eigh_full`, but additionally returns a
 named array `y` that is a left inverse of `x`: `y * x ≈ I` on the rank
 subspace (equal to the identity when `a` is full rank). `x` has the
 rank-name last, `y` has it first, both sharing the domain dimension
@@ -406,9 +414,9 @@ names of `a`.
 ```jldoctest
 julia> using LinearAlgebra: I
 
-julia> using ITensorBase: dename, dimnames, namedoneto, replacedimnames
+julia> using ITensorBase: unname, dimnames, namedoneto, replacedimnames
 
-julia> using TensorAlgebra: gram_eigh_full_with_pinv
+julia> using TensorAlgebra.MatrixAlgebra: gram_eigh_full_with_pinv
 
 julia> i, j, k, l, aux = namedoneto.((2, 2, 2, 2, 8), ("i", "j", "k", "l", "aux"));
 
@@ -423,12 +431,12 @@ true
 
 julia> rname = only(setdiff(dimnames(x), ("j", "l")));
 
-julia> reshape(dename(y, (rname, "j", "l")), :, 4) *
-       reshape(dename(x, ("j", "l", rname)), 4, :) ≈ I
+julia> reshape(unname(y, (rname, "j", "l")), :, 4) *
+       reshape(unname(x, ("j", "l", rname)), 4, :) ≈ I
 true
 ```
 """
-function TA.gram_eigh_full_with_pinv(
+function MA.gram_eigh_full_with_pinv(
         a::AbstractITensor, dimnames_codomain, dimnames_domain; kwargs...
     )
     return gram_eigh_full_with_pinv_nameddims(
@@ -440,13 +448,13 @@ function gram_eigh_full_with_pinv_nameddims(
     )
     codomain = name.(dimnames_codomain)
     domain = name.(dimnames_domain)
-    x_denamed, y_denamed = TA.gram_eigh_full_with_pinv(
-        denamed(a), dimnames(a), codomain, domain; kwargs...
+    x_unnamed, y_unnamed = TA.gram_eigh_full_with_pinv(
+        unnamed(a), dimnames(a), codomain, domain; kwargs...
     )
     name_xy = uniquename(dimnames(a, 1))
     dimnames_x = (domain..., name_xy)
     dimnames_y = (name_xy, domain...)
-    return nameddims(x_denamed, dimnames_x), nameddims(y_denamed, dimnames_y)
+    return nameddims(x_unnamed, dimnames_x), nameddims(y_unnamed, dimnames_y)
 end
 
 """
@@ -487,7 +495,7 @@ function one_nameddims(
     )
     codomain = name.(dimnames_codomain)
     domain = name.(dimnames_domain)
-    raw = TA.one(denamed(a), dimnames(a), codomain, domain)
+    raw = TA.one(unnamed(a), dimnames(a), codomain, domain)
     return nameddims(raw, (codomain..., domain...))
 end
 
@@ -512,10 +520,10 @@ for f in MATRIX_FUNCTIONS
             )
             codomain = name.(dimnames_codomain)
             domain = name.(dimnames_domain)
-            fa_denamed = TA.$f(
-                denamed(a), dimnames(a), codomain, domain; kwargs...
+            fa_unnamed = TA.$f(
+                unnamed(a), dimnames(a), codomain, domain; kwargs...
             )
-            return nameddims(fa_denamed, (codomain..., domain...))
+            return nameddims(fa_unnamed, (codomain..., domain...))
         end
     end
 end

@@ -22,12 +22,12 @@ Mooncake.tangent_type(::Type{<:NamedUnitRange}) = Mooncake.NoTangent
 @zero_derivative DefaultCtx Tuple{typeof(uniquename), Any, Any}
 @zero_derivative DefaultCtx Tuple{typeof(to_inds), Any, Any}
 
-using ITensorBase: AbstractITensor, ITensor, denamed
+using ITensorBase: AbstractITensor, ITensor, unnamed
 using Mooncake: Tangent
 function Base.copyto!(dest::ITensor, src::Tangent)
     # TODO: Account for the `inds` of the Tangent? In other words, is the tangent data
     # aligned with the `dest` data?
-    copyto!(denamed(dest), src.fields.parent)
+    copyto!(unnamed(dest), src.fields.parent)
     return dest
 end
 

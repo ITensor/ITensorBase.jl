@@ -4,7 +4,7 @@
 # independent of the order of dimensions.
 function _hash(a::ITensor, h::UInt64)
     h = hash(:ITensor, h)
-    h = hash(denamed(a), h)
+    h = hash(unnamed(a), h)
     for i in inds(a)
         h = hash(i, h)
     end

@@ -48,13 +48,13 @@ dimnametype(type::Type{<:AbstractITensor}) = Any
 
 # Unwrapping the names (named-array interface).
 # TODO: Use `IsNamed` trait?
-denamed(a::AbstractITensor) = throw(MethodError(denamed, a))
-denamed(a::AbstractITensor, inds) = denamed(aligneddims(a, inds))
-dename(a::AbstractITensor, inds) = denamed(aligndims(a, inds))
+unnamed(a::AbstractITensor) = throw(MethodError(unnamed, a))
+unnamed(a::AbstractITensor, inds) = unnamed(aligneddims(a, inds))
+unname(a::AbstractITensor, inds) = unnamed(aligndims(a, inds))
 
 # Output the named axes/indices of the named dims array, as a `Tuple` (even though
 # the dimension names are stored as a `Vector`).
-inds(a::AbstractITensor) = named.(axes(denamed(a)), Tuple(dimnames(a)))
+inds(a::AbstractITensor) = named.(axes(unnamed(a)), Tuple(dimnames(a)))
 inds(a::AbstractITensor, dim::Int) = inds(a)[dim]
 
 isnamed(::Type{<:AbstractITensor}) = true
@@ -91,7 +91,7 @@ end
 """
     nameddims(a::AbstractArray, inds)
 
-Construct a named dimensions array from an denamed array `a` and named dimensions `inds`.
+Construct a named dimensions array from an unnamed array `a` and named dimensions `inds`.
 """
 function nameddims(a::AbstractArray, inds)
     return ITensor(a, inds)
@@ -127,8 +127,8 @@ function checked_indexin(x::AbstractUnitRange, y::AbstractUnitRange)
     return findfirst(==(first(x)), y):findfirst(==(last(x)), y)
 end
 
-Base.copy(a::AbstractITensor) = nameddimsof(a, copy(denamed(a)))
-Base.zero(a::AbstractITensor) = nameddimsof(a, zero(denamed(a)))
+Base.copy(a::AbstractITensor) = nameddimsof(a, copy(unnamed(a)))
+Base.zero(a::AbstractITensor) = nameddimsof(a, zero(unnamed(a)))
 
 # `CartesianIndices` of a named tensor is the parent's, via the named axes (as the
 # `AbstractArray` fallback did through `axes`).
@@ -138,7 +138,7 @@ Base.CartesianIndices(a::AbstractITensor) = CartesianIndices(axes(a))
 # The default `AbstractArray` fallback would broadcast `conj` over elements without
 # touching the axes, which silently changes the contraction convention for tensors
 # with graded (dual-tagged) axes.
-Base.conj(a::AbstractITensor) = nameddimsof(a, conj(denamed(a)))
+Base.conj(a::AbstractITensor) = nameddimsof(a, conj(unnamed(a)))
 
 # `LinearAlgebra.normalize` infers result eltype via `typeof(first(a)/nrm)`, which
 # scalar-indexes block-structured storage. `a / norm(a, p)` already preserves names.
@@ -146,7 +146,7 @@ function LinearAlgebra.normalize(a::AbstractITensor, p::Real = 2)
     return a / LinearAlgebra.norm(a, p)
 end
 function LinearAlgebra.normalize!(a::AbstractITensor, p::Real = 2)
-    LinearAlgebra.normalize!(denamed(a), p)
+    LinearAlgebra.normalize!(unnamed(a), p)
     return a
 end
 
@@ -162,18 +162,18 @@ Base.:/(a::AbstractITensor, x::Number) = a ./ x
 # Forward `Random.randn!` / `Random.rand!` to the concrete storage so they
 # see the runtime eltype.
 function Random.randn!(rng::Random.AbstractRNG, a::AbstractITensor)
-    Random.randn!(rng, denamed(a))
+    Random.randn!(rng, unnamed(a))
     return a
 end
 function Random.rand!(rng::Random.AbstractRNG, a::AbstractITensor)
-    Random.rand!(rng, denamed(a))
+    Random.rand!(rng, unnamed(a))
     return a
 end
 
 function Base.copyto!(a_dest::AbstractITensor, a_src::AbstractITensor)
-    a′_dest = denamed(a_dest)
-    # TODO: Use `denamed` to do the permutations lazily.
-    a′_src = dename(a_src, inds(a_dest))
+    a′_dest = unnamed(a_dest)
+    # TODO: Use `unnamed` to do the permutations lazily.
+    a′_src = unname(a_src, inds(a_dest))
     copyto!(a′_dest, a′_src)
     return a_dest
 end
@@ -193,13 +193,13 @@ end
 
 # These are defined since the Base versions assume the eltype and ndims are known
 # at compile time, which isn't true for ITensors.
-Base.Array(a::AbstractITensor) = Array(denamed(a))
-Base.Array{T}(a::AbstractITensor) where {T} = Array{T}(denamed(a))
-Base.Array{T, N}(a::AbstractITensor) where {T, N} = Array{T, N}(denamed(a))
+Base.Array(a::AbstractITensor) = Array(unnamed(a))
+Base.Array{T}(a::AbstractITensor) where {T} = Array{T}(unnamed(a))
+Base.Array{T, N}(a::AbstractITensor) where {T, N} = Array{T, N}(unnamed(a))
 Base.AbstractArray{T}(a::AbstractITensor) where {T} = AbstractArray{T, ndims(a)}(a)
 function Base.AbstractArray{T, N}(a::AbstractITensor) where {T, N}
     dest = similar(a, T)
-    copyto_axcheck!(denamed(dest), denamed(a))
+    copyto_axcheck!(unnamed(dest), unnamed(a))
     return dest
 end
 
@@ -210,8 +210,9 @@ function Base.size(a::AbstractITensor)
     return length.(axes(a))
 end
 
-# `length` is intentionally not defined: an ITensor's dimensions are named and
-# unordered, so there is no canonical linearization into `1:length`.
+# An ITensor has no single name, so `length` is the plain element count. It is the
+# product of the (now plain `Int`) per-dimension sizes.
+Base.length(a::AbstractITensor) = prod(size(a))
 
 # Circumvent issue when ndims isn't known at compile time.
 Base.axes(a::AbstractITensor, d) = axes(a)[d]
@@ -220,26 +221,26 @@ Base.axes(a::AbstractITensor, d) = axes(a)[d]
 Base.size(a::AbstractITensor, d) = size(a)[d]
 
 # Circumvent issue when ndims isn't known at compile time.
-Base.ndims(a::AbstractITensor) = ndims(denamed(a))
+Base.ndims(a::AbstractITensor) = ndims(unnamed(a))
 
 # Circumvent issue when eltype isn't known at compile time.
-Base.eltype(a::AbstractITensor) = eltype(denamed(a))
+Base.eltype(a::AbstractITensor) = eltype(unnamed(a))
 
 using VectorInterface: VectorInterface, scalartype
 # Circumvent issue when eltype isn't known at compile time.
-VectorInterface.scalartype(a::AbstractITensor) = scalartype(denamed(a))
+VectorInterface.scalartype(a::AbstractITensor) = scalartype(unnamed(a))
 
 Base.axes(a::AbstractITensor, dimname::Name) = axes(a, dim(a, dimname))
 Base.size(a::AbstractITensor, dimname::Name) = size(a, dim(a, dimname))
 
 function similar_nameddims(a::AbstractITensor, elt::Type, ax)
     return nameddims(
-        similar(denamed(a), elt, denamed.(Tuple(ax))),
+        similar(unnamed(a), elt, unnamed.(Tuple(ax))),
         name.(ax)
     )
 end
 function similar_nameddims(a::AbstractArray, elt::Type, ax)
-    return nameddims(similar(a, elt, denamed.(Tuple(ax))), name.(ax))
+    return nameddims(similar(a, elt, unnamed.(Tuple(ax))), name.(ax))
 end
 
 # Base.similar gets the eltype at compile time.
@@ -248,7 +249,7 @@ function Base.similar(a::AbstractITensor, elt::Type)
     return similar_nameddims(a, elt)
 end
 function similar_nameddims(a::AbstractITensor, elt::Type)
-    return nameddimsof(a, similar(denamed(a), elt))
+    return nameddimsof(a, similar(unnamed(a), elt))
 end
 
 # This is defined explicitly since the Base version expects the eltype
@@ -282,44 +283,44 @@ function Base.similar(
     return similar_nameddims(a, elt, inds)
 end
 function setdimnames(a::AbstractITensor, dimnames)
-    return nameddims(denamed(a), dimnames)
+    return nameddims(unnamed(a), dimnames)
 end
 
 function replacedimnames(a::AbstractITensor, replacements::Pair...)
     new_dimnames = replace(dimnames(a), replacements...)
-    return nameddims(denamed(a), new_dimnames)
+    return nameddims(unnamed(a), new_dimnames)
 end
 function replacedimnames(f, a::AbstractITensor)
     new_dimnames = replace(f, dimnames(a))
-    return nameddims(denamed(a), new_dimnames)
+    return nameddims(unnamed(a), new_dimnames)
 end
 mapdimnames(f, a::AbstractITensor) = replacedimnames(f, a)
 
 function replaceinds(a::AbstractITensor, replacements::Pair...)
     new_inds = replace(inds(a), replacements...)
-    return denamed(a)[new_inds...]
+    return unnamed(a)[new_inds...]
 end
 function replaceinds(f, a::AbstractITensor)
     new_inds = replace(f, inds(a))
-    return denamed(a)[new_inds...]
+    return unnamed(a)[new_inds...]
 end
 mapinds(f, a::AbstractITensor) = replaceinds(f, a)
 
 # `Base.isempty(a::AbstractArray)` is defined as `length(a) == 0`,
-# which involves comparing a named integer to an denamed integer
+# which involves comparing a named integer to an unnamed integer
 # which isn't well defined.
-Base.isempty(a::AbstractITensor) = isempty(denamed(a))
+Base.isempty(a::AbstractITensor) = isempty(unnamed(a))
 
 # Define this on objects rather than types in case the wrapper type
 # isn't known at compile time, like for the ITensor type.
-Base.IndexStyle(a::AbstractITensor) = IndexStyle(denamed(a))
-Base.eachindex(a::AbstractITensor) = eachindex(denamed(a))
+Base.IndexStyle(a::AbstractITensor) = IndexStyle(unnamed(a))
+Base.eachindex(a::AbstractITensor) = eachindex(unnamed(a))
 
 # Iteration, keys, and pairs forward to the parent (these were previously inherited
 # from `AbstractArray`).
-Base.iterate(a::AbstractITensor, state...) = iterate(denamed(a), state...)
-Base.keys(a::AbstractITensor) = keys(denamed(a))
-Base.pairs(a::AbstractITensor) = pairs(denamed(a))
+Base.iterate(a::AbstractITensor, state...) = iterate(unnamed(a), state...)
+Base.keys(a::AbstractITensor) = keys(unnamed(a))
+Base.pairs(a::AbstractITensor) = pairs(unnamed(a))
 
 # Multi-argument `eachindex` dispatches on the named index style, as the
 # `AbstractArray` version did.
@@ -376,8 +377,8 @@ function Base.eltype(
     return NamedDimsCartesianIndex{N, Index}
 end
 Base.eltype(I::NamedDimsCartesianIndices) = eltype(typeof(I))
-Base.axes(I::NamedDimsCartesianIndices) = (only ∘ axes ∘ denamed).(I.indices)
-Base.size(I::NamedDimsCartesianIndices) = (length ∘ denamed).(I.indices)
+Base.axes(I::NamedDimsCartesianIndices) = (only ∘ axes).(I.indices)
+Base.size(I::NamedDimsCartesianIndices) = length.(I.indices)
 
 function Base.getindex(a::NamedDimsCartesianIndices{N}, I::Vararg{Int, N}) where {N}
     index = map(a.indices, I) do r, i
@@ -386,15 +387,15 @@ function Base.getindex(a::NamedDimsCartesianIndices{N}, I::Vararg{Int, N}) where
     return NamedDimsCartesianIndex(index)
 end
 
-function denamed(I::NamedDimsCartesianIndices)
-    return CartesianIndices(denamed.(I.indices))
+function unnamed(I::NamedDimsCartesianIndices)
+    return CartesianIndices(unnamed.(I.indices))
 end
 
 # Iterating yields `NamedDimsCartesianIndex`es. The generic `AbstractITensor`
-# iteration forwards to `denamed`, which here is a plain `CartesianIndices`, so
+# iteration forwards to `unnamed`, which here is a plain `CartesianIndices`, so
 # convert each parent index back through `getindex`.
 function Base.iterate(I::NamedDimsCartesianIndices, state...)
-    y = iterate(denamed(I), state...)
+    y = iterate(unnamed(I), state...)
     isnothing(y) && return nothing
     cartesian, next_state = y
     return I[Tuple(cartesian)...], next_state
@@ -411,14 +412,14 @@ function Base.eachindex(
     return NamedDimsCartesianIndices(inds(a1))
 end
 
-# `dename` (eager), not `denamed` (lazy view): reducing over a lazy permuted view
+# `unname` (eager), not `unnamed` (lazy view): reducing over a lazy permuted view
 # scalar-indexes, which graded arrays forbid.
 
 # Base version ignores dimension names.
 # TODO: Use `mapreduce(isequal, &&, a1, a2)`?
 function Base.isequal(a1::AbstractITensor, a2::AbstractITensor)
     issetequal(dimnames(a1), dimnames(a2)) || return false
-    return isequal(denamed(a1), dename(a2, dimnames(a1)))
+    return isequal(unnamed(a1), unname(a2, dimnames(a1)))
 end
 
 # Base version ignores dimension names.
@@ -426,13 +427,13 @@ end
 # TODO: Handle `missing` values properly.
 function Base.:(==)(a1::AbstractITensor, a2::AbstractITensor)
     issetequal(dimnames(a1), dimnames(a2)) || return false
-    return denamed(a1) == dename(a2, dimnames(a1))
+    return unnamed(a1) == unname(a2, dimnames(a1))
 end
 
 # Base version ignores dimension names.
 function Base.isapprox(a1::AbstractITensor, a2::AbstractITensor; kwargs...)
     issetequal(dimnames(a1), dimnames(a2)) || return false
-    return isapprox(denamed(a1), dename(a2, dimnames(a1)); kwargs...)
+    return isapprox(unnamed(a1), unname(a2, dimnames(a1)); kwargs...)
 end
 
 # Generalization of `Base.sort` to Tuples for Julia v1.10 compatibility.
@@ -443,7 +444,7 @@ _sort(x::NTuple{N}; kwargs...) where {N} = NTuple{N}(sort(collect(x); kwargs...)
 function Base.hash(a::AbstractITensor, h::UInt64)
     h = hash(:ITensor, h)
     a′ = aligneddims(a, _sort(dimnames(a)))
-    h = hash(denamed(a′), h)
+    h = hash(unnamed(a′), h)
     for i in inds(a′)
         h = hash(i, h)
     end
@@ -454,8 +455,8 @@ end
 
 # Scalar indexing
 
-Base.firstindex(a::AbstractITensor) = firstindex(denamed(a))
-Base.lastindex(a::AbstractITensor) = lastindex(denamed(a))
+Base.firstindex(a::AbstractITensor) = firstindex(unnamed(a))
+Base.lastindex(a::AbstractITensor) = lastindex(unnamed(a))
 
 function Base.firstindex(a::AbstractITensor, d)
     return FirstIndex(a, d)
@@ -478,7 +479,7 @@ function Base.to_indices(
     return to_indices(a, Tuple(axes(a)), I)
 end
 function Base.checkbounds(::Type{Bool}, a::AbstractITensor, I::Int...)
-    return checkbounds(Bool, denamed(a), I...)
+    return checkbounds(Bool, unnamed(a), I...)
 end
 
 function Base.to_indices(
@@ -489,7 +490,7 @@ function Base.to_indices(
     @assert isperm(perm)
     I = map(p -> I[p], perm)
     return map(inds(a), I) do dimname, i
-        return checked_indexin(denamed(i), denamed(dimname))
+        return checked_indexin(unnamed(i), unnamed(dimname))
     end
 end
 function Base.to_indices(
@@ -513,7 +514,7 @@ function Base.getindex(a::AbstractITensor, I...)
 end
 
 function Base.getindex(a::AbstractITensor, I1::Int, Irest::Int...)
-    return getindex(denamed(a), I1, Irest...)
+    return getindex(unnamed(a), I1, Irest...)
 end
 function Base.getindex(
         a::AbstractITensor, I1::NamedInteger, Irest::NamedInteger...
@@ -521,15 +522,15 @@ function Base.getindex(
     return getindex(a, to_indices(a, (I1, Irest...))...)
 end
 function Base.getindex(a::AbstractITensor)
-    return getindex(denamed(a))
+    return getindex(unnamed(a))
 end
 # Linear indexing.
 function Base.getindex(a::AbstractITensor, I::Int)
-    return getindex(denamed(a), I)
+    return getindex(unnamed(a), I)
 end
 
 function Base.setindex!(a::AbstractITensor, value, I1::Int, Irest::Int...)
-    setindex!(denamed(a), value, I1, Irest...)
+    setindex!(unnamed(a), value, I1, Irest...)
     return a
 end
 function Base.setindex!(a::AbstractITensor, value, I::CartesianIndex)
@@ -553,17 +554,17 @@ function Base.setindex!(a::AbstractITensor, value, I1::Pair, Irest::Pair...)
     return a
 end
 function Base.setindex!(a::AbstractITensor, value)
-    setindex!(denamed(a), value)
+    setindex!(unnamed(a), value)
     return a
 end
 # Linear indexing.
 function Base.setindex!(a::AbstractITensor, value, I::Int)
-    setindex!(denamed(a), value, I)
+    setindex!(unnamed(a), value, I)
     return a
 end
 
 function Base.isassigned(a::AbstractITensor, I::Int...)
-    return isassigned(denamed(a), I...)
+    return isassigned(unnamed(a), I...)
 end
 
 # Slicing
@@ -608,7 +609,7 @@ function Base.getindex(a::Array, I1::NamedUnitRange)
 end
 function Base.view(a::AbstractArray, I1::NamedViewIndex, Irest::NamedViewIndex...)
     I = (I1, Irest...)
-    return nameddims(view(a, denamed.(I)...), name.(I))
+    return nameddims(view(a, unnamed.(I)...), name.(I))
 end
 
 # TODO: Should this be a view?
@@ -647,7 +648,7 @@ function Base.view(a::AbstractITensor, I1::NamedViewIndex, Irest::NamedViewIndex
             "Dimension name mismatch $(dimnames(a)), $(name.(I))."
         )
     )
-    Ip = map(p -> denamed(I[p]), perm)
+    Ip = map(p -> unnamed(I[p]), perm)
     return view_nameddims(a, Ip...)
 end
 
@@ -666,7 +667,7 @@ isscalarindex(I::Real) = true
 function view_nameddims(a::AbstractITensor, I...)
     nonscalar_dims = filter(dim -> !isscalarindex(I[dim]), ntuple(identity, ndims(a)))
     nonscalar_dimnames = map(dim -> dimnames(a, dim), nonscalar_dims)
-    return nameddims(view(denamed(a), I...), nonscalar_dimnames)
+    return nameddims(view(unnamed(a), I...), nonscalar_dimnames)
 end
 
 function Base.view(a::AbstractITensor, I::ViewIndex...)
@@ -712,7 +713,7 @@ end
 function Base.setindex!(
         a::AbstractITensor, value::AbstractArray, I1::ViewIndex, Irest::ViewIndex...
     )
-    setindex!(denamed(a), value, I1, Irest...)
+    setindex!(unnamed(a), value, I1, Irest...)
     return a
 end
 
@@ -726,7 +727,7 @@ function aligndims(a::AbstractITensor, dims)
             "Dimension name mismatch $(dimnames(a)), $(new_dimnames)."
         )
     )
-    return nameddims(permutedims(denamed(a), perm), new_dimnames)
+    return nameddims(permutedims(unnamed(a), perm), new_dimnames)
 end
 
 function aligneddims(a::AbstractITensor, dims)
@@ -738,7 +739,7 @@ function aligneddims(a::AbstractITensor, dims)
         )
     )
     return nameddims(
-        permuteddims(denamed(a), perm), new_dimnames
+        permuteddims(unnamed(a), perm), new_dimnames
     )
 end
 
@@ -772,7 +773,7 @@ for (f, f′) in [(:rand, :_rand), (:randn, :_randn)]
                 elt::Type{<:Number},
                 ax::Tuple{NamedUnitRange, Vararg{NamedUnitRange}}
             )
-            a = $f′(rng, elt, denamed.(ax))
+            a = $f′(rng, elt, unnamed.(ax))
             return a[Name.(name.(ax))...]
         end
         function Base.$f(
@@ -807,7 +808,7 @@ for f in [:zeros, :ones], dimtype in [:NamedInteger, :NamedUnitRange]
         function Base.$f(
                 elt::Type{<:Number}, ax::Tuple{$dimtype, Vararg{$dimtype}}
             )
-            a = $f(elt, denamed.(ax))
+            a = $f(elt, unnamed.(ax))
             return a[Name.(name.(ax))...]
         end
         function Base.$f(elt::Type{<:Number}, dim1::$dimtype, dims::Vararg{$dimtype})
@@ -820,7 +821,7 @@ end
 for dimtype in [:NamedInteger, :NamedUnitRange]
     @eval begin
         function Base.fill(value, ax::Tuple{$dimtype, Vararg{$dimtype}})
-            a = fill(value, denamed.(ax))
+            a = fill(value, unnamed.(ax))
             return a[Name.(name.(ax))...]
         end
         function Base.fill(value, dim1::$dimtype, dims::Vararg{$dimtype})
@@ -830,15 +831,15 @@ for dimtype in [:NamedInteger, :NamedUnitRange]
 end
 
 function Base.fill!(a::AbstractITensor, v)
-    fill!(denamed(a), v)
+    fill!(unnamed(a), v)
     return a
 end
 
 function Base.map!(f, a_dest::AbstractITensor, a_srcs::AbstractITensor...)
-    a′_dest = denamed(a_dest)
-    # TODO: Use `denamed` to do the permutations lazily.
-    # TODO: Define `dename[d](dimnames) = Base.Fix1(dename[d], dimnames)` and use it here?
-    a′_srcs = Base.Fix2(dename, dimnames(a_dest)).(a_srcs)
+    a′_dest = unnamed(a_dest)
+    # TODO: Use `unnamed` to do the permutations lazily.
+    # TODO: Define `unname[d](dimnames) = Base.Fix1(unname[d], dimnames)` and use it here?
+    a′_srcs = Base.Fix2(unname, dimnames(a_dest)).(a_srcs)
     map!(f, a′_dest, a′_srcs...)
     return a_dest
 end
@@ -849,19 +850,19 @@ function Base.map(f, a_srcs::AbstractITensor...)
 end
 
 function Base.mapreduce(f, op, a::AbstractITensor; kwargs...)
-    return mapreduce(f, op, denamed(a); kwargs...)
+    return mapreduce(f, op, unnamed(a); kwargs...)
 end
 
 # `sum` is routed to the underlying data rather than left to fall back on the
 # `mapreduce` method above because some array types (such as graded arrays) define
-# `Base.sum` directly but not the general `mapreduce`, so the denamed `sum` is the
+# `Base.sum` directly but not the general `mapreduce`, so the unnamed `sum` is the
 # path that works for them.
 function Base.sum(a::AbstractITensor; kwargs...)
-    return sum(denamed(a); kwargs...)
+    return sum(unnamed(a); kwargs...)
 end
 
 function LinearAlgebra.promote_leaf_eltypes(a::AbstractITensor)
-    return LinearAlgebra.promote_leaf_eltypes(denamed(a))
+    return LinearAlgebra.promote_leaf_eltypes(unnamed(a))
 end
 
 # Printing
@@ -912,12 +913,12 @@ end
 function Base.show(io::IO, mime::MIME"text/plain", a::AbstractITensor)
     summary(io, a)
     println(io, ":")
-    show(io, mime, denamed(a))
+    show(io, mime, unnamed(a))
     return nothing
 end
 
 function Base.show(io::IO, a::AbstractITensor)
-    show(io, denamed(a))
+    show(io, unnamed(a))
     print(io, "[", join(inds(a), ", "), "]")
     return nothing
 end

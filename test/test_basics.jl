@@ -1,5 +1,5 @@
-using ITensorBase: ITensorBase, ITensor, Index, IndexName, dename, denamed, dimnametype,
-    gettag, hastag, id, inds, mapinds, name, named, plev, prime, setplev, settag, tags,
+using ITensorBase: ITensorBase, ITensor, Index, IndexName, dimnametype, gettag, hastag, id,
+    inds, mapinds, name, named, plev, prime, setplev, settag, tags, unname, unnamed,
     unsettag
 using Test: @test, @test_broken, @test_throws, @testset
 using UUIDs: UUID
@@ -52,14 +52,14 @@ using UUIDs: UUID
         @test !hastag(i, "Y")
 
         i = Index(Base.OneTo(2))
-        @test length(i) == named(2, name(i))
-        @test denamed(length(i)) == 2
-        @test denamed(i) == 1:2
+        @test length(i) == 2
+        @test length(i) isa Int
+        @test unnamed(i) == 1:2
         @test plev(i) == 0
         @test length(tags(i)) == 0
 
         i = settag(Index(2), "X", "Y")
-        @test denamed(length(i)) == 2
+        @test length(i) == 2
         @test hastag(i, "X")
         @test gettag(i, "X") == "Y"
         @test plev(i) == 0
@@ -70,12 +70,12 @@ using UUIDs: UUID
         i, j = Index.((2, 2))
         x = randn(elt, 2, 2)
         a = x[i, j]
-        @test denamed(a) == x
+        @test unnamed(a) == x
         @test plev(i) == 0
         @test plev(prime(i)) == 1
         @test length(tags(i)) == 0
         a′ = mapinds(prime, a)
-        @test denamed(a′) == x
+        @test unnamed(a′) == x
         @test issetequal(inds(a′), (prime(i), prime(j)))
 
         # The number of dimnames must match the array's `ndims`, and the dimnames are
@@ -88,14 +88,14 @@ using UUIDs: UUID
         a′ = Array(a)
         @test eltype(a′) === elt
         @test a′ isa Matrix{elt}
-        @test a′ == denamed(a)
+        @test a′ == unnamed(a)
 
         i, j = Index.((3, 4))
         a = randn(elt, i, j)
         for a′ in (Array{Float32}(a), Matrix{Float32}(a))
             @test eltype(a′) === Float32
             @test a′ isa Matrix{Float32}
-            @test a′ == Float32.(denamed(a))
+            @test a′ == Float32.(unnamed(a))
         end
 
         i, j, k = Index.((2, 2, 2))
@@ -103,8 +103,8 @@ using UUIDs: UUID
         b = randn(elt, k, i, j)
         copyto!(a, b)
         @test a == b
-        @test denamed(a) == dename(b, (i, j, k))
-        @test denamed(a) == permutedims(denamed(b), (2, 3, 1))
+        @test unnamed(a) == unname(b, (i, j, k))
+        @test unnamed(a) == permutedims(unnamed(b), (2, 3, 1))
     end
     @testset "dimnametype" begin
         i, j = Index.((2, 3))

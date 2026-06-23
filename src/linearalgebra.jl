@@ -7,7 +7,7 @@ using LinearAlgebra: LinearAlgebra as LA
 # This implicitly helps with defining `LA.normalize[!]` as well (though note that
 # uses `LinearAlgebra.rmul!` as well).
 function LA.norm(a::AbstractITensor, p::Real = 2; kwargs...)
-    return LA.norm(denamed(a), p; kwargs...)
+    return LA.norm(unnamed(a), p; kwargs...)
 end
 
 # We overload these because the LinearAlgebra.jl AbstractArray definitions of `rmul!`,
@@ -19,11 +19,11 @@ for f! in [:mul!, :div!]
     rf! = Symbol(:r, f!)
     @eval begin
         function LA.$rf!(a::AbstractITensor, α::Number)
-            LA.$rf!(denamed(a), α)
+            LA.$rf!(unnamed(a), α)
             return a
         end
         function LA.$lf!(α::Number, a::AbstractITensor)
-            LA.$lf!(α, denamed(a))
+            LA.$lf!(α, unnamed(a))
             return a
         end
     end

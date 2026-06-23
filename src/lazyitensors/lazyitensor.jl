@@ -22,7 +22,7 @@ lazy(a::Mul{<:LazyITensor}) = LazyITensor(a)
 
 dimnames(a::LazyITensor) = dimnames_lazy(a)
 inds(a::LazyITensor) = inds_lazy(a)
-denamed(a::LazyITensor) = denamed_lazy(a)
+unnamed(a::LazyITensor) = unnamed_lazy(a)
 
 # Broadcasting
 function Base.BroadcastStyle(::Type{<:LazyITensor})
