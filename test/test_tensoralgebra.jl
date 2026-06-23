@@ -1,10 +1,11 @@
 using ITensorBase:
     ITensorBase, dename, denamed, dimnames, inds, namedoneto, replacedimnames, uniquename
 using LinearAlgebra: LinearAlgebra, norm
+using MatrixAlgebraKit: left_null, left_orth, left_polar, lq_compact, lq_full, qr_compact,
+    qr_full, right_null, right_orth, right_polar, svd_compact, svd_trunc
 using StableRNGs: StableRNG
-using TensorAlgebra: TensorAlgebra, contract, gram_eigh_full, gram_eigh_full_with_pinv,
-    left_null, left_orth, left_polar, lq_compact, lq_full, matricize, qr_compact, qr_full,
-    right_null, right_orth, right_polar, svd_compact, svd_trunc, unmatricize
+using TensorAlgebra.MatrixAlgebra: gram_eigh_full, gram_eigh_full_with_pinv
+using TensorAlgebra: TensorAlgebra, contract, matricize, unmatricize
 using Test: @test, @test_broken, @testset
 
 @testset "TensorAlgebra (eltype=$(elt))" for elt in

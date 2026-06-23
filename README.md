@@ -43,7 +43,7 @@ julia> Pkg.add("ITensorBase")
 
 ````julia
 using ITensorBase: ITensorBase, ITensor, Index, aligndims, dename
-using TensorAlgebra: qr_compact
+using MatrixAlgebraKit: qr_compact
 using Test: @test
 i = Index(2)
 j = Index(2)
