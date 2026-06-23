@@ -13,7 +13,7 @@ end
 function SymbolicITensor(symname, inds)
     dnames = collect(name.(inds))
     DimName = isempty(inds) ? typeof(symname) : eltype(dnames)
-    sizes = Int[length(unnamed(i)) for i in inds]
+    sizes = Int[length(i) for i in inds]
     return SymbolicITensor{DimName, typeof(symname)}(symname, sizes, dnames)
 end
 

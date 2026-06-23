@@ -377,8 +377,8 @@ function Base.eltype(
     return NamedDimsCartesianIndex{N, Index}
 end
 Base.eltype(I::NamedDimsCartesianIndices) = eltype(typeof(I))
-Base.axes(I::NamedDimsCartesianIndices) = (only ∘ axes ∘ unnamed).(I.indices)
-Base.size(I::NamedDimsCartesianIndices) = (length ∘ unnamed).(I.indices)
+Base.axes(I::NamedDimsCartesianIndices) = (only ∘ axes).(I.indices)
+Base.size(I::NamedDimsCartesianIndices) = length.(I.indices)
 
 function Base.getindex(a::NamedDimsCartesianIndices{N}, I::Vararg{Int, N}) where {N}
     index = map(a.indices, I) do r, i

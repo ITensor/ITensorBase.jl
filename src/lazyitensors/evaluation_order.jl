@@ -16,7 +16,7 @@ end
 function time_complexity(
         ::typeof(*), t1::AbstractITensor, t2::AbstractITensor
     )
-    return prod(length ∘ unnamed, (inds(t1) ∪ inds(t2)))
+    return prod(length, (inds(t1) ∪ inds(t2)))
 end
 function time_complexity(
         ::typeof(+), t1::AbstractITensor, t2::AbstractITensor
