@@ -23,14 +23,14 @@ get_codomain_name(a, i) = throw(MethodError(get_codomain_name, (a, i)))
 get_domain_name(a, i) = throw(MethodError(get_domain_name, (a, i)))
 
 function apply(x::AbstractITensor, y::AbstractITensor)
-    xy = x * y
+    xy = state(x) * state(y)
     return mapdimnames(xy) do i
         return get_domain_name(x, i)
     end
 end
 
 function apply_dag(x::AbstractITensor, y::AbstractITensor)
-    xy = x * y
+    xy = state(x) * state(y)
     return mapdimnames(xy) do i
         return get_codomain_name(y, i)
     end
@@ -140,11 +140,48 @@ function operator(a::AbstractITensor, codomain, domain)
     return ITensorOperator(a, codomain, domain)
 end
 
-# This helps preserve the ITensor type when multiplying,
-# for example when a ITensorOperator wraps an ITensor.
-Base.:*(a::ITensorOperator, b::ITensorOperator) = state(a) * state(b)
-Base.:*(a::ITensorOperator, b::AbstractITensor) = state(a) * state(b)
-Base.:*(a::AbstractITensor, b::ITensorOperator) = state(a) * state(b)
+# Operator-preserving contraction. Contracting two named arrays sums over their
+# shared names, so the result keeps each operand's surviving codomain/domain
+# structure. A non-operator tensor contributes no pairs (all its names are
+# dangling from the operator point of view). The result is always an
+# `ITensorOperator`, even when its codomain and domain both come out empty, so
+# the product type does not depend on the runtime names being contracted.
+operator_pairs(a::ITensorOperator) = a.dimnames_bijection.domain_to_codomain
+operator_pairs(a::AbstractITensor) = ()
+
+# Compose the codomain/domain of `a * b`. The `domain => codomain` pairs of both
+# operands form a graph of maximum degree two (each name is paired at most once
+# per operand), so it is a disjoint union of simple paths. Each surviving domain
+# name reaches its surviving codomain partner by following the pairing through
+# any contracted (shared) names. A name whose chain dead-ends on a contracted
+# index is left dangling, so the result is well defined for any contraction.
+function product_codomain_domain(a::AbstractITensor, b::AbstractITensor)
+    shared = intersect(dimnames(a), dimnames(b))
+    pairs = collect(Iterators.flatten((operator_pairs(a), operator_pairs(b))))
+    forward = Dict(pairs)
+    domain = eltype(keys(forward))[]
+    codomain = eltype(values(forward))[]
+    for (d, c) in pairs
+        d in shared && continue
+        while c in shared && haskey(forward, c)
+            c = forward[c]
+        end
+        c in shared && continue
+        push!(domain, d)
+        push!(codomain, c)
+    end
+    return codomain, domain
+end
+
+function operator_product(a::AbstractITensor, b::AbstractITensor)
+    ab = state(a) * state(b)
+    codomain, domain = product_codomain_domain(a, b)
+    return operator(ab, codomain, domain)
+end
+
+Base.:*(a::ITensorOperator, b::ITensorOperator) = operator_product(a, b)
+Base.:*(a::ITensorOperator, b::AbstractITensor) = operator_product(a, b)
+Base.:*(a::AbstractITensor, b::ITensorOperator) = operator_product(a, b)
 
 # Operator-preserving broadcasting (the style struct and style-combination rules
 # live in `broadcast.jl`). An `ITensorOperator` broadcasts as itself, so `op .+ op`,

@@ -6,7 +6,7 @@ using Random: Random
 using StableRNGs: StableRNG
 using TensorAlgebra.MatrixAlgebra: gram_eigh_full, gram_eigh_full_with_pinv
 using TensorAlgebra: matricize
-using Test: @test, @testset
+using Test: @test, @test_throws, @testset
 
 @testset "operator" begin
     o = operator(randn(2, 2, 2, 2), ("i'", "j'"), ("i", "j"))
@@ -113,8 +113,8 @@ end
 @testset "operator-preserving broadcasting" begin
     # `+`, `-`, and scalar multiplication lower to broadcasting. An operator
     # broadcasts as itself (it is not peeled to its `state`), so these operations
-    # preserve the `ITensorOperator` wrapper and its codomain/domain bijection. `*`
-    # (contraction) is unchanged and still decays to the underlying state.
+    # preserve the `ITensorOperator` wrapper and its codomain/domain bijection.
+    # (Contraction `*` is operator-preserving too, in its own testset below.)
     o = operator(randn(2, 2), ("i'",), ("i",))
     s = state(o)
     nms = ("i'", "i")
@@ -134,8 +134,14 @@ end
     @test unname(state(o .* 2), nms) ≈ 2 .* unname(s, nms)
     @test unname(state(o ./ 2), nms) ≈ unname(s, nms) ./ 2
 
-    # `*` (contraction) still decays to a plain tensor.
-    @test !((o * o) isa ITensorOperator)
+    # `o` shares both its names with itself, so `o * o` fully contracts to a
+    # scalar with no surviving codomain/domain. It is still an `ITensorOperator`
+    # (with empty codomain/domain), so the product type does not depend on which
+    # names happen to contract.
+    oo = o * o
+    @test oo isa ITensorOperator
+    @test isempty(codomainnames(oo))
+    @test isempty(domainnames(oo))
 
     # Operator combined with a non-operator tensor is rejected.
     plain = ITensor(randn(2, 2), ("i'", "i"))
@@ -145,6 +151,39 @@ end
     # are rejected (the split would otherwise be ambiguous).
     o_swapped = operator(randn(2, 2), ("i",), ("i'",))
     @test_throws ArgumentError o .+ o_swapped
+end
+
+@testset "operator-preserving contraction" begin
+    # A shared *dangling* leg (in neither bijection) is summed away, and the
+    # surviving codomain/domain of each operand combine. This is the `c† * c`
+    # hopping pattern: two operators paired over an auxiliary link.
+    a = operator(nameddims(randn(2, 2, 3), ("i'", "i", "aux")), ["i'"], ["i"])
+    b = operator(nameddims(randn(2, 2, 3), ("j'", "j", "aux")), ["j'"], ["j"])
+    ab = a * b
+    @test ab isa ITensorOperator
+    @test issetequal(codomainnames(ab), ("i'", "j'"))
+    @test issetequal(domainnames(ab), ("i", "j"))
+    @test !("aux" in dimnames(ab))
+    @test state(ab) ≈ state(a) * state(b)
+
+    # A shared *paired* index (a's domain equals b's codomain) chains through the
+    # contraction: a's codomain partner pairs with b's domain partner.
+    A = operator(randn(2, 2), ("a'",), ("m",))
+    B = operator(randn(2, 2), ("m",), ("b",))
+    AB = A * B
+    @test AB isa ITensorOperator
+    @test issetequal(codomainnames(AB), ("a'",))
+    @test issetequal(domainnames(AB), ("b",))
+
+    # Applying an operator to a plain state contracts the operator's domain and
+    # leaves its output dangling. The result stays an `ITensorOperator` with empty
+    # codomain/domain (the surviving `a'` leg is dangling, in neither).
+    v = nameddims(randn(2), ("m",))
+    Av = operator(randn(2, 2), ("a'",), ("m",)) * v
+    @test Av isa ITensorOperator
+    @test isempty(codomainnames(Av))
+    @test isempty(domainnames(Av))
+    @test issetequal(dimnames(Av), ("a'",))
 end
 
 @testset "gram_eigh_full on ITensorOperator" begin
