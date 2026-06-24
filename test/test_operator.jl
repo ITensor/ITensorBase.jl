@@ -46,6 +46,15 @@ using Test: @test, @test_throws, @testset
     @test ov ≈ replacedimnames(o * v, "i'" => "i", "j'" => "j")
 end
 
+@testset "operator from named ranges" begin
+    # Codomain/domain may be given as named ranges, not just names.
+    i, ip = namedoneto(2, "i"), namedoneto(2, "i'")
+    o = operator(randn(2, 2), [ip], [i])
+    @test o isa ITensorOperator{String}
+    @test issetequal(codomainnames(o), ("i'",))
+    @test issetequal(domainnames(o), ("i",))
+end
+
 @testset "one(::ITensorOperator)" begin
     # Identity-operator construction: matricized form is the identity matrix.
     i, j, k, l = namedoneto.((2, 3, 2, 3), ("i", "j", "k", "l"))

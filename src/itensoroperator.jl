@@ -131,13 +131,16 @@ function get_domain_name(a::ITensorOperator, i)
     return get(inverse(a.dimnames_bijection), i, i)
 end
 
+# `codomain` and `domain` may be given as dimension names or as named ranges
+# (such as `Index`es); `name` maps the latter to their names and leaves names as-is.
 # TODO: Unify these two functions.
 function operator(a::AbstractArray, codomain, domain)
+    codomain, domain = name.(codomain), name.(domain)
     na = nameddims(a, (codomain..., domain...))
     return operator(na, codomain, domain)
 end
 function operator(a::AbstractITensor, codomain, domain)
-    return ITensorOperator(a, codomain, domain)
+    return ITensorOperator(a, name.(codomain), name.(domain))
 end
 
 # Operator-preserving contraction. Contracting two named arrays sums over their
