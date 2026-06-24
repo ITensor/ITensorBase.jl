@@ -74,18 +74,10 @@ function mul!_nameddims(
     return a_dest
 end
 
-# `Base.indexin` returns a `Vector`; keep the result a statically-sized tuple. Defined here
-# rather than reused from TensorAlgebra so changes to TensorAlgebra internals don't reach
-# into ITensorBase.
-tuple_indexin(x::Tuple, y::AbstractArray) = Tuple{Vararg{Any, length(x)}}(indexin(x, y))
-tuple_indexin(x::Tuple, y) = tuple_indexin(x, collect(y))
-
 # Locate the named-dimension groups `group1`, `group2` within `a`, returning their two
 # positional index groups.
 function nameperm(a::AbstractITensor, group1, group2)
-    dimnames_a = dimnames(a)
-    return tuple_indexin(name.(group1), dimnames_a),
-        tuple_indexin(name.(group2), dimnames_a)
+    return TA.biperm(dimnames(a), name.(group1), name.(group2))
 end
 
 # i, j, k, l = named.((2, 2, 2, 2), ("i", "j", "k", "l"))
