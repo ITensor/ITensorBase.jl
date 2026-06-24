@@ -74,42 +74,23 @@ function mul!_nameddims(
     return a_dest
 end
 
-function TA.blockedperm(na::AbstractITensor, nameddim_blocks::Tuple...)
-    return blockedperm_nameddims(na, nameddim_blocks...)
-end
-function blockedperm_nameddims(a::AbstractITensor, nameddim_blocks::Tuple...)
-    dimname_blocks = map(group -> name.(group), nameddim_blocks)
-    dimnames_a = dimnames(a)
-    perms = map(dimname_blocks) do dimname_block
-        return TA.BaseExtensions.indexin(dimname_block, dimnames_a)
-    end
-    return TA.permmortar(perms)
+# Locate the named-dimension groups `group1`, `group2` within `a`, returning their two
+# positional index groups.
+function nameperm(a::AbstractITensor, group1, group2)
+    return TA.biperm(dimnames(a), name.(group1), name.(group2))
 end
 
 # i, j, k, l = named.((2, 2, 2, 2), ("i", "j", "k", "l"))
 # a = randn(i, j, k, l)
-# matricize(a, (i, k) => "a")
 # matricize(a, (i, k) => "a", (j, l) => "b")
-# TODO: Rewrite in terms of `matricize(a, .., (1, 3))` interface.
 function TA.matricize(a::AbstractITensor, fusions::Vararg{Pair, 2})
     return matricize_nameddims(a, fusions...)
 end
 function matricize_nameddims(na::AbstractITensor, fusions::Vararg{Pair, 2})
-    dimnames_fuse = map(group -> name.(group), first.(fusions))
-    dimnames_fused = last.(fusions)
-    if sum(length, dimnames_fuse) < ndims(na)
-        # Not all names are specified
-        dimnames_unspecified = dimnames_setdiff(dimnames(na), dimnames_fuse...)
-        dimnames_fuse = vcat(
-            tuple.(dimnames_unspecified), collect(dimnames_fuse)
-        )
-        dimnames_fused = vcat(
-            dimnames_unspecified, collect(dimnames_fused)
-        )
-    end
-    perm = TA.blockedperm(na, dimnames_fuse...)
-    a_fused = TA.matricize(unnamed(na), perm)
-    return nameddims(a_fused, dimnames_fused)
+    group1, group2 = first.(fusions)
+    perm_codomain, perm_domain = nameperm(na, group1, group2)
+    a_fused = TA.matricize(unnamed(na), perm_codomain, perm_domain)
+    return nameddims(a_fused, last.(fusions))
 end
 
 function TA.unmatricize(na::AbstractITensor, splitters::Vararg{Pair, 2})

@@ -1,16 +1,17 @@
-# TODO: Check `allunique(dimnames)`?
 struct ITensor{DimName} <: AbstractITensor{DimName}
     unnamed::AbstractArray
     dimnames::Vector{DimName}
+    function ITensor{DimName}(unnamed::AbstractArray, dimnames) where {DimName}
+        dimnames = collect(DimName, dimnames)
+        ndims(unnamed) == length(dimnames) ||
+            throw(ArgumentError("Number of named dims must match ndims."))
+        allunique(dimnames) ||
+            throw(ArgumentError("Dimension names must be distinct, got $(dimnames)."))
+        return new{DimName}(unnamed, dimnames)
+    end
 end
 
-# TODO: Check `allunique(dimnames)`?
-function ITensor(unnamed::AbstractArray, dims)
-    ndims(unnamed) == length(dims) ||
-        throw(ArgumentError("Number of named dims must match ndims."))
-    dimnames = collect(dims)
-    return ITensor{eltype(dimnames)}(unnamed, dimnames)
-end
+ITensor(unnamed::AbstractArray, dims) = ITensor{eltype(dims)}(unnamed, dims)
 ITensor(a::AbstractITensor, inds) = throw(ArgumentError("Already named."))
 ITensor(a::AbstractITensor) = ITensor(unnamed(a), dimnames(a))
 

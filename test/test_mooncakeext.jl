@@ -1,9 +1,8 @@
-using ITensorBase: ITensor, Name, NamedUnitRange, blockedperm_nameddims, dimnames,
-    dimnames_setdiff, inds, name, to_inds, uniquename
+using ITensorBase: ITensor, Name, NamedUnitRange, dimnames, dimnames_setdiff, inds, name,
+    nameperm, to_inds, uniquename
 using LinearAlgebra: mul!
 using Mooncake: Mooncake
 using Random: Random
-using TensorAlgebra: blockedperm
 using Test: @test, @testset
 
 @testset "MooncakeExt" begin
@@ -21,9 +20,8 @@ using Test: @test, @testset
         a1 = randn(elt, (2, 2))[i, j]
         a2 = randn(elt, (2, 2))[j, k]
 
-        Mooncake.TestUtils.test_rule(rng, blockedperm, a1, (i,), (j,); mode, is_primitive)
         Mooncake.TestUtils.test_rule(
-            rng, blockedperm_nameddims, a1, (i,), (j,); mode, is_primitive
+            rng, nameperm, a1, (i,), (j,); mode, is_primitive
         )
         Mooncake.TestUtils.test_rule(rng, dimnames, a1; mode, is_primitive)
         Mooncake.TestUtils.test_rule(rng, dimnames, a1, 1; mode, is_primitive)
