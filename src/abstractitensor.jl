@@ -249,11 +249,11 @@ VectorInterface.zerovector!!(a::AbstractITensor) = zerovector!(a)
 
 VectorInterface.scale(a::AbstractITensor, α::Number) = a * α
 function VectorInterface.scale!(a::AbstractITensor, α::Number)
-    a .= a .* α
+    @. a = a * α
     return a
 end
 function VectorInterface.scale!(b::AbstractITensor, a::AbstractITensor, α::Number)
-    b .= a .* α
+    @. b = a * α
     return b
 end
 function VectorInterface.scale!!(a::AbstractITensor, α::Number)
@@ -267,10 +267,10 @@ function VectorInterface.scale!!(b::AbstractITensor, a::AbstractITensor, α::Num
 end
 
 function VectorInterface.add(y::AbstractITensor, x::AbstractITensor, α::Number, β::Number)
-    return y * β + x * α
+    return @. y * β + x * α
 end
 function VectorInterface.add!(y::AbstractITensor, x::AbstractITensor, α::Number, β::Number)
-    y .= y .* β .+ x .* α
+    @. y = y * β + x * α
     return y
 end
 function VectorInterface.add!!(y::AbstractITensor, x::AbstractITensor, α::Number, β::Number)
