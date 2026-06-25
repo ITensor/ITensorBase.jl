@@ -1,6 +1,6 @@
 using LinearAlgebra: LinearAlgebra
 using Random: Random
-using TensorAlgebra: permuteddims
+using TensorAlgebra: TensorAlgebra, permuteddims, zero!
 
 # Some of the interface is inspired by:
 # https://github.com/ITensor/ITensors.jl
@@ -226,25 +226,59 @@ Base.ndims(a::AbstractITensor) = ndims(unnamed(a))
 # Circumvent issue when eltype isn't known at compile time.
 Base.eltype(a::AbstractITensor) = eltype(unnamed(a))
 
-using VectorInterface: VectorInterface, scalartype
-# Circumvent issue when eltype isn't known at compile time.
-VectorInterface.scalartype(a::AbstractITensor) = scalartype(unnamed(a))
+# In-place zero of an ITensor, delegating to its unnamed parent array.
+TensorAlgebra.zero!(a::AbstractITensor) = (zero!(unnamed(a)); a)
 
-# Name-aware `VectorInterface` methods so that ITensors can be used directly as the
-# vectors in iterative solvers such as `KrylovKit.eigsolve`, which drive their Krylov
-# vectors through `VectorInterface`. The generic `AbstractArray` fallbacks are not
-# name-aware and broadcast in ways that fail on an ITensor.
+# Name-aware `VectorInterface` methods so that ITensors can be used directly as the vectors
+# in iterative solvers such as `KrylovKit.eigsolve`, which drive their Krylov vectors through
+# `VectorInterface`; the generic `AbstractArray` fallbacks are not name-aware. The `!` methods
+# operate in place via broadcasting; each `!!` method does so too when the result fits the
+# destination's element type, and otherwise allocates. `scalartype` is computed in the value
+# domain because an ITensor's element type is not encoded in its type.
+using VectorInterface: VectorInterface, add, add!, scalartype, scale, scale!, zerovector!
+VectorInterface.scalartype(a::AbstractITensor) = scalartype(unnamed(a))
+function VectorInterface.scalartype(a::AbstractArray{<:AbstractITensor})
+    return mapreduce(scalartype, promote_type, a; init = Bool)
+end
+
 function VectorInterface.zerovector(a::AbstractITensor, ::Type{S}) where {S <: Number}
-    return fill!(similar(a, S), zero(S))
+    return zerovector!(similar(a, S))
 end
+VectorInterface.zerovector!(a::AbstractITensor) = zero!(a)
+VectorInterface.zerovector!!(a::AbstractITensor) = zerovector!(a)
+
 VectorInterface.scale(a::AbstractITensor, α::Number) = a * α
-VectorInterface.scale!!(a::AbstractITensor, α::Number) = a * α
-VectorInterface.scale!!(::AbstractITensor, a::AbstractITensor, α::Number) = a * α
-function VectorInterface.add!!(
-        y::AbstractITensor, x::AbstractITensor, α::Number, β::Number
-    )
-    return x * α + y * β
+function VectorInterface.scale!(a::AbstractITensor, α::Number)
+    a .= a .* α
+    return a
 end
+function VectorInterface.scale!(b::AbstractITensor, a::AbstractITensor, α::Number)
+    b .= a .* α
+    return b
+end
+function VectorInterface.scale!!(a::AbstractITensor, α::Number)
+    promote_type(scalartype(a), typeof(α)) <: scalartype(a) || return scale(a, α)
+    return scale!(a, α)
+end
+function VectorInterface.scale!!(b::AbstractITensor, a::AbstractITensor, α::Number)
+    promote_type(scalartype(b), scalartype(a), typeof(α)) <: scalartype(b) ||
+        return scale(a, α)
+    return scale!(b, a, α)
+end
+
+function VectorInterface.add(y::AbstractITensor, x::AbstractITensor, α::Number, β::Number)
+    return y * β + x * α
+end
+function VectorInterface.add!(y::AbstractITensor, x::AbstractITensor, α::Number, β::Number)
+    y .= y .* β .+ x .* α
+    return y
+end
+function VectorInterface.add!!(y::AbstractITensor, x::AbstractITensor, α::Number, β::Number)
+    promote_type(scalartype(y), scalartype(x), typeof(α), typeof(β)) <: scalartype(y) ||
+        return add(y, x, α, β)
+    return add!(y, x, α, β)
+end
+
 VectorInterface.inner(x::AbstractITensor, y::AbstractITensor) = (conj(x) * y)[]
 
 Base.axes(a::AbstractITensor, dimname::Name) = axes(a, dim(a, dimname))
