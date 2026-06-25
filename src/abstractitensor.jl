@@ -230,6 +230,23 @@ using VectorInterface: VectorInterface, scalartype
 # Circumvent issue when eltype isn't known at compile time.
 VectorInterface.scalartype(a::AbstractITensor) = scalartype(unnamed(a))
 
+# Name-aware `VectorInterface` methods so that ITensors can be used directly as the
+# vectors in iterative solvers such as `KrylovKit.eigsolve`, which drive their Krylov
+# vectors through `VectorInterface`. The generic `AbstractArray` fallbacks are not
+# name-aware and broadcast in ways that fail on an ITensor.
+function VectorInterface.zerovector(a::AbstractITensor, ::Type{S}) where {S <: Number}
+    return fill!(similar(a, S), zero(S))
+end
+VectorInterface.scale(a::AbstractITensor, α::Number) = a * α
+VectorInterface.scale!!(a::AbstractITensor, α::Number) = a * α
+VectorInterface.scale!!(::AbstractITensor, a::AbstractITensor, α::Number) = a * α
+function VectorInterface.add!!(
+        y::AbstractITensor, x::AbstractITensor, α::Number, β::Number
+    )
+    return x * α + y * β
+end
+VectorInterface.inner(x::AbstractITensor, y::AbstractITensor) = (conj(x) * y)[]
+
 Base.axes(a::AbstractITensor, dimname::Name) = axes(a, dim(a, dimname))
 Base.size(a::AbstractITensor, dimname::Name) = size(a, dim(a, dimname))
 
