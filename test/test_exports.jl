@@ -3,7 +3,8 @@ using Test: @test, @testset
 @testset "Test exports" begin
     exports = [
         :ITensorBase, :AbstractITensor, :ITensor, :Index, :NamedUnitRange,
-        :aligndims, :apply, :codomainnames, :dimnames, :dimnametype, :domainnames,
+        :aligndims, :aligneddims, :apply, :codomainnames, :dimnames, :dimnametype,
+        :domainnames,
         :inds, :named, :nameddims, :noprime, :operator, :prime, :similar_operator,
         :state, :uniquename,
     ]
