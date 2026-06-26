@@ -68,15 +68,22 @@ Multiplying by a scalar scales the tensor.
 
 ## Broadcasting
 
-Linear broadcasting works elementwise and preserves names: adding and subtracting tensors,
-and scaling or dividing by a scalar.
+Broadcasting works elementwise and matches operands by name, so they need not share index
+order. Its advantage over the plain arithmetic above is fusion: a dotted expression is
+evaluated in a single pass over the elements, without allocating the intermediate tensors the
+undotted form does.
+
+For example, the plain expression below allocates `2 * a` and `3 * c` before adding them:
 
 ```@example userinterface
-a .+ c
+2 * a + 3 * c
 ```
 
+Adding dots fuses the whole expression into one pass, giving the same result with no
+intermediates:
+
 ```@example userinterface
-2 .* a
+2 .* a .+ 3 .* c
 ```
 
 Non-linear broadcasting (functions of one or more tensors, such as `sin.(a)` or `a .^ 2`) is
