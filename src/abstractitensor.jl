@@ -150,6 +150,18 @@ end
     nameddims(a::AbstractArray, inds)
 
 Construct a named dimensions array from an unnamed array `a` and named dimensions `inds`.
+
+# Examples
+
+```jldoctest
+julia> nameddims(zeros(2, 3), (:i, :j))
+named(Base.OneTo(2), :i)×named(Base.OneTo(3), :j) ITensor{Symbol}:
+2×3 Matrix{Float64}:
+ 0.0  0.0  0.0
+ 0.0  0.0  0.0
+```
+
+See also [`ITensor`](@ref), [`named`](@ref).
 """
 function nameddims(a::AbstractArray, inds)
     return ITensor(a, inds)

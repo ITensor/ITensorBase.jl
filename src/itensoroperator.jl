@@ -14,6 +14,15 @@ forgotten. An operator carries a tensor together with a pairing of its codomain 
 domain dimension names (its Choi, or state, representation). `state` returns that tensor
 on its own. For a plain tensor that is not an operator, `state` returns it unchanged.
 
+# Examples
+
+```jldoctest
+julia> a = nameddims(zeros(2), (:i,));
+
+julia> state(a) == a
+true
+```
+
 See also [`operator`](@ref), [`codomainnames`](@ref), [`domainnames`](@ref).
 """
 state(a) = throw(MethodError(state, (a,)))
@@ -28,6 +37,16 @@ The codomain (output) dimension names of an operator `a`. An operator pairs each
 codomain names with a domain name. Applying the operator contracts over the domain and
 leaves the codomain.
 
+# Examples
+
+```jldoctest
+julia> op = operator(zeros(2, 2), ("i",), ("j",));
+
+julia> collect(codomainnames(op))
+1-element Vector{String}:
+ "i"
+```
+
 See also [`domainnames`](@ref), [`operator`](@ref), [`apply`](@ref).
 """
 codomainnames(a) = throw(MethodError(codomainnames, (a,)))
@@ -38,6 +57,16 @@ codomainnames(a) = throw(MethodError(codomainnames, (a,)))
 
 The domain (input) dimension names of an operator `a`. These are the names contracted
 over when the operator is applied to a tensor.
+
+# Examples
+
+```jldoctest
+julia> op = operator(zeros(2, 2), ("i",), ("j",));
+
+julia> collect(domainnames(op))
+1-element Vector{String}:
+ "j"
+```
 
 See also [`codomainnames`](@ref), [`operator`](@ref), [`apply`](@ref).
 """
@@ -463,6 +492,16 @@ Element type defaults to `eltype(prototype)`. Codomain names default to fresh
 explicit names, the second takes already-named axes and reuses their names as
 the domain. Storage layout (including the bra/ket flip on the domain side for
 graded axes) is delegated to `TensorAlgebra.similar_map`.
+
+# Examples
+
+```jldoctest
+julia> op = similar_operator(zeros(2, 2), (Base.OneTo(2),), (:i,), (:j,));
+
+julia> collect(domainnames(op))
+1-element Vector{Symbol}:
+ :j
+```
 
 See also [`operator`](@ref), [`uniquename`](@ref).
 """

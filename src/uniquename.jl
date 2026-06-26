@@ -10,6 +10,15 @@ generated dimension in a matrix factorization. Randomness defaults to OS entropy
 (`Random.RandomDevice`) so that minting a name neither perturbs nor is perturbed by the
 numerical RNG. Pass an explicit `rng` for a reproducible name.
 
+# Examples
+
+```jldoctest
+julia> i = Index(2);
+
+julia> uniquename(i) != i
+true
+```
+
 See also [`named`](@ref).
 """
 function uniquename end

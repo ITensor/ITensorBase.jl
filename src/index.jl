@@ -98,6 +98,15 @@ function prime end
 Reset the prime level of an index or index name to zero, returning a new index. This
 undoes any number of [`prime`](@ref) calls.
 
+# Examples
+
+```jldoctest
+julia> i = Index(2);
+
+julia> noprime(prime(i)) == i
+true
+```
+
 See also [`prime`](@ref), [`Index`](@ref).
 """
 function noprime end
