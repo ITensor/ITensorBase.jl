@@ -1,7 +1,11 @@
 using Documenter: Documenter, DocMeta, deploydocs, makedocs
-using ITensorBase: ITensorBase
+using ITensorBase
 using ITensorFormatter: ITensorFormatter
 
+# `using ITensorBase` (rather than `using ITensorBase: ITensorBase`) binds the exported
+# names in `Main`. The tensor `show` qualifies the element type relative to the active
+# module, so without it the doctests and `@example` blocks render `ITensorBase.ITensor`
+# instead of `ITensor`.
 DocMeta.setdocmeta!(ITensorBase, :DocTestSetup, :(using ITensorBase); recursive = true)
 
 ITensorFormatter.make_index!(pkgdir(ITensorBase))
@@ -15,7 +19,12 @@ makedocs(;
         edit_link = "main",
         assets = ["assets/favicon.ico", "assets/extras.css"]
     ),
-    pages = ["Home" => "index.md", "Reference" => "reference.md"]
+    pages = [
+        "Home" => "index.md",
+        "User Interface" => "user_interface.md",
+        "Developer Interface" => "dev_interface.md",
+        "Reference" => "reference.md",
+    ]
 )
 
 deploydocs(;

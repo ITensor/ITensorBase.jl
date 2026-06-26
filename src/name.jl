@@ -18,11 +18,15 @@ end
     @names x[1:3] y[1:3, 2:4] ...
 
 Short-hand notation for constructing "named symbols", i.e. objects that can be used as names.
-In other words, the following expressions are equivalent:
+`@names x y z` is equivalent to `Name.((:x, :y, :z))`, returning one name per symbol.
 
-```julia
-x, y, z = @names x y z
-x, y, z = Name.((:x, :y, :z))
+# Examples
+
+```jldoctest
+julia> using ITensorBase: @names
+
+julia> x, y, z = @names x y z;
+
 ```
 """
 macro names(exs...)

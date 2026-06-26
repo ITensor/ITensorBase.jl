@@ -68,6 +68,49 @@ function unsettag(n::IndexName, tagname::String)
     return settags(n, newtags)
 end
 
+"""
+    prime(i)
+
+Increment the prime level of an index or index name by one, returning a new index that
+is distinct from `i`. Priming is the usual way to make a second copy of an index that
+carries the same tags but is not contracted against the original. The inverse is
+[`noprime`](@ref), which resets the prime level to zero.
+
+# Examples
+
+```jldoctest
+julia> i = Index(2);
+
+julia> prime(i) == i
+false
+
+julia> noprime(prime(i)) == i
+true
+```
+
+See also [`noprime`](@ref), [`Index`](@ref).
+"""
+function prime end
+
+"""
+    noprime(i)
+
+Reset the prime level of an index or index name to zero, returning a new index. This
+undoes any number of [`prime`](@ref) calls.
+
+# Examples
+
+```jldoctest
+julia> i = Index(2);
+
+julia> noprime(prime(i)) == i
+true
+```
+
+See also [`prime`](@ref), [`Index`](@ref).
+"""
+function noprime end
+
 prime(n::IndexName) = setplev(n, plev(n) + 1)
 noprime(n::IndexName) = setplev(n, 0)
 
@@ -86,11 +129,25 @@ function Base.show(io::IO, i::IndexName)
     return nothing
 end
 
-# An `Index` is a named unit range whose name is an `IndexName` (carrying the id,
-# tags, and prime level), not a distinct type. Construction (`Index(3)`,
-# `Index(1:3)`) goes through the generic `NamedUnitRange{Name}` constructors, which
-# mint a fresh `IndexName` via `uniquename`. Attributes (tags, prime level) are set
-# after construction with the modifier functions below.
+"""
+    Index(length)
+    Index(range)
+
+An index of an `ITensor`: a named unit range whose name is a freshly minted, unique
+identifier carrying tags and a prime level. `Index(2)` makes an index of length `2` over
+`Base.OneTo(2)`, and `Index(1:3)` makes one over an explicit range. Each call mints a new
+name, so two indices built the same way are still distinct, and tensors share a dimension
+only when they share the same `Index`.
+
+# Examples
+
+```jldoctest
+julia> i = Index(2);
+
+julia> length(i)
+2
+```
+"""
 const Index = NamedUnitRange{IndexName}
 
 # TODO: Define for `NamedViewIndex`.
