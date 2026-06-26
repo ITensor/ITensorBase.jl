@@ -43,21 +43,38 @@ julia> Pkg.add("ITensorBase")
 
 # ## Examples
 
-using ITensorBase: ITensorBase, ITensor, Index, aligndims, unname
+# Load the package, along with a factorization from
+# [MatrixAlgebraKit.jl](https://github.com/QuantumKitHub/MatrixAlgebraKit.jl).
+
+using ITensorBase: Index
 using MatrixAlgebraKit: qr_compact
-using Test: @test
+
+# An `Index` labels one dimension of a tensor and carries its length. Each call makes a new,
+# distinct index, so a tensor identifies its dimensions by index rather than by position.
 i = Index(2)
 j = Index(2)
 k = Index(2)
+
+# Make a random `ITensor` with indices `i` and `j`.
 a = randn(i, j)
-@test a[j[2], i[1]] == a[1, 2]
-@test a[j => 2, i => 1] == a[1, 2]
-a′ = randn(j, i)
+
+# Read off an element by giving each index a value with `i[value]`. The indices can be given
+# in any order, since elements are looked up by index, not by position.
+a[j[2], i[1]]
+
+# Contract `a` with another tensor over their shared index `j`. `j` is summed over and the
+# result keeps the remaining indices `i` and `k`.
 b = randn(j, k)
-c = a * b
-@test unname(c, (i, k)) ≈ unname(a, (i, j)) * unname(b, (j, k))
-d = a + a′
-@test unname(d, (i, j)) ≈ unname(a, (i, j)) + unname(a′, (i, j))
-@test a ≈ aligndims(a, (j, i))
+a * b
+
+# Add two tensors. They are matched up by index, so `a` and `c` don't need their indices in
+# the same order.
+c = randn(j, i)
+a + c
+
+# Factorize `a` over index `i` into a `q` with orthonormal columns and an upper-triangular
+# `r`. The factors share a new index that `qr_compact` introduces.
 q, r = qr_compact(a, (i,))
-@test q * r ≈ a
+
+# Contracting the factors back together recovers `a`.
+q * r
