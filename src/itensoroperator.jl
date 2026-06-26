@@ -6,13 +6,41 @@ using Random: Random
 
 # Choi state representation of the named operator.
 # https://en.wikipedia.org/wiki/Choi%E2%80%93Jamio%C5%82kowski_isomorphism
+"""
+    state(a)
+
+The underlying tensor of a named operator, with its codomain/domain structure
+forgotten. An operator carries a tensor together with a pairing of its codomain and
+domain dimension names (its Choi, or state, representation). `state` returns that tensor
+on its own. For a plain tensor that is not an operator, `state` returns it unchanged.
+
+See also [`operator`](@ref), [`codomainnames`](@ref), [`domainnames`](@ref).
+"""
 state(a) = throw(MethodError(state, (a,)))
 # Operator representation of the named state given pairs of named codomain and domain indices.
 operator(a, codomain, domain) = throw(MethodError(operator, (a, codomain, domain)))
 
 # Get the codomain dimension names of the operator.
+"""
+    codomainnames(a)
+
+The codomain (output) dimension names of an operator `a`. An operator pairs each of its
+codomain names with a domain name. Applying the operator contracts over the domain and
+leaves the codomain.
+
+See also [`domainnames`](@ref), [`operator`](@ref), [`apply`](@ref).
+"""
 codomainnames(a) = throw(MethodError(codomainnames, (a,)))
+
 # Get the domain dimension names of the operator.
+"""
+    domainnames(a)
+
+The domain (input) dimension names of an operator `a`. These are the names contracted
+over when the operator is applied to a tensor.
+
+See also [`codomainnames`](@ref), [`operator`](@ref), [`apply`](@ref).
+"""
 domainnames(a) = throw(MethodError(domainnames, (a,)))
 
 # Given a domain dimension name, return the corresponding codomain dimension name.
@@ -22,6 +50,28 @@ get_codomain_name(a, i) = throw(MethodError(get_codomain_name, (a, i)))
 # If it doesn't exist, return the index itself.
 get_domain_name(a, i) = throw(MethodError(get_domain_name, (a, i)))
 
+"""
+    apply(x::AbstractITensor, y::AbstractITensor)
+
+Apply the operator `x` to `y`. This contracts the state tensors of `x` and `y` over
+their shared names, then renames each surviving codomain name of `x` back to its paired
+domain name, so the result carries the same names `y` would map to. Applying the
+identity operator leaves `y` unchanged.
+
+# Examples
+
+```jldoctest
+julia> op = operator(reshape(Float64[1, 0, 0, 1], 2, 2), ("i",), ("j",));
+
+julia> v = nameddims([3.0, 4.0], ("j",));
+
+julia> apply(op, v) == v
+true
+```
+
+See also [`operator`](@ref), [`state`](@ref), [`codomainnames`](@ref),
+[`domainnames`](@ref).
+"""
 function apply(x::AbstractITensor, y::AbstractITensor)
     xy = state(x) * state(y)
     return mapdimnames(xy) do i
@@ -130,6 +180,36 @@ end
 function get_domain_name(a::ITensorOperator, i)
     return get(inverse(a.dimnames_bijection), i, i)
 end
+
+"""
+    operator(a, codomain, domain)
+
+Build a named operator from a tensor (or plain array) `a` by partitioning its dimension
+names into a `codomain` (output) set and a `domain` (input) set. The operator pairs each
+codomain name with a domain name, so it can be applied to a tensor with
+[`apply`](@ref), contracting over the domain. `codomain` and `domain` may be given as
+dimension names or as named ranges such as `Index`es. Recover the underlying tensor
+with [`state`](@ref) and the name sets with [`codomainnames`](@ref) and
+[`domainnames`](@ref).
+
+# Examples
+
+```jldoctest
+julia> op = operator(zeros(2, 2), ("i",), ("j",));
+
+julia> collect(codomainnames(op))
+1-element Vector{String}:
+ "i"
+
+julia> collect(domainnames(op))
+1-element Vector{String}:
+ "j"
+```
+
+See also [`state`](@ref), [`codomainnames`](@ref), [`domainnames`](@ref),
+[`apply`](@ref), [`similar_operator`](@ref).
+"""
+function operator end
 
 # `codomain` and `domain` may be given as dimension names or as named ranges
 # (such as `Index`es); `name` maps the latter to their names and leaves names as-is.
@@ -383,6 +463,8 @@ Element type defaults to `eltype(prototype)`. Codomain names default to fresh
 explicit names, the second takes already-named axes and reuses their names as
 the domain. Storage layout (including the bra/ket flip on the domain side for
 graded axes) is delegated to `TensorAlgebra.similar_map`.
+
+See also [`operator`](@ref), [`uniquename`](@ref).
 """
 function similar_operator(
         prototype, ::Type{T}, unnamed_domain_axes, codomain_names, domain_names

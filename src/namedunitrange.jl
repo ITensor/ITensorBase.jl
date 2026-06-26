@@ -1,3 +1,20 @@
+"""
+    NamedUnitRange{Name}
+
+A unit range with a name attached, used as a named dimension (axis) of a tensor. It
+pairs an underlying integer unit range with a name of type `Name`. [`Index`](@ref) is
+the `NamedUnitRange` flavor whose name is an `IndexName`. Build one by calling
+[`named`](@ref) on a range, or use `Index` to mint a fresh unique name.
+
+# Examples
+
+```jldoctest
+julia> named(1:3, :i)
+named(1:3, :i)
+```
+
+See also [`Index`](@ref), [`named`](@ref).
+"""
 struct NamedUnitRange{Name, UnnamedT <: Integer, Unnamed <: AbstractUnitRange{UnnamedT}} <:
     AbstractNamedVector{Name, UnnamedT}
     value::Unnamed

@@ -1,6 +1,19 @@
 using Random: AbstractRNG, RandomDevice
 
-# Generate a new unique name, for example in matrix factorizations.
+"""
+    uniquename([rng,] name)
+    uniquename([rng,] type::Type)
+
+Mint a fresh, unique name. Given an existing `name` (or a name `type`), produce a new
+name of the same flavor that is distinct from any other, for example to label a freshly
+generated dimension in a matrix factorization. Randomness defaults to OS entropy
+(`Random.RandomDevice`) so that minting a name neither perturbs nor is perturbed by the
+numerical RNG. Pass an explicit `rng` for a reproducible name.
+
+See also [`named`](@ref).
+"""
+function uniquename end
+
 # The randomness defaults to `Random.RandomDevice()` (OS entropy) rather than
 # `Random.default_rng()`, so minting a name neither perturbs nor is perturbed by
 # the numerical RNG (`Random.seed!` does not make ids reproducible), mirroring

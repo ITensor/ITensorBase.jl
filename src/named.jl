@@ -14,12 +14,120 @@ end
 # without being a separate type.
 const NamedInteger{Name, Unnamed <: Integer} = Named{Name, Unnamed}
 
+"""
+    name(a)
+
+The name attached to a named object `a`, such as a `Named` scalar, a named array, or a
+named unit range. This is the inverse of the name component of [`named`](@ref): `name`
+recovers the name, [`unnamed`](@ref) recovers the value.
+
+# Examples
+
+```jldoctest
+julia> using ITensorBase: name
+
+julia> name(named(2, :i))
+:i
+```
+
+See also [`named`](@ref), [`unnamed`](@ref), [`setname`](@ref).
+"""
+function name end
+
+"""
+    unnamed(a)
+
+The underlying value of a named object `a`, with its name stripped off. This is the
+inverse of the value component of [`named`](@ref): [`name`](@ref) recovers the name,
+`unnamed` recovers the value. On an [`AbstractITensor`](@ref) it returns the underlying
+unnamed array.
+
+# Examples
+
+```jldoctest
+julia> using ITensorBase: unnamed
+
+julia> unnamed(named(2, :i))
+2
+```
+
+See also [`named`](@ref), [`name`](@ref).
+"""
+function unnamed end
+
+"""
+    setname(a, name)
+
+Return a copy of the named object `a` with its name replaced by `name`, keeping the
+underlying value unchanged.
+
+# Examples
+
+```jldoctest
+julia> using ITensorBase: setname
+
+julia> setname(named(2, :i), :j)
+named(2, :j)
+```
+
+See also [`named`](@ref), [`name`](@ref).
+"""
+function setname end
+
+"""
+    nametype(type::Type)
+
+The type of the name carried by a named type, such as a `Named` scalar type, a named
+array type, or a named unit range type.
+
+# Examples
+
+```jldoctest
+julia> using ITensorBase: nametype
+
+julia> nametype(typeof(named(2, :i)))
+Symbol
+```
+
+See also [`name`](@ref), [`unnamedtype`](@ref).
+"""
+function nametype end
+
+"""
+    unnamedtype(type::Type)
+
+The type of the underlying (unnamed) value carried by a named type.
+
+# Examples
+
+```jldoctest
+julia> using ITensorBase: unnamedtype
+
+julia> unnamedtype(typeof(named(2, :i)))
+Int64
+```
+
+See also [`unnamed`](@ref), [`nametype`](@ref).
+"""
+function unnamedtype end
+
 # Minimal interface.
 unnamed(i::Named) = i.value
 name(i::Named) = i.name
 
-# Shorthand. Attaching a name to a scalar produces a `Named`; arrays and unit
-# ranges have their own more specific `named` methods.
+"""
+    named(value, name)
+
+Attach `name` to `value`, pairing them into a single named object. On a scalar this produces
+a `Named`. Arrays and unit ranges have their own more specific methods.
+
+# Examples
+
+```jldoctest
+julia> named(2, :i)
+named(2, :i)
+```
+"""
 named(value, name) = Named(value, name)
 
 # Derived interface.

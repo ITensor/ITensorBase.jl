@@ -1,10 +1,11 @@
 module ITensorBase
 
-export ITensor, Index, aligndims, dimnametype, named, nameddims,
-    operator, similar_operator
+export AbstractITensor, ITensor, Index, NamedUnitRange, aligndims, aligneddims,
+    apply, codomainnames, dimnames, dimnametype, domainnames, inds, named,
+    nameddims, noprime, operator, prime, similar_operator, state, uniquename
 using Compat: @compat
-@compat public to_inds
 @compat public @names
+@compat public name, nametype, replacedimnames, setname, unnamed, unnamedtype
 
 # Named-array machinery (relocated from NamedDimsArrays.jl).
 include("isnamed.jl")

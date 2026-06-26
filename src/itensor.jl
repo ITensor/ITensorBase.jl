@@ -1,3 +1,21 @@
+"""
+    ITensor(array::AbstractArray, dims)
+
+A dense tensor whose dimensions are labeled by names instead of ordered by position. It pairs
+an underlying `array` with one name per dimension (`dims`), so contraction, addition, and
+indexing line dimensions up by name. An `ITensor` is usually built by calling `randn`, `zeros`,
+and the like on indices, or through [`nameddims`](@ref), rather than constructed directly.
+
+# Examples
+
+```jldoctest
+julia> ITensor(zeros(2, 3), (:i, :j))
+named(Base.OneTo(2), :i)×named(Base.OneTo(3), :j) ITensor{Symbol}:
+2×3 Matrix{Float64}:
+ 0.0  0.0  0.0
+ 0.0  0.0  0.0
+```
+"""
 struct ITensor{DimName} <: AbstractITensor{DimName}
     unnamed::AbstractArray
     dimnames::Vector{DimName}

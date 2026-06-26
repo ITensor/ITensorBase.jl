@@ -15,7 +15,12 @@ makedocs(;
         edit_link = "main",
         assets = ["assets/favicon.ico", "assets/extras.css"]
     ),
-    pages = ["Home" => "index.md", "Reference" => "reference.md"]
+    pages = [
+        "Home" => "index.md",
+        "User Interface" => "user_interface.md",
+        "Developer Interface" => "dev_interface.md",
+        "Reference" => "reference.md",
+    ]
 )
 
 deploydocs(;

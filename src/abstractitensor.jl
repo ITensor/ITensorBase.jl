@@ -8,6 +8,17 @@ using TensorAlgebra: TensorAlgebra, permuteddims, zero!
 # https://github.com/mcabbott/NamedPlus.jl
 # https://pytorch.org/docs/stable/named_tensor.html
 
+"""
+    AbstractITensor{DimName}
+
+Supertype for tensors whose dimensions are labeled by names of type `DimName` rather
+than ordered by position. Subtypes such as [`ITensor`](@ref) line their dimensions up
+by name under contraction, addition, and indexing. Unlike an `AbstractArray`, the rank
+and element type live in the data rather than the type, so `ndims` and `eltype` are not
+fixed at the type level.
+
+See also [`ITensor`](@ref), [`dimnames`](@ref), [`inds`](@ref).
+"""
 abstract type AbstractITensor{DimName} end
 
 # Rank and element type live in the data, not the type, so the type-level `ndims`
@@ -16,6 +27,30 @@ abstract type AbstractITensor{DimName} end
 # supplied directly below rather than inherited.
 Base.ndims(::Type{<:AbstractITensor}) = Any
 
+"""
+    dimnames(a::AbstractITensor)
+    dimnames(a::AbstractITensor, dim::Int)
+
+The dimension names of `a`, as a collection in dimension order. The second form returns
+the name of dimension `dim`.
+
+# Examples
+
+```jldoctest
+julia> a = nameddims(zeros(2, 3), (:i, :j));
+
+julia> dimnames(a)
+2-element Vector{Symbol}:
+ :i
+ :j
+
+julia> dimnames(a, 2)
+:j
+```
+
+See also [`inds`](@ref), [`nameddims`](@ref).
+"""
+function dimnames end
 dimnames(a::AbstractITensor) = throw(MethodError(dimnames, a))
 function dimnames(a::AbstractITensor, dim::Int)
     return dimnames(a)[dim]
@@ -52,6 +87,29 @@ unnamed(a::AbstractITensor) = throw(MethodError(unnamed, a))
 unnamed(a::AbstractITensor, inds) = unnamed(aligneddims(a, inds))
 unname(a::AbstractITensor, inds) = unnamed(aligndims(a, inds))
 
+"""
+    inds(a::AbstractITensor)
+    inds(a::AbstractITensor, dim::Int)
+
+The named axes (indices) of `a`, as a `Tuple` with one entry per dimension. Each entry
+pairs a dimension's axis with its name. The second form returns the index of dimension
+`dim`. Compare with [`dimnames`](@ref), which returns just the names without the axes.
+
+# Examples
+
+```jldoctest
+julia> a = nameddims(zeros(2, 3), (:i, :j));
+
+julia> inds(a)
+(named(Base.OneTo(2), :i), named(Base.OneTo(3), :j))
+
+julia> inds(a, 1)
+named(Base.OneTo(2), :i)
+```
+
+See also [`dimnames`](@ref), [`nameddims`](@ref).
+"""
+function inds end
 # Output the named axes/indices of the named dims array, as a `Tuple` (even though
 # the dimension names are stored as a `Vector`).
 inds(a::AbstractITensor) = named.(axes(unnamed(a)), Tuple(dimnames(a)))
@@ -337,6 +395,30 @@ function setdimnames(a::AbstractITensor, dimnames)
     return nameddims(unnamed(a), dimnames)
 end
 
+"""
+    replacedimnames(a::AbstractITensor, replacements::Pair...)
+    replacedimnames(f, a::AbstractITensor)
+
+Return a tensor with the same data as `a` but with its dimension names replaced. The
+first form takes `old => new` pairs, replacing matching names and leaving the rest
+unchanged. The second form replaces each name with `f(name)`.
+
+# Examples
+
+```jldoctest
+julia> using ITensorBase: replacedimnames
+
+julia> a = nameddims(zeros(2, 3), (:i, :j));
+
+julia> dimnames(replacedimnames(a, :i => :k))
+2-element Vector{Symbol}:
+ :k
+ :j
+```
+
+See also [`dimnames`](@ref).
+"""
+function replacedimnames end
 function replacedimnames(a::AbstractITensor, replacements::Pair...)
     new_dimnames = replace(dimnames(a), replacements...)
     return nameddims(unnamed(a), new_dimnames)
@@ -770,6 +852,26 @@ end
 
 # Permute/align dimensions
 
+"""
+    aligndims(a::AbstractITensor, dims)
+
+Reorder the dimensions of `a` into the order given by `dims`, matched by name. Returns a
+tensor with the same data and dimension names as `a` but with the dimensions permuted, and
+throws a `NameMismatch` if `dims` is not a permutation of `a`'s dimension names.
+
+# Examples
+
+```jldoctest
+julia> a = nameddims(zeros(2, 3), (:i, :j));
+
+julia> aligndims(a, (:j, :i))
+named(Base.OneTo(3), :j)×named(Base.OneTo(2), :i) ITensor{Symbol}:
+3×2 Matrix{Float64}:
+ 0.0  0.0
+ 0.0  0.0
+ 0.0  0.0
+```
+"""
 function aligndims(a::AbstractITensor, dims)
     new_dimnames = name.(dims)
     perm = Tuple(getperm(dimnames(a), new_dimnames))
@@ -781,6 +883,26 @@ function aligndims(a::AbstractITensor, dims)
     return nameddims(permutedims(unnamed(a), perm), new_dimnames)
 end
 
+"""
+    aligneddims(a::AbstractITensor, dims)
+
+Like [`aligndims`](@ref), but returns a lazily-permuted view that shares data with `a`
+instead of copying. Reorders the dimensions of `a` into the order given by `dims`, matched by
+name, and throws a `NameMismatch` if `dims` is not a permutation of `a`'s dimension names.
+
+# Examples
+
+```jldoctest
+julia> a = nameddims(reshape(1:6, 2, 3), (:i, :j));
+
+julia> dimnames(aligneddims(a, (:j, :i)))
+2-element Vector{Symbol}:
+ :j
+ :i
+```
+
+See also [`aligndims`](@ref).
+"""
 function aligneddims(a::AbstractITensor, dims)
     new_dimnames = name.(dims)
     perm = getperm(dimnames(a), new_dimnames)
