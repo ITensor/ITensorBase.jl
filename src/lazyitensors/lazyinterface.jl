@@ -118,7 +118,7 @@ function isequal_lazy(a1, a2)
 end
 function hash_lazy(a, h::UInt64)
     h = hash(Symbol(Base.typename(typeof(a)).wrapper), h)
-    # Use `_hash`, which defines a custom hash for ITensor.
+    # Use `_hash`, which defines a custom hash for NamedTensor.
     return _hash(unwrap(a), h)
 end
 function map_arguments_lazy(f, a)
@@ -141,7 +141,7 @@ substitute_lazy(a, substitutions) = substitute(a, Dict(substitutions))
 using AbstractTrees: printnode
 function printnode_lazy(io, a)
     # Use `printnode_nameddims` to avoid type piracy,
-    # since it overloads on `AbstractITensor`.
+    # since it overloads on `AbstractNamedTensor`.
     return printnode_nameddims(io, unwrap(a))
 end
 function show_lazy(io::IO, a)

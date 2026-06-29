@@ -1,11 +1,12 @@
 module ITensorBase
 
-export AbstractITensor, ITensor, Index, NamedUnitRange, aligndims, aligneddims,
-    apply, codomainnames, dimnames, dimnametype, domainnames, inds, named,
-    nameddims, noprime, operator, prime, similar_operator, state, uniquename
+export AbstractNamedTensor, NamedTensor, AbstractITensor, ITensor, Index,
+    NamedUnitRange, aligndims, aligneddims, apply, codomainnames, dimnames,
+    dimnametype, domainnames, inds, named, nameddims, noprime, operator, prime,
+    similar_operator, state, uniquename
 using Compat: @compat
 @compat public @names
-@compat public name, nametype, replacedimnames, setname, unnamed, unnamedtype
+@compat public IndexName, name, nametype, replacedimnames, setname, unnamed, unnamedtype
 
 # Named-array machinery (relocated from NamedDimsArrays.jl).
 include("isnamed.jl")
@@ -15,12 +16,12 @@ include("named.jl")
 include("abstractnamedarray.jl")
 include("namedarray.jl")
 include("namedunitrange.jl")
-include("abstractitensor.jl")
+include("abstractnamedtensor.jl")
 include("broadcast.jl")
 include("tensoralgebra.jl")
 include("linearalgebra.jl")
-include("itensor.jl")
-include("itensoroperator.jl")
+include("namedtensor.jl")
+include("namedtensoroperator.jl")
 
 # `IndexName` dimname flavor and the `Index` named unit range.
 include("sorteddict.jl")

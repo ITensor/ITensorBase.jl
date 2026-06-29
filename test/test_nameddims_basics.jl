@@ -1,8 +1,8 @@
 using Combinatorics: Combinatorics
-using ITensorBase: @names, AbstractITensor, ITensor, Name, NameMismatch,
-    NamedDimsCartesianIndex, NamedDimsCartesianIndices, aligndims, aligneddims, apply, dim,
-    dimnames, dimnametype, dims, inds, isnamed, mapinds, name, named, nameddims, namedoneto,
-    product, replacedimnames, replaceinds, setdimnames, unname, unnamed, unnamedtype
+using ITensorBase: @names, AbstractNamedTensor, Name, NameMismatch, NamedDimsCartesianIndex,
+    NamedDimsCartesianIndices, NamedTensor, aligndims, aligneddims, apply, dim, dimnames,
+    dimnametype, dims, inds, isnamed, mapinds, name, named, nameddims, namedoneto, product,
+    replacedimnames, replaceinds, setdimnames, unname, unnamed, unnamedtype
 using LinearAlgebra: LinearAlgebra
 using Test: @test, @test_throws, @testset
 using VectorInterface: scalartype
@@ -16,8 +16,8 @@ end
         a = randn(elt, 3, 4)
         @test !isnamed(a)
         na = nameddims(a, ("i", "j"))
-        @test na isa ITensor{String}
-        @test na isa AbstractITensor{String}
+        @test na isa NamedTensor{String}
+        @test na isa AbstractNamedTensor{String}
         @test eltype(na) === elt
         @test ndims(na) == 2
         @test_throws MethodError unnamed(a)
@@ -73,8 +73,11 @@ end
         @test CartesianIndices(na) == CartesianIndices(a)
         @test collect(pairs(na)) == (CartesianIndices(a) .=> a)
 
-        @test_throws ArgumentError ITensor(randn(4), namedoneto.((2, 2), ("i", "j")))
-        ## @test_throws ErrorException ITensor(randn(2, 2), namedoneto.((2, 3), ("i", "j")))
+        @test_throws ArgumentError NamedTensor(
+            randn(4),
+            namedoneto.((2, 2), ("i", "j"))
+        )
+        ## @test_throws ErrorException NamedTensor(randn(2, 2), namedoneto.((2, 3), ("i", "j")))
 
         a = randn(elt, 3, 4)
         na = nameddims(a, ("i", "j"))
@@ -151,13 +154,13 @@ end
         i = namedoneto(2, "i")
         a = randn(elt, 2)
         na = a[i]
-        @test na isa ITensor{String}
+        @test na isa NamedTensor{String}
         @test dimnames(na) == ["i"]
         @test unnamed(na) == a
 
         # slicing
         a = randn(elt, 3, 3)
-        na = ITensor(a, ("i", "j"))
+        na = NamedTensor(a, ("i", "j"))
         for na′ in (na[named(2:3, "i"), named(2:3, "j")], na["i" => 2:3, "j" => 2:3])
             @test inds(na′) == [named(1:2, "i"), named(1:2, "j")]
             @test unnamed(na′) == a[2:3, 2:3]
@@ -166,7 +169,7 @@ end
 
         # view slicing
         a = randn(elt, 3, 3)
-        na = ITensor(a, ("i", "j"))
+        na = NamedTensor(a, ("i", "j"))
         for na′ in
             (@view(na[named(2:3, "i"), named(2:3, "j")]), @view(na["i" => 2:3, "j" => 2:3]))
             @test inds(na′) == [named(1:2, "i"), named(1:2, "j")]
@@ -231,10 +234,10 @@ end
         na[1, 1] = 11
         @test na[1, 1] == 11
         @test size(na) == (3, 4)
-        # An ITensor's `length` is the plain element count (product of its size).
+        # An NamedTensor's `length` is the plain element count (product of its size).
         @test length(na) == 12
         @test Tuple(axes(na)) == (named(1:3, "i"), named(1:4, "j"))
-        @test randn(named.((3, 4), ("i", "j"))) isa ITensor
+        @test randn(named.((3, 4), ("i", "j"))) isa NamedTensor
         @test na["i" => 1, "j" => 2] == a[1, 2]
         @test na["j" => 2, "i" => 1] == a[1, 2]
         na["j" => 2, "i" => 1] = 12
@@ -367,26 +370,26 @@ end
         value = rand(elt)
         for na in (zeros(elt, i, j), zeros(elt, (i, j)))
             @test eltype(na) ≡ elt
-            @test na isa ITensor
+            @test na isa NamedTensor
             @test inds(na) == Base.oneto.([i, j])
             @test iszero(na)
         end
         for na in (fill(value, i, j), fill(value, (i, j)))
             @test eltype(na) ≡ elt
-            @test na isa ITensor
+            @test na isa NamedTensor
             @test inds(na) == Base.oneto.([i, j])
             @test all(isequal(value), na)
         end
         for na in (rand(elt, i, j), rand(elt, (i, j)))
             @test eltype(na) ≡ elt
-            @test na isa ITensor
+            @test na isa NamedTensor
             @test inds(na) == Base.oneto.([i, j])
             @test !iszero(na)
             @test all(x -> real(x) > 0, na)
         end
         for na in (randn(elt, i, j), randn(elt, (i, j)))
             @test eltype(na) ≡ elt
-            @test na isa ITensor
+            @test na isa NamedTensor
             @test inds(na) == Base.oneto.([i, j])
             @test !iszero(na)
         end
@@ -396,32 +399,32 @@ end
         default_elt = Float64
         for na in (zeros(i, j), zeros((i, j)))
             @test eltype(na) ≡ default_elt
-            @test na isa ITensor
+            @test na isa NamedTensor
             @test inds(na) == Base.oneto.([i, j])
             @test iszero(na)
         end
         for na in (rand(i, j), rand((i, j)))
             @test eltype(na) ≡ default_elt
-            @test na isa ITensor
+            @test na isa NamedTensor
             @test inds(na) == Base.oneto.([i, j])
             @test !iszero(na)
             @test all(x -> real(x) > 0, na)
         end
         for na in (randn(i, j), randn((i, j)))
             @test eltype(na) ≡ default_elt
-            @test na isa ITensor
+            @test na isa NamedTensor
             @test inds(na) == Base.oneto.([i, j])
             @test !iszero(na)
         end
     end
     @testset "show" begin
-        a = ITensor([1 2; 3 4], ("i", "j"))
+        a = NamedTensor([1 2; 3 4], ("i", "j"))
         @test sprint(show, "text/plain", a) ==
             "named(Base.OneTo(2), \"i\")×named(Base.OneTo(2), \"j\") " *
-            "$ITensor{String}:\n" *
+            "$NamedTensor{String}:\n" *
             "2×2 Matrix{Int64}:\n 1  2\n 3  4"
 
-        a = ITensor([1 2; 3 4], ("i", "j"))
+        a = NamedTensor([1 2; 3 4], ("i", "j"))
         @test sprint(show, a) ==
             "[1 2; 3 4][named(Base.OneTo(2), \"i\"), named(Base.OneTo(2), \"j\")]"
     end

@@ -1,13 +1,13 @@
 module ITensorBaseMooncakeExt
 
-using ITensorBase: AbstractITensor, NamedUnitRange, dimnames, dimnames_setdiff, inds, name,
-    nameperm, to_inds, uniquename
+using ITensorBase: AbstractNamedTensor, NamedUnitRange, dimnames, dimnames_setdiff, inds,
+    name, nameperm, to_inds, uniquename
 using Mooncake: Mooncake, @zero_derivative, DefaultCtx
 
 Mooncake.tangent_type(::Type{<:NamedUnitRange}) = Mooncake.NoTangent
 
 @zero_derivative DefaultCtx Tuple{typeof(nameperm), Any, Any, Any}
-# `dimnames(::ITensor)` returns the stored names `Vector` directly, so its output
+# `dimnames(::NamedTensor)` returns the stored names `Vector` directly, so its output
 # aliases a field, where `@zero_derivative` is documented to be incorrect. Let
 # Mooncake differentiate it through the underlying `getfield`, whose built-in rule
 # preserves the aliasing (the names are non-differentiable, so the result is zero).
@@ -20,9 +20,9 @@ Mooncake.tangent_type(::Type{<:NamedUnitRange}) = Mooncake.NoTangent
 @zero_derivative DefaultCtx Tuple{typeof(uniquename), Any, Any}
 @zero_derivative DefaultCtx Tuple{typeof(to_inds), Any, Any}
 
-using ITensorBase: AbstractITensor, ITensor, unnamed
+using ITensorBase: AbstractNamedTensor, NamedTensor, unnamed
 using Mooncake: Tangent
-function Base.copyto!(dest::ITensor, src::Tangent)
+function Base.copyto!(dest::NamedTensor, src::Tangent)
     # TODO: Account for the `inds` of the Tangent? In other words, is the tangent data
     # aligned with the `dest` data?
     copyto!(unnamed(dest), src.fields.parent)

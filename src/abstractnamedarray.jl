@@ -1,4 +1,4 @@
-# `Name` leads (matching `AbstractITensor{DimName}`); `UnnamedT` is the unwrapped
+# `Name` leads (matching `AbstractNamedTensor{DimName}`); `UnnamedT` is the unwrapped
 # element type and `N` the rank. The element type is always `Named{Name, UnnamedT}`,
 # so it is hardcoded in the `AbstractArray` supertype rather than carried as a
 # parameter. The wrapped-container type lives only on the concrete subtypes.

@@ -39,7 +39,7 @@ function name end
 
 The underlying value of a named object `a`, with its name stripped off. This is the
 inverse of the value component of [`named`](@ref): [`name`](@ref) recovers the name,
-`unnamed` recovers the value. On an [`AbstractITensor`](@ref) it returns the underlying
+`unnamed` recovers the value. On an [`AbstractNamedTensor`](@ref) it returns the underlying
 unnamed array.
 
 # Examples

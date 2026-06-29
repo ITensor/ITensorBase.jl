@@ -1,5 +1,5 @@
-using ITensorBase: ITensorBase, ITensor, Index, IndexName, dimnametype, gettag, hastag, id,
-    inds, mapinds, name, named, plev, prime, setplev, settag, tags, unname, unnamed,
+using ITensorBase: ITensorBase, Index, IndexName, NamedTensor, dimnametype, gettag, hastag,
+    id, inds, mapinds, name, named, plev, prime, setplev, settag, tags, unname, unnamed,
     unsettag
 using Test: @test, @test_broken, @test_throws, @testset
 using UUIDs: UUID
@@ -85,7 +85,7 @@ using UUIDs: UUID
         @test plev(i) == 0
         @test length(tags(i)) == 1
     end
-    @testset "ITensor basics" begin
+    @testset "NamedTensor basics" begin
         elt = Float64
         i, j = Index.((2, 2))
         x = randn(elt, 2, 2)
@@ -100,12 +100,12 @@ using UUIDs: UUID
 
         # The number of dimnames must match the array's `ndims`, and the dimnames are
         # passed as a single collection.
-        @test_throws ArgumentError ITensor(randn(elt, 4), (:i, :j))
-        @test_throws MethodError ITensor(randn(elt, 2, 2), :i, :j)
+        @test_throws ArgumentError NamedTensor(randn(elt, 4), (:i, :j))
+        @test_throws MethodError NamedTensor(randn(elt, 2, 2), :i, :j)
 
         # The constructor takes names only, not indices, so passing indices (the
         # ITensors.jl idiom) errors.
-        @test_throws ArgumentError ITensor(randn(elt, 2, 2), Index.((2, 2)))
+        @test_throws ArgumentError NamedTensor(randn(elt, 2, 2), Index.((2, 2)))
 
         i, j = Index.((3, 4))
         a = randn(elt, i, j)
@@ -133,12 +133,12 @@ using UUIDs: UUID
     @testset "dimnametype" begin
         i, j = Index.((2, 3))
         a = randn(Float64, i, j)
-        @test a isa ITensor
+        @test a isa NamedTensor
         @test dimnametype(a) === IndexName
         @test dimnametype(typeof(a)) === IndexName
-        @test dimnametype(ITensor{IndexName}) === IndexName
-        # Unparameterized `ITensor` does not fix its dimname flavor, like `eltype(Array)`.
-        @test dimnametype(ITensor) === Any
+        @test dimnametype(NamedTensor{IndexName}) === IndexName
+        # Unparameterized `NamedTensor` does not fix its dimname flavor, like `eltype(Array)`.
+        @test dimnametype(NamedTensor) === Any
     end
     @testset "show" begin
         i = Index(2)

@@ -3,9 +3,9 @@ using ITensorBase
 using ITensorFormatter: ITensorFormatter
 
 # `using ITensorBase` (rather than `using ITensorBase: ITensorBase`) binds the exported
-# names in `Main`. The tensor `show` qualifies the element type relative to the active
-# module, so without it the doctests and `@example` blocks render `ITensorBase.ITensor`
-# instead of `ITensor`.
+# names in `Main`. The tensor `show` qualifies the type relative to the active module, so
+# without it the doctests and `@example` blocks render `ITensorBase.NamedTensor` instead
+# of `NamedTensor`.
 DocMeta.setdocmeta!(ITensorBase, :DocTestSetup, :(using ITensorBase); recursive = true)
 
 ITensorFormatter.make_index!(pkgdir(ITensorBase))

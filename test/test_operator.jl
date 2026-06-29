@@ -1,6 +1,6 @@
-using ITensorBase: ITensorBase as NDA, ITensor, ITensorOperator, apply, codomainnames,
-    dimnames, domainnames, nameddims, namedoneto, operator, product, replacedimnames,
-    similar_operator, state, unname, unnamed
+using ITensorBase: ITensorBase as NDA, NamedTensor, NamedTensorOperator, apply,
+    codomainnames, dimnames, domainnames, nameddims, namedoneto, operator, product,
+    replacedimnames, similar_operator, state, unname, unnamed
 using LinearAlgebra: I, norm
 using Random: Random
 using StableRNGs: StableRNG
@@ -10,27 +10,27 @@ using Test: @test, @test_throws, @testset
 
 @testset "operator" begin
     o = operator(randn(2, 2, 2, 2), ("i'", "j'"), ("i", "j"))
-    @test o isa ITensorOperator{String}
+    @test o isa NamedTensorOperator{String}
     @test eltype(o) ≡ Float64
     @test issetequal(NDA.codomainnames(o), ("i'", "j'"))
     @test issetequal(NDA.domainnames(o), ("i", "j"))
 
     o = operator(randn(2, 2, 2, 2), ("i'", "j'"), ("i", "j"))
     õ = similar(o)
-    @test õ isa ITensorOperator{String}
+    @test õ isa NamedTensorOperator{String}
     @test eltype(õ) ≡ Float64
     @test issetequal(NDA.codomainnames(õ), ("i'", "j'"))
     @test issetequal(NDA.domainnames(õ), ("i", "j"))
 
     o = operator(randn(2, 2, 2, 2), ("i'", "j'"), ("i", "j"))
     õ = similar(o, Float32)
-    @test õ isa ITensorOperator{String}
+    @test õ isa NamedTensorOperator{String}
     @test eltype(õ) ≡ Float32
     @test issetequal(NDA.codomainnames(õ), ("i'", "j'"))
     @test issetequal(NDA.domainnames(õ), ("i", "j"))
 
     o = operator(randn(2, 2, 2, 2), ("i'", "j'"), ("i", "j"))
-    @test o isa ITensorOperator
+    @test o isa NamedTensorOperator
     o² = product(o, o)
     @test issetequal(dimnames(o²), ("i'", "j'", "i", "j"))
     õ = replacedimnames(
@@ -40,7 +40,7 @@ using Test: @test, @test_throws, @testset
     @test state(o²) ≈ o²′
 
     o = operator(randn(2, 2, 2, 2), ("i'", "j'"), ("i", "j"))
-    v = ITensor(randn(2, 2), ("i", "j"))
+    v = NamedTensor(randn(2, 2), ("i", "j"))
     ov = apply(o, v)
     @test issetequal(dimnames(ov), ("i", "j"))
     @test ov ≈ replacedimnames(o * v, "i'" => "i", "j'" => "j")
@@ -50,24 +50,24 @@ end
     # Codomain/domain may be given as named ranges, not just names.
     i, ip = namedoneto(2, "i"), namedoneto(2, "i'")
     o = operator(randn(2, 2), [ip], [i])
-    @test o isa ITensorOperator{String}
+    @test o isa NamedTensorOperator{String}
     @test issetequal(codomainnames(o), ("i'",))
     @test issetequal(domainnames(o), ("i",))
 end
 
-@testset "one(::ITensorOperator)" begin
+@testset "one(::NamedTensorOperator)" begin
     # Identity-operator construction: matricized form is the identity matrix.
     i, j, k, l = namedoneto.((2, 3, 2, 3), ("i", "j", "k", "l"))
     op = operator(randn(i, j, k, l), ("i", "j"), ("k", "l"))
     Id = one(op)
-    @test Id isa ITensorOperator{String}
+    @test Id isa NamedTensorOperator{String}
     @test codomainnames(Id) == codomainnames(op)
     @test domainnames(Id) == domainnames(op)
     Id_mat = matricize(state(Id), (i, j) => "row", (k, l) => "col")
     @test unname(Id_mat, ("row", "col")) ≈ I(6)
 end
 
-@testset "one(::AbstractITensor, codomain, domain)" begin
+@testset "one(::AbstractNamedTensor, codomain, domain)" begin
     # Trivial codomain/domain layout.
     i, j, k, l = namedoneto.((2, 3, 2, 3), ("i", "j", "k", "l"))
     a = randn(i, j, k, l)
@@ -87,13 +87,13 @@ end
 @testset "similar_operator" begin
     # Five-arg canonical: explicit element type, axes, codomain, domain names.
     op = similar_operator(randn(3, 3), Float32, (Base.OneTo(3),), ("i'",), ("i",))
-    @test op isa ITensorOperator{String}
+    @test op isa NamedTensorOperator{String}
     @test issetequal(codomainnames(op), ("i'",))
     @test issetequal(domainnames(op), ("i",))
 
     # Codomain names default to fresh `uniquename` outputs.
     op = similar_operator(randn(3, 3), Float64, (Base.OneTo(3),), ("i",))
-    @test op isa ITensorOperator{String}
+    @test op isa NamedTensorOperator{String}
     @test issetequal(domainnames(op), ("i",))
     @test only(codomainnames(op)) != "i"
 
@@ -108,7 +108,7 @@ end
     @test eltype(op) === ComplexF32
 end
 
-@testset "randn!(::ITensorOperator) / rand!" begin
+@testset "randn!(::NamedTensorOperator) / rand!" begin
     op = operator(zeros(3, 3), ("i'",), ("i",))
     rng = StableRNG(123)
     Random.randn!(rng, op)
@@ -122,14 +122,14 @@ end
 @testset "operator-preserving broadcasting" begin
     # `+`, `-`, and scalar multiplication lower to broadcasting. An operator
     # broadcasts as itself (it is not peeled to its `state`), so these operations
-    # preserve the `ITensorOperator` wrapper and its codomain/domain bijection.
+    # preserve the `NamedTensorOperator` wrapper and its codomain/domain bijection.
     # (Contraction `*` is operator-preserving too, in its own testset below.)
     o = operator(randn(2, 2), ("i'",), ("i",))
     s = state(o)
     nms = ("i'", "i")
 
     for r in (o + o, o - o, -o, 2 * o, o * 2, 2 .* o, o .* 2, o ./ 2)
-        @test r isa ITensorOperator
+        @test r isa NamedTensorOperator
         @test issetequal(codomainnames(r), ("i'",))
         @test issetequal(domainnames(r), ("i",))
     end
@@ -144,16 +144,16 @@ end
     @test unname(state(o ./ 2), nms) ≈ unname(s, nms) ./ 2
 
     # `o` shares both its names with itself, so `o * o` fully contracts to a
-    # scalar with no surviving codomain/domain. It is still an `ITensorOperator`
+    # scalar with no surviving codomain/domain. It is still an `NamedTensorOperator`
     # (with empty codomain/domain), so the product type does not depend on which
     # names happen to contract.
     oo = o * o
-    @test oo isa ITensorOperator
+    @test oo isa NamedTensorOperator
     @test isempty(codomainnames(oo))
     @test isempty(domainnames(oo))
 
     # Operator combined with a non-operator tensor is rejected.
-    plain = ITensor(randn(2, 2), ("i'", "i"))
+    plain = NamedTensor(randn(2, 2), ("i'", "i"))
     @test_throws ArgumentError o .+ plain
 
     # Two operators whose name sets match but whose codomain/domain split differs
@@ -169,7 +169,7 @@ end
     a = operator(nameddims(randn(2, 2, 3), ("i'", "i", "aux")), ["i'"], ["i"])
     b = operator(nameddims(randn(2, 2, 3), ("j'", "j", "aux")), ["j'"], ["j"])
     ab = a * b
-    @test ab isa ITensorOperator
+    @test ab isa NamedTensorOperator
     @test issetequal(codomainnames(ab), ("i'", "j'"))
     @test issetequal(domainnames(ab), ("i", "j"))
     @test !("aux" in dimnames(ab))
@@ -180,22 +180,22 @@ end
     A = operator(randn(2, 2), ("a'",), ("m",))
     B = operator(randn(2, 2), ("m",), ("b",))
     AB = A * B
-    @test AB isa ITensorOperator
+    @test AB isa NamedTensorOperator
     @test issetequal(codomainnames(AB), ("a'",))
     @test issetequal(domainnames(AB), ("b",))
 
     # Applying an operator to a plain state contracts the operator's domain and
-    # leaves its output dangling. The result stays an `ITensorOperator` with empty
+    # leaves its output dangling. The result stays an `NamedTensorOperator` with empty
     # codomain/domain (the surviving `a'` leg is dangling, in neither).
     v = nameddims(randn(2), ("m",))
     Av = operator(randn(2, 2), ("a'",), ("m",)) * v
-    @test Av isa ITensorOperator
+    @test Av isa NamedTensorOperator
     @test isempty(codomainnames(Av))
     @test isempty(domainnames(Av))
     @test issetequal(dimnames(Av), ("a'",))
 end
 
-@testset "gram_eigh_full on ITensorOperator" begin
+@testset "gram_eigh_full on NamedTensorOperator" begin
     n = 5
     B = randn(n, n)
     A = B * B'  # Hermitian PSD

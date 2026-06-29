@@ -1,69 +1,74 @@
 using WrappedUnions: @wrapped
 
-@wrapped struct LazyITensor{
-        DimName, A <: AbstractITensor{DimName},
-    } <: AbstractITensor{DimName}
-    union::Union{A, Mul{LazyITensor{DimName, A}}}
+@wrapped struct LazyNamedTensor{
+        DimName, A <: AbstractNamedTensor{DimName},
+    } <: AbstractNamedTensor{DimName}
+    union::Union{A, Mul{LazyNamedTensor{DimName, A}}}
 end
 
-parenttype(::Type{LazyITensor{DimName, A}}) where {DimName, A} = A
-parenttype(::Type{LazyITensor{DimName}}) where {DimName} = AbstractITensor{DimName}
-parenttype(::Type{LazyITensor}) = AbstractITensor
-
-function LazyITensor(a::AbstractITensor)
-    return LazyITensor{dimnametype(typeof(a)), typeof(a)}(a)
+parenttype(::Type{LazyNamedTensor{DimName, A}}) where {DimName, A} = A
+function parenttype(::Type{LazyNamedTensor{DimName}}) where {DimName}
+    return AbstractNamedTensor{DimName}
 end
-function LazyITensor(a::Mul{L}) where {L <: LazyITensor}
-    return LazyITensor{dimnametype(L), parenttype(L)}(a)
-end
-lazy(a::LazyITensor) = a
-lazy(a::AbstractITensor) = LazyITensor(a)
-lazy(a::Mul{<:LazyITensor}) = LazyITensor(a)
+parenttype(::Type{LazyNamedTensor}) = AbstractNamedTensor
 
-dimnames(a::LazyITensor) = dimnames_lazy(a)
-inds(a::LazyITensor) = inds_lazy(a)
+function LazyNamedTensor(a::AbstractNamedTensor)
+    return LazyNamedTensor{dimnametype(typeof(a)), typeof(a)}(a)
+end
+function LazyNamedTensor(a::Mul{L}) where {L <: LazyNamedTensor}
+    return LazyNamedTensor{dimnametype(L), parenttype(L)}(a)
+end
+lazy(a::LazyNamedTensor) = a
+lazy(a::AbstractNamedTensor) = LazyNamedTensor(a)
+lazy(a::Mul{<:LazyNamedTensor}) = LazyNamedTensor(a)
+
+dimnames(a::LazyNamedTensor) = dimnames_lazy(a)
+inds(a::LazyNamedTensor) = inds_lazy(a)
 # `axes` is computed from `inds_lazy` rather than the generic `unnamed`-based fallback
 # because a `Mul` expression has no materialized `unnamed` array to take axes of.
-Base.axes(a::LazyITensor) = Tuple(inds_lazy(a))
-unnamed(a::LazyITensor) = unnamed_lazy(a)
+Base.axes(a::LazyNamedTensor) = Tuple(inds_lazy(a))
+unnamed(a::LazyNamedTensor) = unnamed_lazy(a)
 
 # Broadcasting
-function Base.BroadcastStyle(::Type{<:LazyITensor})
-    return LazyITensorStyle()
+function Base.BroadcastStyle(::Type{<:LazyNamedTensor})
+    return LazyNamedTensorStyle()
 end
 
 # Derived functionality.
-function TermInterface.maketerm(type::Type{LazyITensor}, head, args, metadata)
+function TermInterface.maketerm(type::Type{LazyNamedTensor}, head, args, metadata)
     return maketerm_lazy(type, head, args, metadata)
 end
-Base.getindex(a::LazyITensor, I::Int...) = getindex_lazy(a, I...)
-TermInterface.arguments(a::LazyITensor) = arguments_lazy(a)
-TermInterface.children(a::LazyITensor) = children_lazy(a)
-TermInterface.head(a::LazyITensor) = head_lazy(a)
-TermInterface.iscall(a::LazyITensor) = iscall_lazy(a)
-TermInterface.isexpr(a::LazyITensor) = isexpr_lazy(a)
-TermInterface.operation(a::LazyITensor) = operation_lazy(a)
-TermInterface.sorted_arguments(a::LazyITensor) = sorted_arguments_lazy(a)
-AbstractTrees.children(a::LazyITensor) = abstracttrees_children_lazy(a)
-TermInterface.sorted_children(a::LazyITensor) = sorted_children_lazy(a)
-ismul(a::LazyITensor) = ismul_lazy(a)
-AbstractTrees.nodevalue(a::LazyITensor) = nodevalue_lazy(a)
-Base.Broadcast.materialize(a::LazyITensor) = materialize_lazy(a)
-Base.copy(a::LazyITensor) = copy_lazy(a)
-Base.:(==)(a1::LazyITensor, a2::LazyITensor) = equals_lazy(a1, a2)
-Base.isequal(a1::LazyITensor, a2::LazyITensor) = isequal_lazy(a1, a2)
-Base.hash(a::LazyITensor, h::UInt64) = hash_lazy(a, h)
-map_arguments(f, a::LazyITensor) = map_arguments_lazy(f, a)
-substitute(a::LazyITensor, substitutions) = substitute_lazy(a, substitutions)
-AbstractTrees.printnode(io::IO, a::LazyITensor) = printnode_lazy(io, a)
-printnode_nameddims(io::IO, a::LazyITensor) = printnode_lazy(io, a)
-Base.show(io::IO, a::LazyITensor) = show_lazy(io, a)
-Base.show(io::IO, mime::MIME"text/plain", a::LazyITensor) = show_lazy(io, mime, a)
-Base.:*(a::LazyITensor) = mul_lazy(a)
-Base.:*(a1::LazyITensor, a2::LazyITensor) = mul_lazy(a1, a2)
-Base.:+(a1::LazyITensor, a2::LazyITensor) = add_lazy(a1, a2)
-Base.:-(a1::LazyITensor, a2::LazyITensor) = sub_lazy(a1, a2)
-Base.:*(a1::Number, a2::LazyITensor) = mul_lazy(a1, a2)
-Base.:*(a1::LazyITensor, a2::Number) = mul_lazy(a1, a2)
-Base.:/(a1::LazyITensor, a2::Number) = div_lazy(a1, a2)
-Base.:-(a::LazyITensor) = sub_lazy(a)
+Base.getindex(a::LazyNamedTensor, I::Int...) = getindex_lazy(a, I...)
+TermInterface.arguments(a::LazyNamedTensor) = arguments_lazy(a)
+TermInterface.children(a::LazyNamedTensor) = children_lazy(a)
+TermInterface.head(a::LazyNamedTensor) = head_lazy(a)
+TermInterface.iscall(a::LazyNamedTensor) = iscall_lazy(a)
+TermInterface.isexpr(a::LazyNamedTensor) = isexpr_lazy(a)
+TermInterface.operation(a::LazyNamedTensor) = operation_lazy(a)
+TermInterface.sorted_arguments(a::LazyNamedTensor) = sorted_arguments_lazy(a)
+AbstractTrees.children(a::LazyNamedTensor) = abstracttrees_children_lazy(a)
+TermInterface.sorted_children(a::LazyNamedTensor) = sorted_children_lazy(a)
+ismul(a::LazyNamedTensor) = ismul_lazy(a)
+AbstractTrees.nodevalue(a::LazyNamedTensor) = nodevalue_lazy(a)
+Base.Broadcast.materialize(a::LazyNamedTensor) = materialize_lazy(a)
+Base.copy(a::LazyNamedTensor) = copy_lazy(a)
+Base.:(==)(a1::LazyNamedTensor, a2::LazyNamedTensor) = equals_lazy(a1, a2)
+Base.isequal(a1::LazyNamedTensor, a2::LazyNamedTensor) = isequal_lazy(a1, a2)
+Base.hash(a::LazyNamedTensor, h::UInt64) = hash_lazy(a, h)
+map_arguments(f, a::LazyNamedTensor) = map_arguments_lazy(f, a)
+substitute(a::LazyNamedTensor, substitutions) = substitute_lazy(a, substitutions)
+AbstractTrees.printnode(io::IO, a::LazyNamedTensor) = printnode_lazy(io, a)
+printnode_nameddims(io::IO, a::LazyNamedTensor) = printnode_lazy(io, a)
+Base.show(io::IO, a::LazyNamedTensor) = show_lazy(io, a)
+Base.show(io::IO, mime::MIME"text/plain", a::LazyNamedTensor) = show_lazy(io, mime, a)
+Base.:*(a::LazyNamedTensor) = mul_lazy(a)
+Base.:*(a1::LazyNamedTensor, a2::LazyNamedTensor) = mul_lazy(a1, a2)
+Base.:+(a1::LazyNamedTensor, a2::LazyNamedTensor) = add_lazy(a1, a2)
+Base.:-(a1::LazyNamedTensor, a2::LazyNamedTensor) = sub_lazy(a1, a2)
+Base.:*(a1::Number, a2::LazyNamedTensor) = mul_lazy(a1, a2)
+Base.:*(a1::LazyNamedTensor, a2::Number) = mul_lazy(a1, a2)
+Base.:/(a1::LazyNamedTensor, a2::Number) = div_lazy(a1, a2)
+Base.:-(a::LazyNamedTensor) = sub_lazy(a)
+
+# `IndexName`-specialized alias, paralleling `ITensor = NamedTensor{IndexName}`.
+const LazyITensor = LazyNamedTensor{IndexName}
