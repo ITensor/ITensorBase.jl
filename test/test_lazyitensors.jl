@@ -1,15 +1,15 @@
 using AbstractTrees: AbstractTrees, print_tree, printnode
 using Base.Broadcast: materialize
-using ITensorBase: @names, Greedy, ITensor, LazyITensor, Mul, Optimal, SymbolicITensor,
-    dimnames, inds, ismul, lazy, nameddims, namedoneto, optimize_evaluation_order,
-    substitute, symnameddims
+using ITensorBase: @names, Greedy, LazyNamedTensor, Mul, NamedTensor, Optimal,
+    SymbolicNamedTensor, dimnames, inds, ismul, lazy, nameddims, namedoneto,
+    optimize_evaluation_order, substitute, symnameddims
 using TensorOperations: TensorOperations
 using TermInterface: arguments, arity, children, head, iscall, isexpr, maketerm, operation,
     sorted_arguments, sorted_children
 using Test: @test, @test_broken, @test_throws, @testset
 using WrappedUnions: unwrap
 
-@testset "LazyITensors" begin
+@testset "LazyNamedTensors" begin
     @testset "Basics" begin
         i, j, k, l = namedoneto.(2, (:i, :j, :k, :l))
         a1 = randn(i, j)
@@ -17,8 +17,8 @@ using WrappedUnions: unwrap
         a3 = randn(k, l)
         l1, l2, l3 = lazy.((a1, a2, a3))
         for li in (l1, l2, l3)
-            @test li isa LazyITensor
-            @test unwrap(li) isa ITensor
+            @test li isa LazyNamedTensor
+            @test unwrap(li) isa NamedTensor
             @test inds(li) == inds(unwrap(li))
             @test copy(li) == unwrap(li)
             @test materialize(li) == unwrap(li)
@@ -64,7 +64,7 @@ using WrappedUnions: unwrap
         @test head(l) ≡ *
         @test iscall(l)
         @test isexpr(l)
-        @test l == maketerm(LazyITensor, *, [l1 * l2, l3], nothing)
+        @test l == maketerm(LazyNamedTensor, *, [l1 * l2, l3], nothing)
         @test operation(l) ≡ *
         @test sorted_arguments(l) == [l1 * l2, l3]
         @test sorted_children(l) == [l1 * l2, l3]
@@ -81,10 +81,10 @@ using WrappedUnions: unwrap
 
     @testset "symnameddims" begin
         a1, a2, a3 = symnameddims.((:a1, :a2, :a3))
-        @test a1 isa LazyITensor
-        @test unwrap(a1) isa SymbolicITensor
-        @test unwrap(a1) == SymbolicITensor(:a1, ())
-        @test isequal(unwrap(a1), SymbolicITensor(:a1, ()))
+        @test a1 isa LazyNamedTensor
+        @test unwrap(a1) isa SymbolicNamedTensor
+        @test unwrap(a1) == SymbolicNamedTensor(:a1, ())
+        @test isequal(unwrap(a1), SymbolicNamedTensor(:a1, ()))
         @test isempty(inds(a1))
         @test isempty(dimnames(a1))
 
@@ -112,7 +112,7 @@ using WrappedUnions: unwrap
         s = [symnameddims(:a, (i, j)), symnameddims(:b, (j, k)), symnameddims(:c, (k, l))]
         flat = lazy(Mul(s))
         ordered = optimize_evaluation_order(flat; alg)
-        @test ordered isa LazyITensor
+        @test ordered isa LazyNamedTensor
         @test ismul(ordered)
         # Reordering nests the flat product into binary contractions and preserves
         # the open indices.

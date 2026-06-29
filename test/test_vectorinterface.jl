@@ -2,7 +2,7 @@ import VectorInterface as VI
 using ITensorBase: dimnames, named, unnamed
 using Test: @test, @testset
 
-# These name-aware methods are what let an ITensor be used directly as a vector in
+# These name-aware methods are what let an NamedTensor be used directly as a vector in
 # iterative solvers such as `KrylovKit.eigsolve`, which drive their Krylov vectors
 # through `VectorInterface`.
 @testset "VectorInterface (eltype=$(elt))" for elt in

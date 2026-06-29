@@ -80,7 +80,7 @@ get_codomain_name(a, i) = throw(MethodError(get_codomain_name, (a, i)))
 get_domain_name(a, i) = throw(MethodError(get_domain_name, (a, i)))
 
 """
-    apply(x::AbstractITensor, y::AbstractITensor)
+    apply(x::AbstractNamedTensor, y::AbstractNamedTensor)
 
 Apply the operator `x` to `y`. This contracts the state tensors of `x` and `y` over
 their shared names, then renames each surviving codomain name of `x` back to its paired
@@ -101,14 +101,14 @@ true
 See also [`operator`](@ref), [`state`](@ref), [`codomainnames`](@ref),
 [`domainnames`](@ref).
 """
-function apply(x::AbstractITensor, y::AbstractITensor)
+function apply(x::AbstractNamedTensor, y::AbstractNamedTensor)
     xy = state(x) * state(y)
     return mapdimnames(xy) do i
         return get_domain_name(x, i)
     end
 end
 
-function apply_dag(x::AbstractITensor, y::AbstractITensor)
+function apply_dag(x::AbstractNamedTensor, y::AbstractNamedTensor)
     xy = state(x) * state(y)
     return mapdimnames(xy) do i
         return get_codomain_name(y, i)
@@ -117,7 +117,7 @@ end
 
 # TODO: Define versions that accept codomain and domain names,
 # i.e. `transpose(a, codomain, domain)` and `adjoint(a, codomain, domain)` (?).
-function Base.transpose(a::AbstractITensor)
+function Base.transpose(a::AbstractNamedTensor)
     c = codomainnames(a)
     d = domainnames(a)
     a_map = merge(Dict(c .=> d), Dict(d .=> c))
@@ -126,11 +126,11 @@ function Base.transpose(a::AbstractITensor)
     end
     return operator(a′, c, d)
 end
-function Base.adjoint(a::AbstractITensor)
+function Base.adjoint(a::AbstractNamedTensor)
     return transpose(conj(a))
 end
 
-function product(x::AbstractITensor, y::AbstractITensor)
+function product(x::AbstractNamedTensor, y::AbstractNamedTensor)
     c = codomainnames(x)
     d = domainnames(x)
     c′ = uniquename.(c)
@@ -177,36 +177,36 @@ Base.iterate(b::Bijection) = iterate(b.domain_to_codomain)
 Base.iterate(b::Bijection, state) = iterate(b.domain_to_codomain, state)
 Base.length(b::Bijection) = length(b.domain_to_codomain)
 
-struct ITensorOperator{DimName, P <: AbstractITensor{DimName}, D, C} <:
-    AbstractITensor{DimName}
+struct NamedTensorOperator{DimName, P <: AbstractNamedTensor{DimName}, D, C} <:
+    AbstractNamedTensor{DimName}
     parent::P
     dimnames_bijection::Bijection{D, C}
 end
 
-state(a::AbstractITensor) = a
-state(a::ITensorOperator) = a.parent
-Base.parent(a::ITensorOperator) = state(a)
-unnamed(a::ITensorOperator) = unnamed(state(a))
-dimnames(a::ITensorOperator) = dimnames(state(a))
+state(a::AbstractNamedTensor) = a
+state(a::NamedTensorOperator) = a.parent
+Base.parent(a::NamedTensorOperator) = state(a)
+unnamed(a::NamedTensorOperator) = unnamed(state(a))
+dimnames(a::NamedTensorOperator) = dimnames(state(a))
 
-function ITensorOperator(a::AbstractITensor, codomainnames, domainnames)
-    return ITensorOperator(a, Bijection(domainnames, codomainnames))
+function NamedTensorOperator(a::AbstractNamedTensor, codomainnames, domainnames)
+    return NamedTensorOperator(a, Bijection(domainnames, codomainnames))
 end
 
-parenttype(type::Type{<:ITensorOperator}) = fieldtype(type, :parent)
-statetype(type::Type{<:ITensorOperator}) = parenttype(type)
+parenttype(type::Type{<:NamedTensorOperator}) = fieldtype(type, :parent)
+statetype(type::Type{<:NamedTensorOperator}) = parenttype(type)
 
-function nameddimsof(a::ITensorOperator, b::AbstractArray)
-    return ITensorOperator(nameddimsof(state(a), b), a.dimnames_bijection)
+function nameddimsof(a::NamedTensorOperator, b::AbstractArray)
+    return NamedTensorOperator(nameddimsof(state(a), b), a.dimnames_bijection)
 end
 
-codomainnames(a::ITensorOperator) = codomain(a.dimnames_bijection)
-domainnames(a::ITensorOperator) = domain(a.dimnames_bijection)
+codomainnames(a::NamedTensorOperator) = codomain(a.dimnames_bijection)
+domainnames(a::NamedTensorOperator) = domain(a.dimnames_bijection)
 
-function get_codomain_name(a::ITensorOperator, i)
+function get_codomain_name(a::NamedTensorOperator, i)
     return get(a.dimnames_bijection, i, i)
 end
-function get_domain_name(a::ITensorOperator, i)
+function get_domain_name(a::NamedTensorOperator, i)
     return get(inverse(a.dimnames_bijection), i, i)
 end
 
@@ -248,18 +248,18 @@ function operator(a::AbstractArray, codomain, domain)
     na = nameddims(a, (codomain..., domain...))
     return operator(na, codomain, domain)
 end
-function operator(a::AbstractITensor, codomain, domain)
-    return ITensorOperator(a, name.(codomain), name.(domain))
+function operator(a::AbstractNamedTensor, codomain, domain)
+    return NamedTensorOperator(a, name.(codomain), name.(domain))
 end
 
 # Operator-preserving contraction. Contracting two named arrays sums over their
 # shared names, so the result keeps each operand's surviving codomain/domain
 # structure. A non-operator tensor contributes no pairs (all its names are
 # dangling from the operator point of view). The result is always an
-# `ITensorOperator`, even when its codomain and domain both come out empty, so
+# `NamedTensorOperator`, even when its codomain and domain both come out empty, so
 # the product type does not depend on the runtime names being contracted.
-operator_pairs(a::ITensorOperator) = a.dimnames_bijection.domain_to_codomain
-operator_pairs(a::AbstractITensor) = ()
+operator_pairs(a::NamedTensorOperator) = a.dimnames_bijection.domain_to_codomain
+operator_pairs(a::AbstractNamedTensor) = ()
 
 # Compose the codomain/domain of `a * b`. The `domain => codomain` pairs of both
 # operands form a graph of maximum degree two (each name is paired at most once
@@ -267,7 +267,7 @@ operator_pairs(a::AbstractITensor) = ()
 # name reaches its surviving codomain partner by following the pairing through
 # any contracted (shared) names. A name whose chain dead-ends on a contracted
 # index is left dangling, so the result is well defined for any contraction.
-function product_codomain_domain(a::AbstractITensor, b::AbstractITensor)
+function product_codomain_domain(a::AbstractNamedTensor, b::AbstractNamedTensor)
     shared = intersect(dimnames(a), dimnames(b))
     pairs = collect(Iterators.flatten((operator_pairs(a), operator_pairs(b))))
     forward = Dict(pairs)
@@ -285,31 +285,33 @@ function product_codomain_domain(a::AbstractITensor, b::AbstractITensor)
     return codomain, domain
 end
 
-function operator_product(a::AbstractITensor, b::AbstractITensor)
+function operator_product(a::AbstractNamedTensor, b::AbstractNamedTensor)
     ab = state(a) * state(b)
     codomain, domain = product_codomain_domain(a, b)
     return operator(ab, codomain, domain)
 end
 
-Base.:*(a::ITensorOperator, b::ITensorOperator) = operator_product(a, b)
-Base.:*(a::ITensorOperator, b::AbstractITensor) = operator_product(a, b)
-Base.:*(a::AbstractITensor, b::ITensorOperator) = operator_product(a, b)
+Base.:*(a::NamedTensorOperator, b::NamedTensorOperator) = operator_product(a, b)
+Base.:*(a::NamedTensorOperator, b::AbstractNamedTensor) = operator_product(a, b)
+Base.:*(a::AbstractNamedTensor, b::NamedTensorOperator) = operator_product(a, b)
 
 # Operator-preserving broadcasting (the style struct and style-combination rules
-# live in `broadcast.jl`). An `ITensorOperator` broadcasts as itself, so `op .+ op`,
-# `2 .* op`, etc. carry `ITensorOperatorStyle`; `+` / `-` / scalar `*` inherit
+# live in `broadcast.jl`). An `NamedTensorOperator` broadcasts as itself, so `op .+ op`,
+# `2 .* op`, etc. carry `NamedTensorOperatorStyle`; `+` / `-` / scalar `*` inherit
 # preservation since they lower to broadcasting. `copy` / `similar` unwrap each
-# operator operand to its `state` (the shared `ITensorStyle` machinery does this via
-# `unnamed`), build the `ITensor` result, then rewrap as an operator using the
+# operator operand to its `state` (the shared `NamedTensorStyle` machinery does this via
+# `unnamed`), build the `NamedTensor` result, then rewrap as an operator using the
 # codomain/domain split recovered from the operands.
-function BC.BroadcastStyle(arraytype::Type{<:ITensorOperator})
-    return ITensorOperatorStyle{ndims(arraytype)}()
+function BC.BroadcastStyle(arraytype::Type{<:NamedTensorOperator})
+    return NamedTensorOperatorStyle{ndims(arraytype)}()
 end
 
 # Recover the codomain/domain split shared by all operator operands of `bc`,
 # erroring if any two operators disagree.
 operator_operands(bc::Broadcasted) = operator_operands(bc.args...)
-operator_operands(arg::ITensorOperator, args...) = (arg, operator_operands(args...)...)
+function operator_operands(arg::NamedTensorOperator, args...)
+    return (arg, operator_operands(args...)...)
+end
 function operator_operands(arg::Broadcasted, args...)
     return (operator_operands(arg.args...)..., operator_operands(args...)...)
 end
@@ -334,13 +336,13 @@ function broadcast_operator_codomain_domain(bc::Broadcasted)
     return cod1, dom1
 end
 
-function Base.copy(bc::Broadcasted{<:ITensorOperatorStyle})
+function Base.copy(bc::Broadcasted{<:NamedTensorOperatorStyle})
     cod, dom = broadcast_operator_codomain_domain(bc)
     result = copy(statebroadcasted(bc))
     return operator(result, cod, dom)
 end
 
-function Base.similar(bc::Broadcasted{<:ITensorOperatorStyle}, elt::Type, ax)
+function Base.similar(bc::Broadcasted{<:NamedTensorOperatorStyle}, elt::Type, ax)
     cod, dom = broadcast_operator_codomain_domain(bc)
     result = similar(statebroadcasted(bc), elt, ax)
     return operator(result, cod, dom)
@@ -348,7 +350,7 @@ end
 
 for f in MATRIX_FUNCTIONS
     @eval begin
-        function Base.$f(a::ITensorOperator)
+        function Base.$f(a::NamedTensorOperator)
             c = codomainnames(a)
             d = domainnames(a)
             return operator($f(state(a), c, d), c, d)
@@ -357,7 +359,7 @@ for f in MATRIX_FUNCTIONS
 end
 
 # Operator entries for the gram factorizations defined in `tensoralgebra.jl`.
-# Placed here because `ITensorOperator` is defined in this file, which comes
+# Placed here because `NamedTensorOperator` is defined in this file, which comes
 # after `tensoralgebra.jl` in the include order.
 #
 # Per-method docstrings are factored out into `const` strings and attached
@@ -366,7 +368,7 @@ end
 # don't share enough structure to warrant `$($f)`-interpolation.
 
 const _gram_eigh_full_operator_docstring = """
-    TensorAlgebra.MatrixAlgebra.gram_eigh_full(a::ITensorOperator; kwargs...) -> x
+    TensorAlgebra.MatrixAlgebra.gram_eigh_full(a::NamedTensorOperator; kwargs...) -> x
 
 Gram factorization of a Hermitian positive semi-definite named operator
 `a`, returning `x` such that `x * x_cod ≈ state(a)`, where `x_cod` is
@@ -399,7 +401,7 @@ true
 """
 
 const _gram_eigh_full_with_pinv_operator_docstring = """
-    TensorAlgebra.MatrixAlgebra.gram_eigh_full_with_pinv(a::ITensorOperator; kwargs...) -> x, y
+    TensorAlgebra.MatrixAlgebra.gram_eigh_full_with_pinv(a::NamedTensorOperator; kwargs...) -> x, y
 
 Like `TensorAlgebra.MatrixAlgebra.gram_eigh_full`, but additionally returns a
 named array `y` that is a left inverse of `x`: `y * x ≈ I` on the
@@ -435,14 +437,14 @@ true
 for f in (:gram_eigh_full, :gram_eigh_full_with_pinv)
     doc_sym = Symbol("_", f, "_operator_docstring")
     @eval begin
-        @doc $doc_sym function MA.$f(a::ITensorOperator; kwargs...)
+        @doc $doc_sym function MA.$f(a::NamedTensorOperator; kwargs...)
             return MA.$f(state(a), codomainnames(a), domainnames(a); kwargs...)
         end
     end
 end
 
 """
-    Base.one(op::ITensorOperator) -> Id
+    Base.one(op::NamedTensorOperator) -> Id
 
 Return the identity operator with the same codomain/domain names and shape as
 `op`. `op` is treated as a shape prototype and is not mutated.
@@ -468,7 +470,7 @@ julia> apply(Id, v) ≈ v
 true
 ```
 """
-function Base.one(op::ITensorOperator)
+function Base.one(op::NamedTensorOperator)
     co, dom = codomainnames(op), domainnames(op)
     return operator(one(state(op), co, dom), co, dom)
 end
@@ -539,15 +541,15 @@ function similar_operator(prototype, named_domain_axes)
 end
 
 # Forward `Random.randn!` / `Random.rand!` to the operator's state, which
-# itself peels to the concrete storage via the generic AbstractITensor
+# itself peels to the concrete storage via the generic AbstractNamedTensor
 # method.
 
-function Random.randn!(rng::Random.AbstractRNG, op::ITensorOperator)
+function Random.randn!(rng::Random.AbstractRNG, op::NamedTensorOperator)
     Random.randn!(rng, state(op))
     return op
 end
 
-function Random.rand!(rng::Random.AbstractRNG, op::ITensorOperator)
+function Random.rand!(rng::Random.AbstractRNG, op::NamedTensorOperator)
     Random.rand!(rng, state(op))
     return op
 end

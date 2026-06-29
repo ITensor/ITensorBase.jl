@@ -14,20 +14,20 @@ function input_space_complexity(f, args...)
 end
 
 function time_complexity(
-        ::typeof(*), t1::AbstractITensor, t2::AbstractITensor
+        ::typeof(*), t1::AbstractNamedTensor, t2::AbstractNamedTensor
     )
     return prod(length, (inds(t1) ∪ inds(t2)))
 end
 function time_complexity(
-        ::typeof(+), t1::AbstractITensor, t2::AbstractITensor
+        ::typeof(+), t1::AbstractNamedTensor, t2::AbstractNamedTensor
     )
     @assert issetequal(dimnames(t1), dimnames(t2))
     return prod(size(t1))
 end
-function time_complexity(::typeof(*), c::Number, t::AbstractITensor)
+function time_complexity(::typeof(*), c::Number, t::AbstractNamedTensor)
     return prod(size(t))
 end
-function time_complexity(::typeof(*), t::AbstractITensor, c::Number)
+function time_complexity(::typeof(*), t::AbstractNamedTensor, c::Number)
     return time_complexity(*, c, t)
 end
 

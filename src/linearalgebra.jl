@@ -6,7 +6,7 @@ using LinearAlgebra: LinearAlgebra as LA
 # which isn't friendly for named arrays wrapping GPU arrays.
 # This implicitly helps with defining `LA.normalize[!]` as well (though note that
 # uses `LinearAlgebra.rmul!` as well).
-function LA.norm(a::AbstractITensor, p::Real = 2; kwargs...)
+function LA.norm(a::AbstractNamedTensor, p::Real = 2; kwargs...)
     return LA.norm(unnamed(a), p; kwargs...)
 end
 
@@ -18,11 +18,11 @@ for f! in [:mul!, :div!]
     lf! = Symbol(:l, f!)
     rf! = Symbol(:r, f!)
     @eval begin
-        function LA.$rf!(a::AbstractITensor, α::Number)
+        function LA.$rf!(a::AbstractNamedTensor, α::Number)
             LA.$rf!(unnamed(a), α)
             return a
         end
-        function LA.$lf!(α::Number, a::AbstractITensor)
+        function LA.$lf!(α::Number, a::AbstractNamedTensor)
             LA.$lf!(α, unnamed(a))
             return a
         end
@@ -33,6 +33,6 @@ end
 # uses scalar indexing:
 # https://github.com/JuliaLang/LinearAlgebra.jl/blob/3a4fdad7f608928ecb4b41e76b1e9ecacd058444/src/generic.jl#L919-L1009
 # which isn't friendly for named arrays wrapping GPU arrays.
-function LA.dot(a1::AbstractITensor, a2::AbstractITensor)
+function LA.dot(a1::AbstractNamedTensor, a2::AbstractNamedTensor)
     return (conj(a1) * a2)[]
 end

@@ -2,14 +2,16 @@ using ITensorBase: ITensorBase
 using Test: @test, @testset
 @testset "Test exports" begin
     exports = [
-        :ITensorBase, :AbstractITensor, :ITensor, :Index, :NamedUnitRange,
+        :ITensorBase, :AbstractNamedTensor, :NamedTensor, :AbstractITensor, :ITensor,
+        :Index, :NamedUnitRange,
         :aligndims, :aligneddims, :apply, :codomainnames, :dimnames, :dimnametype,
         :domainnames,
         :inds, :named, :nameddims, :noprime, :operator, :prime, :similar_operator,
         :state, :uniquename,
     ]
     publics = [
-        :name, :nametype, :replacedimnames, :setname, :unnamed, :unnamedtype,
+        :IndexName, :name, :nametype, :replacedimnames, :setname, :unnamed,
+        :unnamedtype,
         Symbol("@names"),
     ]
     if VERSION ≥ v"1.11-"

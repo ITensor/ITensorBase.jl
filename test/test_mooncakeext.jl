@@ -1,5 +1,5 @@
-using ITensorBase: ITensor, Name, NamedUnitRange, dimnames, dimnames_setdiff, inds, name,
-    nameperm, to_inds, uniquename
+using ITensorBase: Name, NamedTensor, NamedUnitRange, dimnames, dimnames_setdiff, inds,
+    name, nameperm, to_inds, uniquename
 using LinearAlgebra: mul!
 using Mooncake: Mooncake
 using Random: Random

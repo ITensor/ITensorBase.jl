@@ -1,7 +1,7 @@
 module ITensorBaseBlockArraysExt
 using ArrayLayouts: ArrayLayouts
 using BlockArrays: Block, BlockRange
-using ITensorBase: AbstractITensor, NamedUnitRange, getindex_named, view_nameddims
+using ITensorBase: AbstractNamedTensor, NamedUnitRange, getindex_named, view_nameddims
 
 # These methods disambiguate named-range block indexing from `BlockArrays`' generic
 # `AbstractArray` block-indexing methods.
@@ -17,39 +17,39 @@ end
 
 const BlockIndex{N} = Union{Block{N}, BlockRange{N}, AbstractVector{<:Block{N}}}
 
-function Base.view(a::AbstractITensor, I1::Block{1}, Irest::BlockIndex{1}...)
+function Base.view(a::AbstractNamedTensor, I1::Block{1}, Irest::BlockIndex{1}...)
     # TODO: Use `Derive.@interface ITensorInterface() r[I]` instead.
     return view_nameddims(a, I1, Irest...)
 end
 
-function Base.view(a::AbstractITensor, I::Block)
+function Base.view(a::AbstractNamedTensor, I::Block)
     # TODO: Use `Derive.@interface ITensorInterface() r[I]` instead.
     return view_nameddims(a, Tuple(I)...)
 end
 
-function Base.view(a::AbstractITensor, I1::BlockIndex{1}, Irest::BlockIndex{1}...)
+function Base.view(a::AbstractNamedTensor, I1::BlockIndex{1}, Irest::BlockIndex{1}...)
     # TODO: Use `Derive.@interface ITensorInterface() r[I]` instead.
     return view_nameddims(a, I1, Irest...)
 end
 
 # Fix ambiguity error.
 function Base.getindex(
-        a::AbstractITensor, I1::BlockRange{1}, Irest::BlockRange{1}...
+        a::AbstractNamedTensor, I1::BlockRange{1}, Irest::BlockRange{1}...
     )
     return ArrayLayouts.layout_getindex(a, I1, Irest...)
 end
 
 # Fix ambiguity errors.
-function Base.getindex(a::AbstractITensor, I1::Block{1}, Irest...)
+function Base.getindex(a::AbstractNamedTensor, I1::Block{1}, Irest...)
     return copy(view(a, I1, Irest...))
 end
-function Base.getindex(a::AbstractITensor, I1::AbstractVector, I2::Block{1})
+function Base.getindex(a::AbstractNamedTensor, I1::AbstractVector, I2::Block{1})
     return copy(view(a, I1, I2))
 end
-function Base.getindex(a::AbstractITensor, I1::Block{1}, I2::AbstractVector)
+function Base.getindex(a::AbstractNamedTensor, I1::Block{1}, I2::AbstractVector)
     return copy(view(a, I1, I2))
 end
-function Base.getindex(a::AbstractITensor, I::Block{N}) where {N}
+function Base.getindex(a::AbstractNamedTensor, I::Block{N}) where {N}
     return copy(view(a, I))
 end
 

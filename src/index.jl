@@ -11,6 +11,16 @@ function tagsstring(tags)
     end
 end
 
+"""
+    IndexName
+
+The name carried by an [`Index`](@ref): a freshly minted unique identifier together with a set
+of tags and an integer prime level. Two `IndexName`s compare equal only when their
+identifier, tags, and prime level all match, so independently constructed indices stay
+distinct. [`prime`](@ref) raises the prime level and [`noprime`](@ref) resets it. `IndexName`
+is the dimension-name type behind the legacy ITensor surface, where `Index` is
+`NamedUnitRange{IndexName}` and [`ITensor`](@ref) is `NamedTensor{IndexName}`.
+"""
 struct IndexName <: AbstractName
     id::UUID
     tags::SortedDict{Symbol, Symbol}
@@ -167,8 +177,8 @@ end
 """
     Index(space)
 
-An index of an `ITensor`: a named unit range whose name is a freshly minted, unique
-identifier carrying tags and a prime level. The argument is a space that is converted to a
+An index of an [`ITensor`](@ref): a named unit range whose name is an [`IndexName`](@ref), a
+freshly minted, unique identifier carrying tags and a prime level. The argument is a space that is converted to a
 range: `Index(2)` makes an index of length `2` over `Base.OneTo(2)`,
 `Index(1:3)` makes one over an explicit range, and (with GradedArrays loaded)
 `Index([U1(0) => 2, U1(1) => 3])` makes one over a graded range. Each call mints a new
@@ -185,6 +195,32 @@ julia> length(i)
 ```
 """
 const Index = NamedUnitRange{IndexName}
+
+# `IndexName`-specialized aliases for the named-dims tensor hierarchy. The
+# name-generic primaries are defined earlier (`abstractnamedtensor.jl`,
+# `namedtensor.jl`, `namedtensoroperator.jl`); these fix the dimname flavor to
+# `IndexName`, recovering the legacy ITensor surface. They live here because they
+# reference `IndexName`, just like `Index` itself.
+
+"""
+    AbstractITensor
+
+Alias for `AbstractNamedTensor{IndexName}`: the [`AbstractNamedTensor`](@ref)
+supertype with dimension names fixed to [`IndexName`](@ref) (the names carried by
+[`Index`](@ref)).
+"""
+const AbstractITensor = AbstractNamedTensor{IndexName}
+
+"""
+    ITensor
+
+Alias for `NamedTensor{IndexName}`: a [`NamedTensor`](@ref) whose dimension
+names are [`IndexName`](@ref)s, the names carried by [`Index`](@ref). This is the legacy
+ITensor type. Use [`NamedTensor`](@ref) for the dimname-flavor-generic type.
+"""
+const ITensor = NamedTensor{IndexName}
+
+const ITensorOperator = NamedTensorOperator{IndexName}
 
 # TODO: Define for `NamedViewIndex`.
 id(i::Index) = id(name(i))
