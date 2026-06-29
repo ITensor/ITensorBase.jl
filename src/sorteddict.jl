@@ -1,3 +1,7 @@
+# Modeled on TensorKit.jl's `SortedVectorDict`, an `AbstractDict` backed by two
+# parallel vectors kept sorted by key. Comparable designs include
+# DataStructures.jl's `SortedDict` (backed by a balanced tree) and
+# Dictionaries.jl's `ArrayDictionary` (parallel arrays).
 """
     SortedDict{K,V} <: AbstractDict{K,V}
 
@@ -39,48 +43,38 @@ function Base.copy(d::SortedDict{K, V}) where {K, V}
     return SortedDict{K, V}(copy(keys(d)), copy(values(d)))
 end
 
-# Linear scan: index of the first key not less than `key`. Fastest for small
-# `length(d)`; swap in `searchsortedfirst` if a large-`n` use case appears.
-function _searchsortedfirst(ks::Vector, key)
-    i = 1
-    @inbounds while i <= length(ks) && isless(ks[i], key)
-        i += 1
-    end
-    return i
+function Base.haskey(d::SortedDict, key)
+    # Linear scan. Use searchsortedfirst on the sorted keys for large collections.
+    return !isnothing(findfirst(isequal(key), keys(d)))
 end
-
-function Base.haskey(d::SortedDict{K}, key) where {K}
-    k = convert(K, key)
-    i = _searchsortedfirst(keys(d), k)
-    return i <= length(d) && isequal(keys(d)[i], k)
-end
-function Base.getindex(d::SortedDict{K}, key) where {K}
-    k = convert(K, key)
-    i = _searchsortedfirst(keys(d), k)
-    (i <= length(d) && isequal(keys(d)[i], k)) || throw(KeyError(key))
+function Base.getindex(d::SortedDict, key)
+    # Linear scan. Use searchsortedfirst on the sorted keys for large collections.
+    i = findfirst(isequal(key), keys(d))
+    isnothing(i) && throw(KeyError(key))
     return @inbounds values(d)[i]
 end
-function Base.get(d::SortedDict{K}, key, default) where {K}
-    k = convert(K, key)
-    i = _searchsortedfirst(keys(d), k)
-    return (i <= length(d) && isequal(keys(d)[i], k)) ? (@inbounds values(d)[i]) : default
+function Base.get(d::SortedDict, key, default)
+    # Linear scan. Use searchsortedfirst on the sorted keys for large collections.
+    i = findfirst(isequal(key), keys(d))
+    return isnothing(i) ? default : @inbounds values(d)[i]
 end
-function Base.setindex!(d::SortedDict{K, V}, value, key) where {K, V}
-    k = convert(K, key)
-    v = convert(V, value)
-    i = _searchsortedfirst(keys(d), k)
-    if i <= length(d) && isequal(keys(d)[i], k)
-        @inbounds values(d)[i] = v
+function Base.setindex!(d::SortedDict, value, key)
+    # Linear scan. Use searchsortedfirst on the sorted keys for large collections.
+    i = findfirst(isequal(key), keys(d))
+    if isnothing(i)
+        # Insertion point so the keys stay sorted. Linear scan, same upgrade as above.
+        i = something(findfirst(>(key), keys(d)), length(d) + 1)
+        insert!(keys(d), i, key)
+        insert!(values(d), i, value)
     else
-        insert!(keys(d), i, k)
-        insert!(values(d), i, v)
+        @inbounds values(d)[i] = value
     end
     return d
 end
-function Base.delete!(d::SortedDict{K}, key) where {K}
-    k = convert(K, key)
-    i = _searchsortedfirst(keys(d), k)
-    if i <= length(d) && isequal(keys(d)[i], k)
+function Base.delete!(d::SortedDict, key)
+    # Linear scan. Use searchsortedfirst on the sorted keys for large collections.
+    i = findfirst(isequal(key), keys(d))
+    if !isnothing(i)
         deleteat!(keys(d), i)
         deleteat!(values(d), i)
     end
