@@ -23,6 +23,7 @@ include("itensor.jl")
 include("itensoroperator.jl")
 
 # `IndexName` dimname flavor and the `Index` named unit range.
+include("sorteddict.jl")
 include("index.jl")
 include("quirks.jl")
 
