@@ -1,6 +1,6 @@
 name = "ITensorBase"
 uuid = "4795dd04-0d67-49bb-8f44-b89c448a1dc7"
-version = "0.8.5"
+version = "0.8.6"
 authors = ["ITensor developers <support@itensor.org> and contributors"]
 
 [workspace]
@@ -52,7 +52,7 @@ Mooncake = "0.4.202, 0.5"
 OrderedCollections = "1.6"
 Random = "1.10"
 SimpleTraits = "0.9.4"
-TensorAlgebra = "0.11, 0.12"
+TensorAlgebra = "0.12.4"
 TensorOperations = "5.3.1"
 TermInterface = "2"
 TupleTools = "1.6"

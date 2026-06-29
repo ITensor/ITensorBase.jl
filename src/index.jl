@@ -130,12 +130,13 @@ function Base.show(io::IO, i::IndexName)
 end
 
 """
-    Index(length)
-    Index(range)
+    Index(space)
 
 An index of an `ITensor`: a named unit range whose name is a freshly minted, unique
-identifier carrying tags and a prime level. `Index(2)` makes an index of length `2` over
-`Base.OneTo(2)`, and `Index(1:3)` makes one over an explicit range. Each call mints a new
+identifier carrying tags and a prime level. The argument is a space that is converted to a
+range: `Index(2)` makes an index of length `2` over `Base.OneTo(2)`,
+`Index(1:3)` makes one over an explicit range, and (with GradedArrays loaded)
+`Index([U1(0) => 2, U1(1) => 3])` makes one over a graded range. Each call mints a new
 name, so two indices built the same way are still distinct, and tensors share a dimension
 only when they share the same `Index`.
 

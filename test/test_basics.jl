@@ -58,6 +58,14 @@ using UUIDs: UUID
         @test plev(i) == 0
         @test length(tags(i)) == 0
 
+        # An integer length is routed through `to_range` to a `Base.OneTo`, and an
+        # explicit range is passed through unchanged.
+        i = Index(3)
+        @test unnamed(i) === Base.OneTo(3)
+        i = Index(2:4)
+        @test length(i) == 3
+        @test unnamed(i) === 2:4
+
         i = settag(Index(2), "X", "Y")
         @test length(i) == 2
         @test hastag(i, "X")

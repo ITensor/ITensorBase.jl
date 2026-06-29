@@ -1,3 +1,5 @@
+using TensorAlgebra: to_range
+
 """
     NamedUnitRange{Name}
 
@@ -26,14 +28,28 @@ unnamed(i::NamedUnitRange) = i.value
 name(i::NamedUnitRange) = i.name
 unnamedtype(::Type{<:NamedUnitRange{<:Any, <:Any, Unnamed}}) where {Unnamed} = Unnamed
 
-# Construct from a range or length, minting a fresh name of the requested flavor.
-# Generic over the name type via `uniquename`, so `Index(3)` (with `Index` a
-# `NamedUnitRange{IndexName}` alias) needs no `Index`-specific constructor.
-function NamedUnitRange{Name}(r::AbstractUnitRange) where {Name}
-    return NamedUnitRange(r, uniquename(Name))
+# Construct from a space, minting a fresh name of the requested flavor. The space is
+# anything `to_range` accepts (an `Integer`, an existing range, or a sector-pair vector
+# when GradedArrays is loaded), so `Index(2)`, `Index(1:3)`, and
+# `Index([U1(0) => 2, U1(1) => 3])` all work. Generic over the name type via `uniquename`,
+# so `Index` (a `NamedUnitRange{IndexName}` alias) needs no `Index`-specific constructor.
+function NamedUnitRange{Name}(space) where {Name}
+    return NamedUnitRange{Name}(space, uniquename(Name))
 end
-function NamedUnitRange{Name}(length::Integer) where {Name}
-    return NamedUnitRange{Name}(Base.OneTo(length))
+# A space and an explicit name, name type fixed by the `Name` parameter: convert the space
+# to a range, then fall through to the base case below.
+function NamedUnitRange{Name}(space, name) where {Name}
+    return NamedUnitRange{Name}(to_range(space), name)
+end
+# Base case: a ready-made range and a name. Fixing `Name` here rather than inferring it
+# from `name` keeps the result a `NamedUnitRange{Name}` even if `uniquename(Name)` returns
+# a different concrete type.
+function NamedUnitRange{Name}(unnamed::AbstractUnitRange, name) where {Name}
+    return NamedUnitRange{Name, eltype(unnamed), typeof(unnamed)}(unnamed, name)
+end
+# A space and an explicit name, name type inferred from `name`.
+function NamedUnitRange(space, name)
+    return NamedUnitRange(to_range(space), name)
 end
 
 # This can be customized to output different named unit range types.
