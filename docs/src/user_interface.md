@@ -100,15 +100,15 @@ experimental and incompletely supported, and is subject to change.
 
 Matrix factorizations from
 [MatrixAlgebraKit](https://github.com/QuantumKitHub/MatrixAlgebraKit.jl) work on an `ITensor`
-by naming which indices form the codomain (rows) and which form the domain (columns) of the
-matrix the tensor is interpreted as. The factors share a freshly named index over the bond
-between them, so they contract back together with `*`.
+by naming which indices form the codomain (rows) of the matrix the tensor is interpreted as;
+the remaining indices form the domain (columns). The factors share a freshly named index over
+the bond between them, so they contract back together with `*`.
 
-A QR decomposition, splitting index `i` from index `j`:
+A QR decomposition, splitting index `i` off from the rest:
 
 ```@example userinterface
 using MatrixAlgebraKit: qr_compact
-q, r = qr_compact(a, (i,), (j,))
+q, r = qr_compact(a, (i,))
 q * r ≈ a
 ```
 
@@ -116,7 +116,7 @@ A singular value decomposition returns three factors:
 
 ```@example userinterface
 using MatrixAlgebraKit: svd_compact
-u, s, v = svd_compact(a, (i,), (j,))
+u, s, v = svd_compact(a, (i,))
 u * s * v ≈ a
 ```
 
