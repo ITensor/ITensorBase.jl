@@ -29,13 +29,12 @@ function uniquename(rng::AbstractRNG, ::Type{<:IndexName})
     return IndexName(rng)
 end
 
-to_tags(tags::SortedDict{Symbol, Symbol}) = tags
-to_tags(tag::Pair) = to_tags((tag,))
-function to_tags(tags)
-    return SortedDict{Symbol, Symbol}(
-        Symbol(first(p)) => Symbol(last(p)) for p in tags
-    )
-end
+to_symbol_pair(p::Pair) = Symbol(first(p)) => Symbol(last(p))
+
+# Like `Dict`, accept one or more bare `Pair`s as tags. A `Pair` iterates over
+# its two elements, so it can't fall through to the collection method below.
+to_tags(ps::Pair...) = to_tags(ps)
+to_tags(tags) = SortedDict{Symbol, Symbol}(to_symbol_pair(p) for p in tags)
 
 id(n::IndexName) = getfield(n, :id)
 
@@ -82,7 +81,7 @@ function Base.hash(n::IndexName, h::UInt)
 end
 
 setid(n::IndexName, id) = @set n.id = id
-settags(n::IndexName, tags) = @set n.tags = to_tags(tags)
+settags(n::IndexName, tags) = @set n.tags = tags
 setplev(n::IndexName, plev) = @set n.plev = plev
 
 hastag(n::IndexName, tagname) = haskey(tags_stored(n), Symbol(tagname))
