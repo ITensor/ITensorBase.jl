@@ -91,8 +91,8 @@ using UUIDs: UUID
         @test_throws ArgumentError ITensor(randn(elt, 4), (:i, :j))
         @test_throws MethodError ITensor(randn(elt, 2, 2), :i, :j)
 
-        # Passing indices as the dimnames (the ITensors.jl idiom) errors; names are
-        # not themselves indices.
+        # The constructor takes names only, not indices, so passing indices (the
+        # ITensors.jl idiom) errors.
         @test_throws ArgumentError ITensor(randn(elt, 2, 2), Index.((2, 2)))
 
         i, j = Index.((3, 4))

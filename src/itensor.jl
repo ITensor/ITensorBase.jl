@@ -24,9 +24,9 @@ struct ITensor{DimName} <: AbstractITensor{DimName}
         # Catch the common ITensors.jl-style mistake of passing indices as the names.
         any(dimname -> dimname isa NamedUnitRange, dimnames) && throw(
             ArgumentError(
-                "Dimension names must be names, not indices (`NamedUnitRange`s), got \
-                $(dimnames). To build an `ITensor` from an array and indices, index the \
-                array instead, as in `array[i, j]`."
+                "The `ITensor` constructor takes dimension names only, not indices \
+                (`NamedUnitRange`s), got $(dimnames). To build an `ITensor` from an array \
+                and indices, index the array instead, as in `array[i, j]`."
             )
         )
         ndims(unnamed) == length(dimnames) ||
