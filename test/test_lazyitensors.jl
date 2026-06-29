@@ -85,7 +85,7 @@ using WrappedUnions: unwrap
         @test unwrap(a1) isa SymbolicITensor
         @test unwrap(a1) == SymbolicITensor(:a1, ())
         @test isequal(unwrap(a1), SymbolicITensor(:a1, ()))
-        @test inds(a1) == ()
+        @test isempty(inds(a1))
         @test isempty(dimnames(a1))
 
         ex = a1 * a2 * a3

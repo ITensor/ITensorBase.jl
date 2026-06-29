@@ -165,7 +165,7 @@ end
 
 function Base.copyto!(dest::AbstractITensor, bc::Broadcasted{<:AbstractITensorStyle})
     dest_unnamed = unnamed(dest)
-    inds_dest = inds(dest)
+    inds_dest = axes(dest)
     bc_unnamed = broadcasted_unnamed(bc, inds_dest)
     lb = TA.tryflattenlinear(bc_unnamed)
     if isnothing(lb)
