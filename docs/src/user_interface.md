@@ -120,8 +120,9 @@ u, s, v = svd_compact(a, (i,))
 u * s * v ≈ a
 ```
 
-MatrixAlgebraKit provides many more factorizations, including eigendecompositions, polar
-decompositions, and truncated and full variants, along with keyword options controlling
-them. See the
+These are MatrixAlgebraKit factorizations wrapped to act on an `ITensor` by name.
+MatrixAlgebraKit provides many more, including eigendecompositions, polar decompositions, and
+truncated and full variants, along with keyword options controlling them; see the
 [MatrixAlgebraKit documentation](https://quantumkithub.github.io/MatrixAlgebraKit.jl/stable/)
-for the full list and the keyword syntax.
+for the full list and the keyword syntax. The aim is to wrap all of them, but coverage is
+still being filled in, so please open an issue if one you need is not available yet.
