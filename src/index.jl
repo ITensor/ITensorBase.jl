@@ -2,9 +2,9 @@ using Accessors: @set
 using Random: AbstractRNG, RandomDevice
 using UUIDs: UUID, uuid4
 
-tagpairstring(pair::Pair) = repr(first(pair)) * "=>" * repr(last(pair))
-function tagsstring(tags::Dict{String, String})
-    tagpairs = sort(collect(tags); by = first)
+tagpairstring(pair::Pair) = string(first(pair)) * "=>" * string(last(pair))
+function tagsstring(tags)
+    tagpairs = collect(tags)  # SortedDict iterates in sorted-key order
     tagpair1, tagpair_rest = Iterators.peel(tagpairs)
     return mapreduce(*, tagpair_rest; init = tagpairstring(tagpair1)) do tagpair
         return "," * tagpairstring(tagpair)
@@ -13,14 +13,14 @@ end
 
 struct IndexName <: AbstractName
     id::UUID
-    tags::Dict{String, String}
+    tags::SortedDict{Symbol, Symbol}
     plev::Int
 end
 function IndexName(
         rng::AbstractRNG = RandomDevice(); id::UUID = uuid4(rng),
-        tags = Dict{String, String}(), plev::Int = 0
+        tags = (), plev::Int = 0
     )
-    return IndexName(id, Dict{String, String}(tags), plev)
+    return IndexName(id, to_tags(tags), plev)
 end
 function uniquename(rng::AbstractRNG, n::IndexName)
     return setid(n, uuid4(rng))
@@ -29,23 +29,54 @@ function uniquename(rng::AbstractRNG, ::Type{<:IndexName})
     return IndexName(rng)
 end
 
+to_symbol_pair(p::Pair) = Symbol(first(p)) => Symbol(last(p))
+
+# Like `Dict`, accept one or more bare `Pair`s as tags. A `Pair` iterates over
+# its two elements, so it can't fall through to the collection method below.
+to_tags(ps::Pair...) = to_tags(ps)
+to_tags(tags) = SortedDict{Symbol, Symbol}(to_symbol_pair(p) for p in tags)
+
 id(n::IndexName) = getfield(n, :id)
-tags(n::IndexName) = getfield(n, :tags)
+
+# Internal: the stored tags as `Symbol => Symbol`, used by the hot comparison,
+# hashing, and display paths. `tags` is the public string-valued view of this.
+tags_stored(n::IndexName) = getfield(n, :tags)
+
+"""
+    tags(i)
+
+Return the tags of an index or index name as an `AbstractDict` mapping tag names to
+tag values, both `AbstractString`s.
+
+The concrete dictionary type and string type are implementation details and may
+change.
+"""
+function tags(n::IndexName)
+    return SortedDict{String, String}(
+        String(k) => String(v) for (k, v) in tags_stored(n)
+    )
+end
+
 plev(n::IndexName) = getfield(n, :plev)
 
-using ConstructionBase: getfields
-Base.:(==)(n1::IndexName, n2::IndexName) = getfields(n1) == getfields(n2)
-Base.isequal(n1::IndexName, n2::IndexName) = isequal(getfields(n1), getfields(n2))
+function Base.:(==)(n1::IndexName, n2::IndexName)
+    return id(n1) == id(n2) && plev(n1) == plev(n2) && tags_stored(n1) == tags_stored(n2)
+end
+function Base.isequal(n1::IndexName, n2::IndexName)
+    return isequal(id(n1), id(n2)) &&
+        isequal(plev(n1), plev(n2)) &&
+        isequal(tags_stored(n1), tags_stored(n2))
+end
 function Base.isless(n1::IndexName, n2::IndexName)
-    t1 = (id(n1), plev(n1), keys(tags(n1)), collect(values(tags(n1))))
-    t2 = (id(n2), plev(n2), keys(tags(n2)), collect(values(tags(n2))))
+    t1 = (id(n1), plev(n1), keys(tags_stored(n1)), values(tags_stored(n1)))
+    t2 = (id(n2), plev(n2), keys(tags_stored(n2)), values(tags_stored(n2)))
     return isless(t1, t2)
 end
 function Base.hash(n::IndexName, h::UInt)
     h = hash(:IndexName, h)
     h = hash(id(n), h)
-    h = hash(tags(n), h)
     h = hash(plev(n), h)
+    h = hash(tags_stored(n), h)
     return h
 end
 
@@ -53,18 +84,22 @@ setid(n::IndexName, id) = @set n.id = id
 settags(n::IndexName, tags) = @set n.tags = tags
 setplev(n::IndexName, plev) = @set n.plev = plev
 
-hastag(n::IndexName, tagname::String) = haskey(tags(n), tagname)
+hastag(n::IndexName, tagname) = haskey(tags_stored(n), Symbol(tagname))
 
-gettag(n::IndexName, tagname::String) = tags(n)[tagname]
-gettag(n::IndexName, tagname::String, default) = get(tags(n), tagname, default)
-function settag(n::IndexName, tagname::String, tag::String)
-    newtags = copy(tags(n))
-    newtags[tagname] = tag
+gettag(n::IndexName, tagname) = String(tags_stored(n)[Symbol(tagname)])
+function gettag(n::IndexName, tagname, default)
+    t = tags_stored(n)
+    k = Symbol(tagname)
+    return haskey(t, k) ? String(t[k]) : default
+end
+function settag(n::IndexName, tagname, tag)
+    newtags = copy(tags_stored(n))
+    newtags[Symbol(tagname)] = Symbol(tag)
     return settags(n, newtags)
 end
-function unsettag(n::IndexName, tagname::String)
-    newtags = copy(tags(n))
-    delete!(newtags, tagname)
+function unsettag(n::IndexName, tagname)
+    newtags = copy(tags_stored(n))
+    delete!(newtags, Symbol(tagname))
     return settags(n, newtags)
 end
 
@@ -122,7 +157,7 @@ shortid(id::UUID) = first(string(id), 8)
 
 function Base.show(io::IO, i::IndexName)
     idstr = "id=$(shortid(id(i)))"
-    tagsstr = !isempty(tags(i)) ? "|$(tagsstring(tags(i)))" : ""
+    tagsstr = !isempty(tags_stored(i)) ? "|$(tagsstring(tags_stored(i)))" : ""
     primestr = primestring(plev(i))
     str = "IndexName($(idstr)$(tagsstr))$(primestr)"
     print(io, str)
@@ -153,17 +188,18 @@ const Index = NamedUnitRange{IndexName}
 
 # TODO: Define for `NamedViewIndex`.
 id(i::Index) = id(name(i))
+tags_stored(i::Index) = tags_stored(name(i))
 tags(i::Index) = tags(name(i))
 plev(i::Index) = plev(name(i))
 
 # TODO: Define for `NamedViewIndex`.
-hastag(i::Index, tagname::String) = hastag(name(i), tagname)
+hastag(i::Index, tagname) = hastag(name(i), tagname)
 
 # TODO: Define for `NamedViewIndex`.
-gettag(i::Index, tagname::String) = gettag(name(i), tagname)
-gettag(i::Index, tagname::String, default) = gettag(name(i), tagname, default)
-settag(i::Index, tagname::String, tag::String) = setname(i, settag(name(i), tagname, tag))
-unsettag(i::Index, tagname::String) = setname(i, unsettag(name(i), tagname))
+gettag(i::Index, tagname) = gettag(name(i), tagname)
+gettag(i::Index, tagname, default) = gettag(name(i), tagname, default)
+settag(i::Index, tagname, tag) = setname(i, settag(name(i), tagname, tag))
+unsettag(i::Index, tagname) = setname(i, unsettag(name(i), tagname))
 
 setplev(i::Index, plev) = setname(i, setplev(name(i), plev))
 prime(i::Index) = setname(i, prime(name(i)))
@@ -185,7 +221,7 @@ end
 function Base.show(io::IO, i::Index)
     lenstr = "length=$(length(i))"
     idstr = "|id=$(shortid(id(i)))"
-    tagsstr = !isempty(tags(i)) ? "|$(tagsstring(tags(i)))" : ""
+    tagsstr = !isempty(tags_stored(i)) ? "|$(tagsstring(tags_stored(i)))" : ""
     primestr = primestring(plev(i))
     str = "Index($(lenstr)$(idstr)$(tagsstr))$(primestr)"
     print(io, str)

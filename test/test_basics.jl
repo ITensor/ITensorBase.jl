@@ -28,12 +28,24 @@ using UUIDs: UUID
         @test isless(n1, n2)
         @test hash(n1) ≠ hash(n2)
 
-        for tagspec in (Dict(["X" => "Y"]), ["X" => "Y"], ("X" => "Y",), "X" => "Y")
+        for tagspec in (
+                Dict(["X" => "Y"]), ["X" => "Y"], ("X" => "Y",), "X" => "Y",
+                Dict([:X => :Y]), (:X => :Y,),
+            )
             n = IndexName(; tags = tagspec)
             @test hastag(n, "X")
+            @test hastag(n, :X)
             @test gettag(n, "X") == "Y"
+            @test gettag(n, :X) == "Y"
             @test length(tags(n)) == 1
         end
+
+        # Two-layer contract: public `tags` returns strings, internal stored layer uses Symbols.
+        n = IndexName(; tags = "X" => "Y")
+        @test tags(n) isa AbstractDict{<:AbstractString, <:AbstractString}
+        @test tags(n)["X"] == "Y"
+        @test gettag(n, "X") isa AbstractString
+        @test ITensorBase.tags_stored(n)[:X] === :Y
     end
     @testset "Index basics" begin
         i = Index(2)
@@ -135,6 +147,6 @@ using UUIDs: UUID
 
         i = settag(Index(2), "X", "Y")
         @test sprint(show, "text/plain", i) ==
-            "Index(length=2|id=$(first(string(id(i)), 8))|\"X\"=>\"Y\")"
+            "Index(length=2|id=$(first(string(id(i)), 8))|X=>Y)"
     end
 end
