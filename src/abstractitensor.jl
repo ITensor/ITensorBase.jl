@@ -106,8 +106,6 @@ julia> inds(a)
 julia> inds(a, 1)
 named(Base.OneTo(2), :i)
 ```
-
-See also [`dimnames`](@ref), [`nameddims`](@ref).
 """
 function inds end
 # Output the named axes/indices of the named dims array, as a `Tuple` (even though

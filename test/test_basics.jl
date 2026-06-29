@@ -88,8 +88,12 @@ using UUIDs: UUID
 
         # The number of dimnames must match the array's `ndims`, and the dimnames are
         # passed as a single collection.
-        @test_throws ArgumentError ITensor(randn(elt, 4), Index.((2, 2)))
-        @test_throws MethodError ITensor(randn(elt, 2, 2), Index(2), Index(2))
+        @test_throws ArgumentError ITensor(randn(elt, 4), (:i, :j))
+        @test_throws MethodError ITensor(randn(elt, 2, 2), :i, :j)
+
+        # Passing indices as the dimnames (the ITensors.jl idiom) errors; names are
+        # not themselves indices.
+        @test_throws ArgumentError ITensor(randn(elt, 2, 2), Index.((2, 2)))
 
         i, j = Index.((3, 4))
         a = randn(elt, i, j)

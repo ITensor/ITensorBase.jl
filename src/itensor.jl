@@ -1,8 +1,8 @@
 """
-    ITensor(array::AbstractArray, dims)
+    ITensor(array::AbstractArray, dimnames)
 
 A dense tensor whose dimensions are labeled by names instead of ordered by position. It pairs
-an underlying `array` with one name per dimension (`dims`), so contraction, addition, and
+an underlying `array` with one name per dimension (`dimnames`), so contraction, addition, and
 indexing line dimensions up by name. An `ITensor` is usually built by calling `randn`, `zeros`,
 and the like on indices, or through [`nameddims`](@ref), rather than constructed directly.
 
@@ -21,6 +21,14 @@ struct ITensor{DimName} <: AbstractITensor{DimName}
     dimnames::Vector{DimName}
     function ITensor{DimName}(unnamed::AbstractArray, dimnames) where {DimName}
         dimnames = collect(DimName, dimnames)
+        # Catch the common ITensors.jl-style mistake of passing indices as the names.
+        any(dimname -> dimname isa NamedUnitRange, dimnames) && throw(
+            ArgumentError(
+                "Dimension names must be names, not indices (`NamedUnitRange`s), got \
+                $(dimnames). To build an `ITensor` from an array and indices, index the \
+                array instead, as in `array[i, j]`."
+            )
+        )
         ndims(unnamed) == length(dimnames) ||
             throw(ArgumentError("Number of named dims must match ndims."))
         allunique(dimnames) ||
@@ -29,7 +37,7 @@ struct ITensor{DimName} <: AbstractITensor{DimName}
     end
 end
 
-ITensor(unnamed::AbstractArray, dims) = ITensor{eltype(dims)}(unnamed, dims)
+ITensor(unnamed::AbstractArray, dimnames) = ITensor{eltype(dimnames)}(unnamed, dimnames)
 ITensor(a::AbstractITensor, inds) = throw(ArgumentError("Already named."))
 ITensor(a::AbstractITensor) = ITensor(unnamed(a), dimnames(a))
 

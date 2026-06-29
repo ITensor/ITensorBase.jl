@@ -10,12 +10,16 @@ stable user-facing API. For the stable user-facing API, see the [User Interface]
 
 ## Named array types
 
-A concrete tensor type subtypes [`AbstractITensor`](@ref). [`NamedUnitRange`](@ref) is the
-named-range type that a tensor's dimensions are ([`Index`](@ref) is the flavor keyed by an
-index name).
+A concrete tensor type subtypes [`AbstractITensor`](@ref); [`ITensor`](@ref) is the built-in
+dense implementation. Its `ITensor(array, dimnames)` constructor pairs an array with dimension
+names directly; user code usually builds an `ITensor` by calling an array constructor on
+indices or by indexing an array (see [Constructors](@ref)) rather than calling it. The
+underlying named-range model has [`NamedUnitRange`](@ref) as the named-range type that a
+tensor's dimensions are ([`Index`](@ref) is the flavor keyed by an index name).
 
 ```@docs; canonical=false
 AbstractITensor
+ITensor
 NamedUnitRange
 ```
 
