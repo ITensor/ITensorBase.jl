@@ -18,8 +18,6 @@ julia> i = Index(2);
 julia> uniquename(i) != i
 true
 ```
-
-See also [`named`](@ref).
 """
 function uniquename end
 

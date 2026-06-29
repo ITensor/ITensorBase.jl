@@ -17,7 +17,6 @@ dimension. Get a tensor's indices with [`inds`](@ref), make distinct copies of a
 
 ```@docs; canonical=false
 Index
-ITensor
 inds
 prime
 noprime
@@ -39,6 +38,14 @@ randn(i, j)
 
 ```@example userinterface
 zeros(i, j)
+```
+
+To name an existing array, index it by the indices: `array[indices...]` returns an `ITensor`
+wrapping `array` with one name per dimension. This is the recommended way to turn an unnamed
+array into a named one.
+
+```@example userinterface
+randn(2, 3)[i, j]
 ```
 
 ## Algebra
@@ -88,3 +95,34 @@ intermediates:
 
 Non-linear broadcasting (functions of one or more tensors, such as `sin.(a)` or `a .^ 2`) is
 experimental and incompletely supported, and is subject to change.
+
+## Factorizations
+
+Matrix factorizations from
+[MatrixAlgebraKit](https://github.com/QuantumKitHub/MatrixAlgebraKit.jl) work on an `ITensor`
+by naming which indices form the codomain (rows) of the matrix the tensor is interpreted as;
+the remaining indices form the domain (columns). The factors share a freshly named index over
+the bond between them, so they contract back together with `*`.
+
+A QR decomposition, splitting index `i` off from the rest:
+
+```@example userinterface
+using MatrixAlgebraKit: qr_compact
+q, r = qr_compact(a, (i,))
+q * r ≈ a
+```
+
+A singular value decomposition returns three factors:
+
+```@example userinterface
+using MatrixAlgebraKit: svd_compact
+u, s, v = svd_compact(a, (i,))
+u * s * v ≈ a
+```
+
+These are MatrixAlgebraKit factorizations wrapped to act on an `ITensor` by name.
+MatrixAlgebraKit provides many more, including eigendecompositions, polar decompositions, and
+truncated and full variants, along with keyword options controlling them; see the
+[MatrixAlgebraKit documentation](https://quantumkithub.github.io/MatrixAlgebraKit.jl/stable/)
+for the full list and the keyword syntax. The aim is to wrap all of them, but coverage is
+still being filled in, so please open an issue if one you need is not available yet.
