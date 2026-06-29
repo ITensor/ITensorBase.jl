@@ -91,9 +91,12 @@ unname(a::AbstractITensor, inds) = unnamed(aligndims(a, inds))
     inds(a::AbstractITensor)
     inds(a::AbstractITensor, dim::Int)
 
-The named axes (indices) of `a`, as a `Tuple` with one entry per dimension. Each entry
+The named axes (indices) of `a`, as a `Vector` with one entry per dimension. Each entry
 pairs a dimension's axis with its name. The second form returns the index of dimension
-`dim`. Compare with [`dimnames`](@ref), which returns just the names without the axes.
+`dim`. Compare with [`dimnames`](@ref), which returns just the names without the axes. The
+`axes` function returns the same indices as a `Tuple`, which the `AbstractArray` interface
+relies on; `inds` returns a `Vector` because the indices are most often manipulated as a
+collection (`filter`, `setdiff`, `union`).
 
 # Examples
 
@@ -101,17 +104,17 @@ pairs a dimension's axis with its name. The second form returns the index of dim
 julia> a = nameddims(zeros(2, 3), (:i, :j));
 
 julia> inds(a)
-(named(Base.OneTo(2), :i), named(Base.OneTo(3), :j))
+2-element Vector{NamedUnitRange{Symbol, Int64, Base.OneTo{Int64}}}:
+ named(Base.OneTo(2), :i)
+ named(Base.OneTo(3), :j)
 
 julia> inds(a, 1)
 named(Base.OneTo(2), :i)
 ```
 """
 function inds end
-# Output the named axes/indices of the named dims array, as a `Tuple` (even though
-# the dimension names are stored as a `Vector`).
-inds(a::AbstractITensor) = named.(axes(unnamed(a)), Tuple(dimnames(a)))
-inds(a::AbstractITensor, dim::Int) = inds(a)[dim]
+inds(a::AbstractITensor) = collect(axes(a))
+inds(a::AbstractITensor, dim::Int) = axes(a)[dim]
 
 isnamed(::Type{<:AbstractITensor}) = true
 
@@ -241,7 +244,7 @@ end
 function Base.copyto!(a_dest::AbstractITensor, a_src::AbstractITensor)
     a′_dest = unnamed(a_dest)
     # TODO: Use `unnamed` to do the permutations lazily.
-    a′_src = unname(a_src, inds(a_dest))
+    a′_src = unname(a_src, axes(a_dest))
     copyto!(a′_dest, a′_src)
     return a_dest
 end
@@ -272,7 +275,7 @@ function Base.AbstractArray{T, N}(a::AbstractITensor) where {T, N}
 end
 
 function Base.axes(a::AbstractITensor)
-    return inds(a)
+    return named.(axes(unnamed(a)), Tuple(dimnames(a)))
 end
 function Base.size(a::AbstractITensor)
     return length.(axes(a))
@@ -439,12 +442,16 @@ function replacedimnames(f, a::AbstractITensor)
 end
 mapdimnames(f, a::AbstractITensor) = replacedimnames(f, a)
 
+# Replace over `axes` (a `Tuple`) rather than `inds` (a `Vector`): `replace` on a `Vector`
+# is homogeneous and would fail to convert a replacement index backed by a different range
+# type (e.g. `UnitRange` into a `OneTo`-backed vector), whereas a `Tuple` admits the mixed
+# element types. The result is splatted into `getindex`, so only the order matters.
 function replaceinds(a::AbstractITensor, replacements::Pair...)
-    new_inds = replace(inds(a), replacements...)
+    new_inds = replace(axes(a), replacements...)
     return unnamed(a)[new_inds...]
 end
 function replaceinds(f, a::AbstractITensor)
-    new_inds = replace(f, inds(a))
+    new_inds = replace(f, axes(a))
     return unnamed(a)[new_inds...]
 end
 mapinds(f, a::AbstractITensor) = replaceinds(f, a)
@@ -552,7 +559,7 @@ function Base.eachindex(
     all(a -> issetequal(dimnames(a1), dimnames(a)), a_rest) ||
         throw(NameMismatch("Dimension name mismatch $(dimnames.((a1, a_rest...)))."))
     # TODO: Check the shapes match.
-    return NamedDimsCartesianIndices(inds(a1))
+    return NamedDimsCartesianIndices(axes(a1))
 end
 
 # `unname` (eager), not `unnamed` (lazy view): reducing over a lazy permuted view
@@ -588,7 +595,7 @@ function Base.hash(a::AbstractITensor, h::UInt64)
     h = hash(:ITensor, h)
     a′ = aligneddims(a, _sort(dimnames(a)))
     h = hash(unnamed(a′), h)
-    for i in inds(a′)
+    for i in axes(a′)
         h = hash(i, h)
     end
     return h
@@ -632,7 +639,7 @@ function Base.to_indices(
     # TODO: Throw a `NameMismatch` error.
     @assert isperm(perm)
     I = map(p -> I[p], perm)
-    return map(inds(a), I) do dimname, i
+    return map(axes(a), I) do dimname, i
         return checked_indexin(unnamed(i), unnamed(dimname))
     end
 end

@@ -1,7 +1,7 @@
 # Expression leaf with no array payload, so it defines no `unnamed`/`getindex`.
 # A symbolic tensor is a placeholder substituted with a real tensor before
 # contraction, so it only needs what drives contraction-order selection: the
-# `dimnames` and the index `size`s (the cost model uses lengths). `inds` is
+# `dimnames` and the index `size`s (the cost model uses lengths). Its `axes` are
 # reconstructed as plain ranges of those sizes. Storing sizes and dimnames as
 # fields rather than type parameters lets symbolic tensors of different rank
 # share one concrete type so a flat `Mul` over them stays concretely typed.
@@ -20,7 +20,7 @@ end
 symname(a::SymbolicITensor) = getfield(a, :name)
 
 dimnames(a::SymbolicITensor) = getfield(a, :dimnames)
-function inds(a::SymbolicITensor)
+function Base.axes(a::SymbolicITensor)
     return named.(Tuple(Base.OneTo.(getfield(a, :size))), Tuple(getfield(a, :dimnames)))
 end
 dimnametype(::Type{<:SymbolicITensor{DimName}}) where {DimName} = DimName

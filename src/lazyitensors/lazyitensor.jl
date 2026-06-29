@@ -22,6 +22,9 @@ lazy(a::Mul{<:LazyITensor}) = LazyITensor(a)
 
 dimnames(a::LazyITensor) = dimnames_lazy(a)
 inds(a::LazyITensor) = inds_lazy(a)
+# `axes` is computed from `inds_lazy` rather than the generic `unnamed`-based fallback
+# because a `Mul` expression has no materialized `unnamed` array to take axes of.
+Base.axes(a::LazyITensor) = Tuple(inds_lazy(a))
 unnamed(a::LazyITensor) = unnamed_lazy(a)
 
 # Broadcasting

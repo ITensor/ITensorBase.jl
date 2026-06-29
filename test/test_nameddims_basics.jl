@@ -33,7 +33,10 @@ end
         @test name(ai) == "i"
         @test name(aj) == "j"
         @test isnamed(na)
-        @test inds(na) == (i, j)
+        @test inds(na) == [i, j]
+        @test inds(na) isa Vector
+        @test axes(na) == (i, j)
+        @test axes(na) isa Tuple
         @test inds(na, 1) == i
         @test inds(na, 2) == j
         @test dimnames(na) == ["i", "j"]
@@ -133,7 +136,7 @@ end
         @test a[i, j] == na
         @test @view(a[i, j]) == na
         @test na[j[1], i[2]] == a[2, 1]
-        @test inds(na[j, i]) == (named(1:3, "i"), named(1:4, "j"))
+        @test inds(na[j, i]) == [named(1:3, "i"), named(1:4, "j")]
         @test na[j, i] == na
         @test @view(na[j, i]) == na
         @test i[axes(a, 1)] == named(1:3, "i")
@@ -156,7 +159,7 @@ end
         a = randn(elt, 3, 3)
         na = ITensor(a, ("i", "j"))
         for na′ in (na[named(2:3, "i"), named(2:3, "j")], na["i" => 2:3, "j" => 2:3])
-            @test inds(na′) == (named(1:2, "i"), named(1:2, "j"))
+            @test inds(na′) == [named(1:2, "i"), named(1:2, "j")]
             @test unnamed(na′) == a[2:3, 2:3]
             @test unnamed(na′) isa typeof(a)
         end
@@ -166,7 +169,7 @@ end
         na = ITensor(a, ("i", "j"))
         for na′ in
             (@view(na[named(2:3, "i"), named(2:3, "j")]), @view(na["i" => 2:3, "j" => 2:3]))
-            @test inds(na′) == (named(1:2, "i"), named(1:2, "j"))
+            @test inds(na′) == [named(1:2, "i"), named(1:2, "j")]
             @test copy(unnamed(na′)) == a[2:3, 2:3]
             @test unnamed(na′) ≡ @view(a[2:3, 2:3])
             @test unnamed(na′) isa SubArray{elt, 2}
@@ -211,19 +214,19 @@ end
         @test a′ isa PermutedDimsArray{elt}
         @test a′ == transpose(a)
         nb = setdimnames(na, ("k", "j"))
-        @test inds(nb) == (named(1:3, "k"), named(1:4, "j"))
+        @test inds(nb) == [named(1:3, "k"), named(1:4, "j")]
         @test unnamed(nb) == a
         nb = replacedimnames(na, "i" => "k")
-        @test inds(nb) == (named(1:3, "k"), named(1:4, "j"))
+        @test inds(nb) == [named(1:3, "k"), named(1:4, "j")]
         @test unnamed(nb) == a
         nb = replaceinds(na, named(1:3, "i") => named(1:3, "k"))
-        @test inds(nb) == (named(1:3, "k"), named(1:4, "j"))
+        @test inds(nb) == [named(1:3, "k"), named(1:4, "j")]
         @test unnamed(nb) == a
         nb = replaceinds(n -> n == named(1:3, "i") ? named(1:3, "k") : n, na)
-        @test inds(nb) == (named(1:3, "k"), named(1:4, "j"))
+        @test inds(nb) == [named(1:3, "k"), named(1:4, "j")]
         @test unnamed(nb) == a
         nb = mapinds(n -> n == named(1:3, "i") ? named(1:3, "k") : n, na)
-        @test inds(nb) == (named(1:3, "k"), named(1:4, "j"))
+        @test inds(nb) == [named(1:3, "k"), named(1:4, "j")]
         @test unnamed(nb) == a
         na[1, 1] = 11
         @test na[1, 1] == 11
@@ -365,26 +368,26 @@ end
         for na in (zeros(elt, i, j), zeros(elt, (i, j)))
             @test eltype(na) ≡ elt
             @test na isa ITensor
-            @test inds(na) == Base.oneto.((i, j))
+            @test inds(na) == Base.oneto.([i, j])
             @test iszero(na)
         end
         for na in (fill(value, i, j), fill(value, (i, j)))
             @test eltype(na) ≡ elt
             @test na isa ITensor
-            @test inds(na) == Base.oneto.((i, j))
+            @test inds(na) == Base.oneto.([i, j])
             @test all(isequal(value), na)
         end
         for na in (rand(elt, i, j), rand(elt, (i, j)))
             @test eltype(na) ≡ elt
             @test na isa ITensor
-            @test inds(na) == Base.oneto.((i, j))
+            @test inds(na) == Base.oneto.([i, j])
             @test !iszero(na)
             @test all(x -> real(x) > 0, na)
         end
         for na in (randn(elt, i, j), randn(elt, (i, j)))
             @test eltype(na) ≡ elt
             @test na isa ITensor
-            @test inds(na) == Base.oneto.((i, j))
+            @test inds(na) == Base.oneto.([i, j])
             @test !iszero(na)
         end
     end
@@ -394,20 +397,20 @@ end
         for na in (zeros(i, j), zeros((i, j)))
             @test eltype(na) ≡ default_elt
             @test na isa ITensor
-            @test inds(na) == Base.oneto.((i, j))
+            @test inds(na) == Base.oneto.([i, j])
             @test iszero(na)
         end
         for na in (rand(i, j), rand((i, j)))
             @test eltype(na) ≡ default_elt
             @test na isa ITensor
-            @test inds(na) == Base.oneto.((i, j))
+            @test inds(na) == Base.oneto.([i, j])
             @test !iszero(na)
             @test all(x -> real(x) > 0, na)
         end
         for na in (randn(i, j), randn((i, j)))
             @test eltype(na) ≡ default_elt
             @test na isa ITensor
-            @test inds(na) == Base.oneto.((i, j))
+            @test inds(na) == Base.oneto.([i, j])
             @test !iszero(na)
         end
     end
