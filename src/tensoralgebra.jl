@@ -7,11 +7,32 @@ using TupleTools: TupleTools
 # This layer is used to define derivative rules (to skip differentiating `setdiff`).
 dimnames_setdiff(s1, s2) = setdiff(s1, s2)
 
+# Assign each dimension name a small integer: operand 1's names become `1:length(n1)`, and
+# each of operand 2's names reuses operand 1's integer where they match (the contracted
+# dimensions) and otherwise gets a fresh integer `length(n1) + position`. Encoding the fresh
+# integers by position lets the caller recover the uncontracted operand-2 names by position.
+function integer_contraction_labels(n1, n2)
+    n1len = length(n1)
+    labels2 = map(eachindex(n2)) do i2
+        i1 = findfirst(==(n2[i2]), n1)
+        return isnothing(i1) ? n1len + i2 : i1
+    end
+    return 1:n1len, labels2
+end
+
 Base.:*(a1::AbstractNamedTensor, a2::AbstractNamedTensor) = mul_nameddims(a1, a2)
 function mul_nameddims(a1::AbstractNamedTensor, a2::AbstractNamedTensor)
-    a_dest, dimnames_dest = TA.contract(
-        unnamed(a1), dimnames(a1), unnamed(a2), dimnames(a2)
-    )
+    n1, n2 = dimnames(a1), dimnames(a2)
+    # The contraction structure depends only on the equality pattern of the dimension names,
+    # so match them to integers once and run the contraction-label bookkeeping on cheap
+    # integers, recovering the result names by position afterward. This keeps `TensorAlgebra`'s
+    # `setdiff`/`findfirst` passes off the dimension-name type, which for `IndexName` carries
+    # an id and a tag dictionary and is comparatively expensive to compare.
+    labels1, labels2 = integer_contraction_labels(n1, n2)
+    a_dest, labels_dest = TA.contract(unnamed(a1), labels1, unnamed(a2), labels2)
+    n1len = length(n1)
+    dimnames_dest =
+        map(label -> label <= n1len ? n1[label] : n2[label - n1len], labels_dest)
     return nameddims(a_dest, dimnames_dest)
 end
 
