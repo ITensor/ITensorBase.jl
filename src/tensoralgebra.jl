@@ -33,15 +33,15 @@ end
 
 Base.:*(a1::AbstractNamedTensor, a2::AbstractNamedTensor) = mul_nameddims(a1, a2)
 function mul_nameddims(a1::AbstractNamedTensor, a2::AbstractNamedTensor)
-    n1, n2 = dimnames(a1), dimnames(a2)
+    dimnames1, dimnames2 = dimnames(a1), dimnames(a2)
     # The contraction structure depends only on the equality pattern of the dimension names,
     # so relabel them to integers local to this contraction once and run the contraction-label
     # bookkeeping on cheap integers, recovering the result names afterward. This keeps
     # `TensorAlgebra`'s `setdiff`/`findfirst` passes off the dimension-name type, which for
     # `IndexName` carries an id and a tag dictionary and is comparatively expensive to compare.
-    labels1, labels2 = to_contract_labels(n1, n2)
+    labels1, labels2 = to_contract_labels(dimnames1, dimnames2)
     a_dest, labels_dest = TA.contract(unnamed(a1), labels1, unnamed(a2), labels2)
-    dimnames_dest = from_contract_labels(labels_dest, n1, n2)
+    dimnames_dest = from_contract_labels(labels_dest, dimnames1, dimnames2)
     return nameddims(a_dest, dimnames_dest)
 end
 
