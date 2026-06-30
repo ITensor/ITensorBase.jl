@@ -1,13 +1,14 @@
 module ITensorBaseMooncakeExt
 
-using ITensorBase: AbstractNamedTensor, NamedUnitRange, dimnames, dimnames_setdiff, inds,
-    integer_contraction_labels, name, nameperm, to_inds, uniquename
+using ITensorBase: AbstractNamedTensor, NamedUnitRange, dimnames, dimnames_setdiff,
+    from_contract_labels, inds, name, nameperm, to_contract_labels, to_inds, uniquename
 using Mooncake: Mooncake, @zero_derivative, DefaultCtx
 
 Mooncake.tangent_type(::Type{<:NamedUnitRange}) = Mooncake.NoTangent
 
 @zero_derivative DefaultCtx Tuple{typeof(nameperm), Any, Any, Any}
-@zero_derivative DefaultCtx Tuple{typeof(integer_contraction_labels), Any, Any}
+@zero_derivative DefaultCtx Tuple{typeof(to_contract_labels), Any, Any}
+@zero_derivative DefaultCtx Tuple{typeof(from_contract_labels), Any, Any, Any}
 # `dimnames(::NamedTensor)` returns the stored names `Vector` directly, so its output
 # aliases a field, where `@zero_derivative` is documented to be incorrect. Let
 # Mooncake differentiate it through the underlying `getfield`, whose built-in rule
