@@ -1,5 +1,6 @@
 using Accessors: @set
 using Random: AbstractRNG, RandomDevice
+using TensorAlgebra: TensorAlgebra as TA
 using UUIDs: UUID, uuid4
 
 tagpairstring(pair::Pair) = string(first(pair)) * "=>" * string(last(pair))
@@ -38,6 +39,11 @@ end
 function uniquename(rng::AbstractRNG, ::Type{<:IndexName})
     return IndexName(rng)
 end
+
+# Derive contractions on integer labels: an `IndexName` carries an id and a tag dictionary and is
+# far costlier to compare than an integer, and deriving a contraction makes several comparison
+# passes over the labels. See `TensorAlgebra.label_type`.
+TA.label_type(::Type{<:IndexName}) = Int
 
 to_symbol_pair(p::Pair) = Symbol(first(p)) => Symbol(last(p))
 
