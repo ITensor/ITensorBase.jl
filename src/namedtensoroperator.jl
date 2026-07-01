@@ -342,12 +342,6 @@ function Base.copy(bc::Broadcasted{<:NamedTensorOperatorStyle})
     return operator(result, cod, dom)
 end
 
-function Base.similar(bc::Broadcasted{<:NamedTensorOperatorStyle}, elt::Type, ax)
-    cod, dom = broadcast_operator_codomain_domain(bc)
-    result = similar(statebroadcasted(bc), elt, ax)
-    return operator(result, cod, dom)
-end
-
 for f in MATRIX_FUNCTIONS
     @eval begin
         function Base.$f(a::NamedTensorOperator)

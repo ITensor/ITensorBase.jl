@@ -84,7 +84,12 @@ dimnametype(type::Type{<:AbstractNamedTensor}) = Any
 # Unwrapping the names (named-array interface).
 # TODO: Use `IsNamed` trait?
 unnamed(a::AbstractNamedTensor) = throw(MethodError(unnamed, a))
-unnamed(a::AbstractNamedTensor, inds) = unnamed(aligneddims(a, inds))
+function unnamed(a::AbstractNamedTensor, names)
+    array = unnamed(a)
+    # Fast path: already aligned to `names`, so no permutation and no `getperm` allocation.
+    dimnames(a) == names && return array
+    return permuteddims(array, Tuple(getperm(dimnames(a), names)))
+end
 unname(a::AbstractNamedTensor, inds) = unnamed(aligndims(a, inds))
 
 """
