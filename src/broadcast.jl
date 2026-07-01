@@ -21,7 +21,13 @@ end
 BC.broadcastable(a::AbstractNamedTensor) = a
 
 broadcasted_unnamed(x::Number, names) = x
-broadcasted_unnamed(a::AbstractNamedTensor, names) = unnamed(a, names)
+function broadcasted_unnamed(a::AbstractNamedTensor, names)
+    # An operand already aligned to the destination names (the first operand always, and the
+    # common case for the rest) needs no permutation, avoiding a `getperm` allocation and the
+    # identity `permuteddims` wrapper. Skipping it makes a small add several times slower.
+    dimnames(a) == names && return unnamed(a)
+    return unnamed(a, names)
+end
 function broadcasted_unnamed(bc::Broadcasted, names)
     return broadcasted(bc.f, Base.Fix2(broadcasted_unnamed, names).(bc.args)...)
 end
