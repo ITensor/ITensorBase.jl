@@ -12,9 +12,9 @@ path = ".."
 
 [compat]
 Documenter = "1"
-ITensorBase = "0.9"
+ITensorBase = "0.10"
 ITensorFormatter = "0.2.27"
 Literate = "2"
 MatrixAlgebraKit = "0.2, 0.3, 0.4, 0.5, 0.6"
-TensorAlgebra = "0.12.4, 0.13"
+TensorAlgebra = "0.14"
 Test = "1.10"
