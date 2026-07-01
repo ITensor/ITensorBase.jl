@@ -84,7 +84,16 @@ dimnametype(type::Type{<:AbstractNamedTensor}) = Any
 # Unwrapping the names (named-array interface).
 # TODO: Use `IsNamed` trait?
 unnamed(a::AbstractNamedTensor) = throw(MethodError(unnamed, a))
-unnamed(a::AbstractNamedTensor, inds) = unnamed(aligneddims(a, inds))
+function unnamed(a::AbstractNamedTensor, names)
+    return _permuteddims_to(unnamed(a), getperm(dimnames(a), names))
+end
+# Function barrier: `unnamed(a)` is abstractly typed, so dispatching on the concrete array here
+# makes `ndims` a compile-time constant. Building the permutation as an `ntuple(…, Val(ndims))`
+# (an `NTuple{N,Int}`) rather than `Tuple(perm)` (a length-non-inferrable `Tuple{Vararg{Int}}`)
+# lets `permuteddims` build a concretely-typed wrapper, roughly halving the permute cost.
+@noinline function _permuteddims_to(array::AbstractArray, perm)
+    return permuteddims(array, ntuple(i -> perm[i], Val(ndims(array))))
+end
 unname(a::AbstractNamedTensor, inds) = unnamed(aligndims(a, inds))
 
 """
