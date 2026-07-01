@@ -1,4 +1,5 @@
-using ..ITensorBase: AbstractNamedTensor, ITensorBase, dimnames, named, nameddims, unnamed
+using ..ITensorBase:
+    AbstractNamedTensor, ITensorBase, dimnames, getperm, named, nameddims, unnamed
 using Base.Broadcast: Broadcast as BC, Broadcasted, broadcasted
 using TensorAlgebra: TensorAlgebra as TA
 
@@ -26,7 +27,18 @@ function broadcasted_unnamed(a::AbstractNamedTensor, names)
     # common case for the rest) needs no permutation, avoiding a `getperm` allocation and the
     # identity `permuteddims` wrapper. Skipping it makes a small add several times slower.
     dimnames(a) == names && return unnamed(a)
-    return unnamed(a, names)
+    return _broadcast_permuteddims_to(unnamed(a), getperm(dimnames(a), names))
+end
+# Broadcasting-only alignment: unlike the public `unnamed(a, names)` (which returns a
+# `Base.PermutedDimsArray`, a full array), this wraps in `TensorAlgebra.PermutedDims`, which stores
+# the permutation in a field rather than a type parameter, so it builds cheaply and type-stably
+# from the runtime permutation and is a broadcast leaf the linear-combination fold absorbs via
+# `bipermutedimsopadd!`. `PermutedDims` has almost no array interface, so it stays confined to this
+# hot path and is never handed back to users. Function barrier: `unnamed(a)` is abstractly typed,
+# so dispatching on the concrete array makes `ndims` a compile-time constant for the inferrable
+# `ntuple(…, Val(ndims))` permutation.
+@noinline function _broadcast_permuteddims_to(array::AbstractArray, perm)
+    return TA.PermutedDims(array, ntuple(i -> perm[i], Val(ndims(array))))
 end
 function broadcasted_unnamed(bc::Broadcasted, names)
     return broadcasted(bc.f, Base.Fix2(broadcasted_unnamed, names).(bc.args)...)
