@@ -1,6 +1,6 @@
 name = "ITensorBase"
 uuid = "4795dd04-0d67-49bb-8f44-b89c448a1dc7"
-version = "0.10.2"
+version = "0.10.3"
 authors = ["ITensor developers <support@itensor.org> and contributors"]
 
 [workspace]
@@ -30,6 +30,10 @@ Adapt = "79e6a3ab-5dfb-504d-930d-738a2a938a0e"
 Mooncake = "da2b9cff-9c12-43a0-ae48-6db2b0edb7d6"
 TensorOperations = "6aa20fa7-93e2-5fca-9bc0-fbd0db3c71a2"
 
+[sources.TensorAlgebra]
+rev = "mf/permuteddims-broadcast"
+url = "https://github.com/ITensor/TensorAlgebra.jl"
+
 [extensions]
 ITensorBaseAdaptExt = "Adapt"
 ITensorBaseMooncakeExt = "Mooncake"
@@ -49,7 +53,7 @@ Mooncake = "0.4.202, 0.5"
 OrderedCollections = "1.6"
 Random = "1.10"
 SimpleTraits = "0.9.4"
-TensorAlgebra = "0.15"
+TensorAlgebra = "0.15.1"
 TensorOperations = "5.3.1"
 TermInterface = "2"
 TupleTools = "1.6"
