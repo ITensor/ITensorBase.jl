@@ -89,7 +89,7 @@ end
 function matricize_nameddims(na::AbstractNamedTensor, fusions::Vararg{Pair, 2})
     group1, group2 = first.(fusions)
     perm_codomain, perm_domain = nameperm(na, group1, group2)
-    a_fused = TA.matricize(unnamed(na), perm_codomain, perm_domain)
+    a_fused = TA.matricizeperm(unnamed(na), perm_codomain, perm_domain)
     return nameddims(a_fused, last.(fusions))
 end
 
