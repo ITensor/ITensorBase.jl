@@ -87,16 +87,12 @@ unnamed(a::AbstractNamedTensor) = throw(MethodError(unnamed, a))
 function unnamed(a::AbstractNamedTensor, names)
     return _permuteddims_to(unnamed(a), getperm(dimnames(a), names))
 end
-# Align a misaligned operand for the elementwise broadcast by wrapping it in a lazy permuted
-# view. `TensorAlgebra.PermutedDims` stores the permutation in a field (unlike
-# `Base.PermutedDimsArray`, which encodes it in a type parameter, so a runtime permutation forces
-# runtime type construction), so it builds cheaply and type-stably; it is a broadcast leaf the
-# linear-combination path absorbs via `bipermutedimsopadd!`. Function barrier: `unnamed(a)` is
-# abstractly typed, so dispatching on the concrete array here makes `ndims` a compile-time
-# constant, and the `ntuple(…, Val(ndims))` builds an inferrable `NTuple{N,Int}` permutation
-# rather than a length-non-inferrable `Tuple(::Vector)`.
+# Function barrier: `unnamed(a)` is abstractly typed, so dispatching on the concrete array here
+# makes `ndims` a compile-time constant. Building the permutation as an `ntuple(…, Val(ndims))`
+# (an `NTuple{N,Int}`) rather than `Tuple(perm)` (a length-non-inferrable `Tuple{Vararg{Int}}`)
+# lets `permuteddims` build a concretely-typed wrapper, roughly halving the permute cost.
 @noinline function _permuteddims_to(array::AbstractArray, perm)
-    return TensorAlgebra.PermutedDims(array, ntuple(i -> perm[i], Val(ndims(array))))
+    return permuteddims(array, ntuple(i -> perm[i], Val(ndims(array))))
 end
 unname(a::AbstractNamedTensor, inds) = unnamed(aligndims(a, inds))
 

@@ -1,5 +1,5 @@
 import LinearAlgebra as LA
-using ITensorBase: dimnames, named, unnamed
+using ITensorBase: dimnames, named, unname, unnamed
 using Test: @test, @testset
 
 @testset "LinearAlgebra (eltype=$(elt))" for elt in
@@ -14,5 +14,5 @@ using Test: @test, @testset
     @test unnamed(LA.lmul!(2, copy(a))) ≈ 2 * unnamed(a)
     @test unnamed(LA.rdiv!(copy(a), 2)) ≈ unnamed(a) / 2
     @test unnamed(LA.ldiv!(2, copy(a))) ≈ 2 \ unnamed(a)
-    @test LA.dot(a, b) ≈ LA.dot(unnamed(a), unnamed(b, dimnames(a)))
+    @test LA.dot(a, b) ≈ LA.dot(unnamed(a), unname(b, dimnames(a)))
 end
