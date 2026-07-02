@@ -1,6 +1,6 @@
 name = "ITensorBase"
 uuid = "4795dd04-0d67-49bb-8f44-b89c448a1dc7"
-version = "0.10.5"
+version = "0.10.6"
 authors = ["ITensor developers <support@itensor.org> and contributors"]
 
 [workspace]
@@ -28,12 +28,14 @@ WrappedUnions = "325db55a-9c6c-5b90-b1a2-ec87e7a38c44"
 [weakdeps]
 Adapt = "79e6a3ab-5dfb-504d-930d-738a2a938a0e"
 Mooncake = "da2b9cff-9c12-43a0-ae48-6db2b0edb7d6"
+OMEinsumContractionOrders = "6f22d1fd-8eed-4bb7-9776-e7d684900715"
 TensorKit = "07d1fe3e-3e46-537d-9eac-e9e13d0d4cec"
 TensorOperations = "6aa20fa7-93e2-5fca-9bc0-fbd0db3c71a2"
 
 [extensions]
 ITensorBaseAdaptExt = "Adapt"
 ITensorBaseMooncakeExt = "Mooncake"
+ITensorBaseOMEinsumContractionOrdersExt = "OMEinsumContractionOrders"
 ITensorBaseTensorKitExt = "TensorKit"
 ITensorBaseTensorOperationsExt = "TensorOperations"
 
@@ -48,6 +50,7 @@ ConstructionBase = "1.6"
 LinearAlgebra = "1.10"
 MatrixAlgebraKit = "0.2, 0.3, 0.4, 0.5, 0.6"
 Mooncake = "0.4.202, 0.5"
+OMEinsumContractionOrders = "1"
 OrderedCollections = "1.6"
 Random = "1.10"
 SimpleTraits = "0.9.4"
