@@ -3,6 +3,7 @@ using Base.Broadcast: materialize
 using ITensorBase: @names, Greedy, LazyNamedTensor, Mul, NamedTensor, Optimal,
     SymbolicNamedTensor, dimnames, inds, ismul, lazy, nameddims, namedoneto,
     optimize_evaluation_order, substitute, symnameddims
+using OMEinsumContractionOrders: GreedyMethod, TreeSA
 using TensorOperations: TensorOperations
 using TermInterface: arguments, arity, children, head, iscall, isexpr, maketerm, operation,
     sorted_arguments, sorted_children
@@ -116,6 +117,21 @@ using WrappedUnions: unwrap
         @test ismul(ordered)
         # Reordering nests the flat product into binary contractions and preserves
         # the open indices.
+        @test arity(ordered) == 2
+        @test issetequal(dimnames(ordered), dimnames(flat))
+    end
+
+    @testset "optimize_evaluation_order (OMEinsumContractionOrders $alg)" for alg in
+        (
+            GreedyMethod(),
+            TreeSA(),
+        )
+        i, j, k, l = namedoneto.((2, 3, 4, 5), (:i, :j, :k, :l))
+        s = [symnameddims(:a, (i, j)), symnameddims(:b, (j, k)), symnameddims(:c, (k, l))]
+        flat = lazy(Mul(s))
+        ordered = optimize_evaluation_order(flat; alg)
+        @test ordered isa LazyNamedTensor
+        @test ismul(ordered)
         @test arity(ordered) == 2
         @test issetequal(dimnames(ordered), dimnames(flat))
     end
