@@ -283,8 +283,10 @@ function Base.AbstractArray{T, N}(a::AbstractNamedTensor) where {T, N}
     return dest
 end
 
+# Read the parent's axes through TensorAlgebra's interface (not `Base.axes`) so a non-array
+# backend like a TensorMap, whose axes are its native spaces, is supported.
 function Base.axes(a::AbstractNamedTensor)
-    return named.(axes(unnamed(a)), Tuple(dimnames(a)))
+    return named.(TensorAlgebra.axes(unnamed(a)), Tuple(dimnames(a)))
 end
 function Base.size(a::AbstractNamedTensor)
     return length.(axes(a))
@@ -300,8 +302,9 @@ Base.axes(a::AbstractNamedTensor, d) = axes(a)[d]
 # Circumvent issue when ndims isn't known at compile time.
 Base.size(a::AbstractNamedTensor, d) = size(a)[d]
 
-# Circumvent issue when ndims isn't known at compile time.
-Base.ndims(a::AbstractNamedTensor) = ndims(unnamed(a))
+# Circumvent issue when ndims isn't known at compile time. Read through TensorAlgebra's
+# interface (not `Base.ndims`) so a non-array backend like a TensorMap is supported.
+Base.ndims(a::AbstractNamedTensor) = TensorAlgebra.ndims(unnamed(a))
 
 # Circumvent issue when eltype isn't known at compile time.
 Base.eltype(a::AbstractNamedTensor) = eltype(unnamed(a))
@@ -1030,12 +1033,18 @@ for (f, f′) in [(:rand, :_rand), (:randn, :_randn)]
         end
     end
 end
+# Like `Base.zeros`/`Base.ones` but supports axes, and routes the parent construction
+# through an owned helper so a backend can build from its own axis type (e.g. a TensorKit
+# space building a `TensorMap`) without committing type piracy on `Base.zeros`/`Base.ones`.
+_zeros(args...) = Base.zeros(args...)
+_ones(args...) = Base.ones(args...)
 for f in [:zeros, :ones], dimtype in [:NamedInteger, :NamedUnitRange]
+    f′ = Symbol(:_, f)
     @eval begin
         function Base.$f(
                 elt::Type{<:Number}, ax::Tuple{$dimtype, Vararg{$dimtype}}
             )
-            a = $f(elt, unnamed.(ax))
+            a = $f′(elt, unnamed.(ax))
             return a[Name.(name.(ax))...]
         end
         function Base.$f(elt::Type{<:Number}, dim1::$dimtype, dims::Vararg{$dimtype})

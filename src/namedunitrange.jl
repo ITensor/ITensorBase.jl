@@ -17,8 +17,10 @@ named(1:3, :i)
 
 See also [`Index`](@ref), [`named`](@ref).
 """
-struct NamedUnitRange{Name, UnnamedT <: Integer, Unnamed <: AbstractUnitRange{UnnamedT}} <:
-    AbstractNamedVector{Name, UnnamedT}
+# The `value` is usually an integer `AbstractUnitRange`, but the bound is left open so a
+# backend can store a richer axis object directly — e.g. a native TensorKit space, which is
+# not an `AbstractUnitRange` but is its own axis (see the TensorKit extension).
+struct NamedUnitRange{Name, UnnamedT, Unnamed} <: AbstractNamedVector{Name, UnnamedT}
     value::Unnamed
     name::Name
 end
@@ -46,6 +48,13 @@ end
 # a different concrete type.
 function NamedUnitRange{Name}(unnamed::AbstractUnitRange, name) where {Name}
     return NamedUnitRange{Name, eltype(unnamed), typeof(unnamed)}(unnamed, name)
+end
+# Base case for the name-inferred path: a ready-made range and a name. Loosening the struct's
+# `Unnamed <: AbstractUnitRange` bound removed the compiler-synthesized 2-arg constructor that
+# used to terminate here, so it is spelled out explicitly (a backend storing a non-range axis,
+# e.g. a TensorKit space, adds its own terminal — see the TensorKit extension).
+function NamedUnitRange(unnamed::AbstractUnitRange, name)
+    return NamedUnitRange{typeof(name), eltype(unnamed), typeof(unnamed)}(unnamed, name)
 end
 # A space and an explicit name, name type inferred from `name`.
 function NamedUnitRange(space, name)

@@ -1,3 +1,5 @@
+using TensorAlgebra: TensorAlgebra
+
 """
     NamedTensor(array::AbstractArray, dims)
 
@@ -17,10 +19,13 @@ named(Base.OneTo(2), :i)×named(Base.OneTo(3), :j) NamedTensor{Symbol}:
  0.0  0.0  0.0
 ```
 """
+# The parent is usually an `AbstractArray`, but the field is left untyped so a non-array
+# tensor backend (e.g. a TensorKit `TensorMap`, reached through TensorAlgebra's `ndims`/
+# `axes`/algebra interface) can be the parent directly. See the TensorKit extension.
 struct NamedTensor{DimName} <: AbstractNamedTensor{DimName}
-    unnamed::AbstractArray
+    unnamed::Any
     dimnames::Vector{DimName}
-    function NamedTensor{DimName}(unnamed::AbstractArray, dimnames) where {DimName}
+    function NamedTensor{DimName}(unnamed, dimnames) where {DimName}
         dimnames = collect(DimName, dimnames)
         # Catch the common ITensors.jl-style mistake of passing indices as the names.
         any(dimname -> dimname isa NamedUnitRange, dimnames) && throw(
@@ -30,7 +35,7 @@ struct NamedTensor{DimName} <: AbstractNamedTensor{DimName}
                 array and indices, index the array instead, as in `array[i, j]`."
             )
         )
-        ndims(unnamed) == length(dimnames) ||
+        TensorAlgebra.ndims(unnamed) == length(dimnames) ||
             throw(ArgumentError("Number of named dims must match ndims."))
         allunique(dimnames) ||
             throw(ArgumentError("Dimension names must be distinct, got $(dimnames)."))
@@ -38,7 +43,7 @@ struct NamedTensor{DimName} <: AbstractNamedTensor{DimName}
     end
 end
 
-NamedTensor(unnamed::AbstractArray, dims) = NamedTensor{eltype(dims)}(unnamed, dims)
+NamedTensor(unnamed, dims) = NamedTensor{eltype(dims)}(unnamed, dims)
 NamedTensor(a::AbstractNamedTensor, inds) = throw(ArgumentError("Already named."))
 NamedTensor(a::AbstractNamedTensor) = NamedTensor(unnamed(a), dimnames(a))
 
