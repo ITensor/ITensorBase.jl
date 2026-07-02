@@ -19,10 +19,10 @@ named(Base.OneTo(2), :i)×named(Base.OneTo(3), :j) NamedTensor{Symbol}:
  0.0  0.0  0.0
 ```
 """
-# The parent is usually an `AbstractArray`, but the field is left untyped so a non-array
-# tensor backend (e.g. a TensorKit `TensorMap`, reached through TensorAlgebra's `ndims`/
-# `axes`/algebra interface) can be the parent directly. See the TensorKit extension.
 struct NamedTensor{DimName} <: AbstractNamedTensor{DimName}
+    # The parent is usually an `AbstractArray`, but the field is left untyped so a non-array
+    # tensor backend (e.g. a TensorKit `TensorMap`, reached through TensorAlgebra's `ndims`/
+    # `axes`/algebra interface) can be the parent directly. See the TensorKit extension.
     unnamed::Any
     dimnames::Vector{DimName}
     function NamedTensor{DimName}(unnamed, dimnames) where {DimName}

@@ -17,10 +17,10 @@ named(1:3, :i)
 
 See also [`Index`](@ref), [`named`](@ref).
 """
-# The `value` is usually an integer `AbstractUnitRange`, but the bound is left open so a
-# backend can store a richer axis object directly — e.g. a native TensorKit space, which is
-# not an `AbstractUnitRange` but is its own axis (see the TensorKit extension).
 struct NamedUnitRange{Name, UnnamedT, Unnamed} <: AbstractNamedVector{Name, UnnamedT}
+    # The `value` is usually an integer `AbstractUnitRange`, but the bound is left open so a
+    # backend can store a richer axis object directly, e.g. a native TensorKit space, which is
+    # not an `AbstractUnitRange` but is its own axis (see the TensorKit extension).
     value::Unnamed
     name::Name
 end
