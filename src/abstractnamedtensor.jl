@@ -1078,11 +1078,11 @@ for f in [:zeros, :ones], dimtype in [:NamedInteger, :NamedUnitRange]
 end
 # Map-shaped construction takes a codomain and a domain index tuple and forwards the split
 # down to `TensorAlgebra`'s map constructors: a `TensorMap` backend stores it as a
-# `codomain ← domain` map, a dense backend stores flat. The result is named with the codomain
-# names followed by the domain names. The `rand`/`randn`/`zeros` two-tuple forms
-# (`randn((i,), (j,))`) forward to these. The domain spaces are conjugated on the way down
-# because every backend dualizes the domain once (a `TensorMap` stores its domain dual, the
-# dense/graded fallback conjugates it), so each domain index reads back as its own space.
+# `codomain ← domain` map, a dense backend stores flat. Following the `similar_map`
+# convention, the domain is conjugated in the flattened/outward view (a `TensorMap` stores
+# its domain dual, the dense fallback conjugates it), so a domain index appears as its dual,
+# and the result is named with the codomain names followed by the domain names. The
+# `rand`/`randn`/`zeros` two-tuple forms (`randn((i,), (j,))`) forward to these.
 for f in [:rand, :randn]
     f_map = Symbol(f, :_map)
     @eval begin
@@ -1091,9 +1091,7 @@ for f in [:rand, :randn]
                 codomain::Tuple{Vararg{NamedUnitRange}},
                 domain::Tuple{Vararg{NamedUnitRange}}
             )
-            a = TensorAlgebra.$f_map(
-                rng, elt, unnamed.(codomain), conj.(unnamed.(domain))
-            )
+            a = TensorAlgebra.$f_map(rng, elt, unnamed.(codomain), unnamed.(domain))
             return a[Name.(name.((codomain..., domain...)))...]
         end
         function Base.$f(
@@ -1121,7 +1119,7 @@ function TensorAlgebra.zeros_map(
         elt::Type{<:Number}, codomain::Tuple{Vararg{NamedUnitRange}},
         domain::Tuple{Vararg{NamedUnitRange}}
     )
-    a = TensorAlgebra.zeros_map(elt, unnamed.(codomain), conj.(unnamed.(domain)))
+    a = TensorAlgebra.zeros_map(elt, unnamed.(codomain), unnamed.(domain))
     return a[Name.(name.((codomain..., domain...)))...]
 end
 function Base.zeros(

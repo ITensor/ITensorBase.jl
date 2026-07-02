@@ -70,13 +70,14 @@ using Test: @test, @test_throws, @testset
         @test sca((q * r) * w) ≈ sca(a3 * w)
 
         # Map-shaped construction forwards the codomain/domain split to the `TensorMap`:
-        # `randn((i,), (j,))` stores a `Vi ← Vj` map rather than flattening all-codomain. The
-        # domain index reads back with its own space, so externally the tensor is normal.
+        # `randn((i,), (j,))` stores a `Vi ← Vj` map rather than flattening all-codomain.
+        # Following the `similar_map` convention the domain appears dualized in the outward
+        # view, the same as a flat graded array would have axes `(Vi, dual(Vj))`.
         m = randn(rng, elt, (i,), (j,))
         @test unnamed(m) isa AbstractTensorMap
-        @test space(unnamed(m)) == (Vi ← dual(Vj))
+        @test space(unnamed(m)) == (Vi ← Vj)
         @test space(unnamed(m), 1) == Vi
-        @test space(unnamed(m), 2) == Vj
+        @test space(unnamed(m), 2) == dual(Vj)
         @test unnamed(rand(rng, elt, (i,), (j,))) isa AbstractTensorMap
         @test norm(unnamed(zeros(elt, (i,), (j,)))) == 0
         # The friendly forms agree with the underlying `TensorAlgebra` map hooks.
@@ -84,16 +85,16 @@ using Test: @test, @test_throws, @testset
             space(unnamed(randn(elt, (i, j), (k,))))
 
         # `aligndims` reorders a `TensorMap`-backed tensor. The flat form gives an all-codomain
-        # result, the map form re-expresses the requested codomain/domain split; both keep each
-        # index's own space.
+        # result and the map form re-expresses the requested codomain/domain split, both
+        # carrying each index with its arrow to the new position.
         mf = aligndims(m, (j, i))
         @test dimnames(mf) == [name(j), name(i)]
-        @test space(unnamed(mf), 1) == Vj
+        @test space(unnamed(mf), 1) == dual(Vj)
         @test space(unnamed(mf), 2) == Vi
         md = aligndims(m, (j,), (i,))
         @test dimnames(md) == [name(j), name(i)]
-        @test space(unnamed(md)) == (Vj ← dual(Vi))
-        @test space(unnamed(md), 1) == Vj
+        @test space(unnamed(md)) == (dual(Vj) ← dual(Vi))
+        @test space(unnamed(md), 1) == dual(Vj)
         @test space(unnamed(md), 2) == Vi
     end
 
