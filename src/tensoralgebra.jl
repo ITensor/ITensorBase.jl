@@ -539,8 +539,8 @@ select the backend: dense ranges give an `Array`, graded ranges a block-sparse
 array, and TensorKit spaces a `TensorMap`. `a` is indexed positionally in the
 order `(codomain_inds..., domain_inds...)`.
 
-See [`TensorAlgebra.checked_project`](@ref) for a version that verifies nothing
-outside the symmetry-allowed blocks was discarded.
+See `TensorAlgebra.checked_project` for a version that verifies nothing outside
+the symmetry-allowed blocks was discarded.
 """
 function TA.project(
         a::AbstractArray,
