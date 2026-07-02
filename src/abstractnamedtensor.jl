@@ -1083,55 +1083,75 @@ end
 # its domain dual, the dense fallback conjugates it), so a domain index appears as its dual,
 # and the result is named with the codomain names followed by the domain names. The
 # `rand`/`randn`/`zeros` two-tuple forms (`randn((i,), (j,))`) forward to these.
+#
+# Each constructor is a shared `*_nameddims` builder (strip the names, call the map hook on the
+# raw axes, reattach the names) plus two forwarding methods: one for a nonempty codomain and one
+# for an empty codomain with a nonempty domain. The two-way split (rather than a single
+# `Tuple{Vararg{NamedUnitRange}}` on both sides) reads the index type from whichever side is
+# nonempty and keeps the empty-codomain case from re-dispatching to the same named overload once
+# `unnamed` has stripped the names. An all-empty `((), ())` has no map meaning and is left to
+# error rather than recurse.
 for f in [:rand, :randn]
     f_map = Symbol(f, :_map)
-    @eval begin
-        function TensorAlgebra.$f_map(
-                rng::AbstractRNG, elt::Type{<:Number},
-                codomain::Tuple{Vararg{NamedUnitRange}},
-                domain::Tuple{Vararg{NamedUnitRange}}
-            )
-            a = TensorAlgebra.$f_map(rng, elt, unnamed.(codomain), unnamed.(domain))
-            return a[Name.(name.((codomain..., domain...)))...]
-        end
-        function Base.$f(
-                codomain::Tuple{Vararg{NamedUnitRange}},
-                domain::Tuple{Vararg{NamedUnitRange}}
-            )
-            return TensorAlgebra.$f_map(codomain, domain)
-        end
-        function Base.$f(
-                elt::Type{<:Number}, codomain::Tuple{Vararg{NamedUnitRange}},
-                domain::Tuple{Vararg{NamedUnitRange}}
-            )
-            return TensorAlgebra.$f_map(elt, codomain, domain)
-        end
-        function Base.$f(
-                rng::AbstractRNG, elt::Type{<:Number},
-                codomain::Tuple{Vararg{NamedUnitRange}},
-                domain::Tuple{Vararg{NamedUnitRange}}
-            )
-            return TensorAlgebra.$f_map(rng, elt, codomain, domain)
+    f_nameddims = Symbol(f, :_nameddims)
+    @eval function $f_nameddims(rng::AbstractRNG, elt::Type{<:Number}, codomain, domain)
+        a = TensorAlgebra.$f_map(rng, elt, unnamed.(codomain), unnamed.(domain))
+        return a[Name.(name.((codomain..., domain...)))...]
+    end
+    for (codomain_type, domain_type) in [
+            (
+                :(Tuple{NamedUnitRange, Vararg{NamedUnitRange}}),
+                :(Tuple{Vararg{NamedUnitRange}}),
+            ),
+            (:(Tuple{}), :(Tuple{NamedUnitRange, Vararg{NamedUnitRange}})),
+        ]
+        @eval begin
+            function TensorAlgebra.$f_map(
+                    rng::AbstractRNG, elt::Type{<:Number},
+                    codomain::$codomain_type, domain::$domain_type
+                )
+                return $f_nameddims(rng, elt, codomain, domain)
+            end
+            function Base.$f(
+                    rng::AbstractRNG, elt::Type{<:Number},
+                    codomain::$codomain_type, domain::$domain_type
+                )
+                return TensorAlgebra.$f_map(rng, elt, codomain, domain)
+            end
+            function Base.$f(
+                    elt::Type{<:Number}, codomain::$codomain_type, domain::$domain_type
+                )
+                return Base.$f(Random.default_rng(), elt, codomain, domain)
+            end
+            function Base.$f(codomain::$codomain_type, domain::$domain_type)
+                return Base.$f(default_eltype(), codomain, domain)
+            end
         end
     end
 end
-function TensorAlgebra.zeros_map(
-        elt::Type{<:Number}, codomain::Tuple{Vararg{NamedUnitRange}},
-        domain::Tuple{Vararg{NamedUnitRange}}
-    )
+function zeros_nameddims(elt::Type{<:Number}, codomain, domain)
     a = TensorAlgebra.zeros_map(elt, unnamed.(codomain), unnamed.(domain))
     return a[Name.(name.((codomain..., domain...)))...]
 end
-function Base.zeros(
-        codomain::Tuple{Vararg{NamedUnitRange}}, domain::Tuple{Vararg{NamedUnitRange}}
-    )
-    return TensorAlgebra.zeros_map(codomain, domain)
-end
-function Base.zeros(
-        elt::Type{<:Number}, codomain::Tuple{Vararg{NamedUnitRange}},
-        domain::Tuple{Vararg{NamedUnitRange}}
-    )
-    return TensorAlgebra.zeros_map(elt, codomain, domain)
+for (codomain_type, domain_type) in [
+        (:(Tuple{NamedUnitRange, Vararg{NamedUnitRange}}), :(Tuple{Vararg{NamedUnitRange}})),
+        (:(Tuple{}), :(Tuple{NamedUnitRange, Vararg{NamedUnitRange}})),
+    ]
+    @eval begin
+        function TensorAlgebra.zeros_map(
+                elt::Type{<:Number}, codomain::$codomain_type, domain::$domain_type
+            )
+            return zeros_nameddims(elt, codomain, domain)
+        end
+        function Base.zeros(
+                elt::Type{<:Number}, codomain::$codomain_type, domain::$domain_type
+            )
+            return TensorAlgebra.zeros_map(elt, codomain, domain)
+        end
+        function Base.zeros(codomain::$codomain_type, domain::$domain_type)
+            return Base.zeros(default_eltype(), codomain, domain)
+        end
+    end
 end
 for dimtype in [:NamedInteger, :NamedUnitRange]
     @eval begin

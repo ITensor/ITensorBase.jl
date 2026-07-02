@@ -269,6 +269,19 @@ end
         @test unnamed(nab) isa Matrix{elt}
         @test dimnames(nab) == [name(ci), name(cj)]
         @test unnamed(zeros(elt, (ci,), (cj,))) == zeros(elt, 3, 4)
+        # An empty codomain lands every index in the domain, the mirror of an empty domain. A
+        # dense backend ignores the split, so these match the flat forms.
+        na′ = aligndims(na, (), (j, i))
+        @test unnamed(na′) isa Matrix{elt}
+        @test a == permutedims(unnamed(na′), (2, 1))
+        nbra = randn(elt, (), (cj,))
+        @test unnamed(nbra) isa Vector{elt}
+        @test dimnames(nbra) == [name(cj)]
+        @test unnamed(zeros(elt, (), (cj,))) == zeros(elt, 4)
+        # An all-empty split has no map meaning, so it errors rather than recursing or
+        # silently building a scalar.
+        @test_throws MethodError randn(elt, (), ())
+        @test_throws MethodError zeros(elt, (), ())
 
         na = nameddims(randn(elt, 2, 3), (:i, :j))
         nb = nameddims(randn(elt, 3, 2), (:j, :i))
