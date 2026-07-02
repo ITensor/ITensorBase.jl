@@ -1,11 +1,12 @@
-using ITensorBase:
-    ITensorBase, dimnames, inds, namedoneto, replacedimnames, uniquename, unname, unnamed
+using ITensorBase: ITensorBase, Index, dimnames, inds, name, namedoneto, prime,
+    replacedimnames, uniquename, unname, unnamed
 using LinearAlgebra: LinearAlgebra, norm
 using MatrixAlgebraKit: left_null, left_orth, left_polar, lq_compact, lq_full, qr_compact,
     qr_full, right_null, right_orth, right_polar, svd_compact, svd_trunc
 using StableRNGs: StableRNG
 using TensorAlgebra.MatrixAlgebra: gram_eigh_full, gram_eigh_full_with_pinv
-using TensorAlgebra: TensorAlgebra, contract, matricize, unmatricize
+using TensorAlgebra:
+    TensorAlgebra, checked_project, contract, matricize, project, unmatricize
 using Test: @test, @test_broken, @testset
 
 @testset "TensorAlgebra (eltype=$(elt))" for elt in
@@ -155,5 +156,25 @@ using Test: @test, @test_broken, @testset
             YXmat = unname(Y * X_fresh, (rank_name, fresh_rank))
             @test YXmat ≈ LinearAlgebra.I(size(YXmat, 1))
         end
+    end
+    @testset "project" begin
+        i = Index(2)
+        Sz = elt[0.5 0; 0 -0.5]
+        # the three-argument form builds an operator from the codomain/domain split
+        top = project(Sz, (prime(i),), (i,))
+        @test eltype(top) === elt
+        @test Set(dimnames(top)) == Set(name.((prime(i), i)))
+        @test unname(top, (prime(i), i)) == Sz
+        # `checked_project` accepts the (for dense, always exact) projection
+        @test unname(checked_project(Sz, (prime(i),), (i,)), (prime(i), i)) == Sz
+        # the two-argument form builds a state (empty domain)
+        v = elt[1, 0]
+        s = project(v, (i,))
+        @test dimnames(s) == [name(i)]
+        @test unname(s, (i,)) == v
+        # the empty-codomain form builds an all-domain tensor (mirror of the state)
+        bra = project(v, (), (i,))
+        @test dimnames(bra) == [name(i)]
+        @test unname(bra, (i,)) == v
     end
 end
