@@ -513,6 +513,20 @@ end
 # Projection into a symmetry-restricted named tensor.
 #
 
+# Shared implementation: strip to `a`'s axes, lower to the TensorAlgebra hook, and reattach the
+# names. The dispatch entries below feed this from either a codomain/domain split or a flat list
+# (an empty domain). Two split entries per function read the index type from whichever side is
+# non-empty (an empty codomain is the all-domain case, the mirror of the empty-domain state), so
+# neither an empty codomain nor an empty domain falls through to the unnamed-axis generic.
+function project_nameddims(a, codomain_inds, domain_inds)
+    raw = TA.project(a, unnamed.(codomain_inds), unnamed.(domain_inds))
+    return nameddims(raw, (name.(codomain_inds)..., name.(domain_inds)...))
+end
+function checked_project_nameddims(a, codomain_inds, domain_inds; kwargs...)
+    raw = TA.checked_project(a, unnamed.(codomain_inds), unnamed.(domain_inds); kwargs...)
+    return nameddims(raw, (name.(codomain_inds)..., name.(domain_inds)...))
+end
+
 """
     TensorAlgebra.project(a::AbstractArray, codomain_inds, domain_inds) -> t
     TensorAlgebra.project(a::AbstractArray, inds) -> t
@@ -533,12 +547,17 @@ function TA.project(
         codomain_inds::Tuple{NamedUnitRange, Vararg{NamedUnitRange}},
         domain_inds::Tuple{Vararg{NamedUnitRange}}
     )
-    raw = TA.project(a, unnamed.(codomain_inds), unnamed.(domain_inds))
-    return nameddims(raw, (name.(codomain_inds)..., name.(domain_inds)...))
+    return project_nameddims(a, codomain_inds, domain_inds)
+end
+function TA.project(
+        a::AbstractArray,
+        codomain_inds::Tuple{},
+        domain_inds::Tuple{NamedUnitRange, Vararg{NamedUnitRange}}
+    )
+    return project_nameddims(a, codomain_inds, domain_inds)
 end
 function TA.project(a::AbstractArray, inds::Tuple{NamedUnitRange, Vararg{NamedUnitRange}})
-    raw = TA.project(a, unnamed.(inds))
-    return nameddims(raw, name.(inds))
+    return project_nameddims(a, inds, ())
 end
 
 function TA.checked_project(
@@ -546,12 +565,17 @@ function TA.checked_project(
         codomain_inds::Tuple{NamedUnitRange, Vararg{NamedUnitRange}},
         domain_inds::Tuple{Vararg{NamedUnitRange}}; kwargs...
     )
-    raw = TA.checked_project(a, unnamed.(codomain_inds), unnamed.(domain_inds); kwargs...)
-    return nameddims(raw, (name.(codomain_inds)..., name.(domain_inds)...))
+    return checked_project_nameddims(a, codomain_inds, domain_inds; kwargs...)
+end
+function TA.checked_project(
+        a::AbstractArray,
+        codomain_inds::Tuple{},
+        domain_inds::Tuple{NamedUnitRange, Vararg{NamedUnitRange}}; kwargs...
+    )
+    return checked_project_nameddims(a, codomain_inds, domain_inds; kwargs...)
 end
 function TA.checked_project(
         a::AbstractArray, inds::Tuple{NamedUnitRange, Vararg{NamedUnitRange}}; kwargs...
     )
-    raw = TA.checked_project(a, unnamed.(inds); kwargs...)
-    return nameddims(raw, name.(inds))
+    return checked_project_nameddims(a, inds, (); kwargs...)
 end

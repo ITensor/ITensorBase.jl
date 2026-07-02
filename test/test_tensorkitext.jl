@@ -94,5 +94,11 @@ using Test: @test, @test_throws, @testset
         @test unnamed(pv) isa AbstractTensorMap
         @test norm(unnamed(pv)) ≈ 1
         @test norm(unnamed(project(elt[0, 1], (w,)))) == 0
+
+        # the empty-codomain form builds an all-domain `TensorMap` (the mirror case)
+        cobra = project(elt[1, 0], (), (w,))
+        @test unnamed(cobra) isa AbstractTensorMap
+        @test space(unnamed(cobra)) == (one(W) ← W)
+        @test Set(dimnames(cobra)) == Set((name(w),))
     end
 end

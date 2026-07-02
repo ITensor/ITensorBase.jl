@@ -172,5 +172,9 @@ using Test: @test, @test_broken, @testset
         s = project(v, (i,))
         @test dimnames(s) == [name(i)]
         @test unname(s, (i,)) == v
+        # the empty-codomain form builds an all-domain tensor (mirror of the state)
+        bra = project(v, (), (i,))
+        @test dimnames(bra) == [name(i)]
+        @test unname(bra, (i,)) == v
     end
 end
