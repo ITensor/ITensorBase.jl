@@ -257,6 +257,18 @@ end
         na′ = aligneddims(na, (j, i))
         @test unnamed(na′) isa PermutedDimsArray{elt}
         @test a == permutedims(unnamed(na′), (2, 1))
+        # The map form of `aligndims` takes a codomain and a domain tuple. A dense backend
+        # ignores the split and stores the reordered result flat, matching the flat form.
+        na′ = aligndims(na, (j,), (i,))
+        @test unnamed(na′) isa Matrix{elt}
+        @test a == permutedims(unnamed(na′), (2, 1))
+        # Two-tuple `randn`/`zeros` take a codomain and a domain index tuple; a dense backend
+        # ignores the split and stores flat, named by the codomain then the domain.
+        ci, cj = namedoneto(3, "i"), namedoneto(4, "j")
+        nab = randn(elt, (ci,), (cj,))
+        @test unnamed(nab) isa Matrix{elt}
+        @test dimnames(nab) == [name(ci), name(cj)]
+        @test unnamed(zeros(elt, (ci,), (cj,))) == zeros(elt, 3, 4)
 
         na = nameddims(randn(elt, 2, 3), (:i, :j))
         nb = nameddims(randn(elt, 3, 2), (:j, :i))

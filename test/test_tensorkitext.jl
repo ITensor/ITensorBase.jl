@@ -1,8 +1,8 @@
-using ITensorBase: ITensorBase, Index, dimnames, name, prime, unnamed
+using ITensorBase: ITensorBase, Index, aligndims, dimnames, name, prime, unnamed
 using LinearAlgebra: norm
 using MatrixAlgebraKit: qr_compact, svd_compact
 using StableRNGs: StableRNG
-using TensorAlgebra: checked_project, project
+using TensorAlgebra: TensorAlgebra, checked_project, project
 using TensorKit: TensorKit, @tensor, AbstractTensorMap, SU2Irrep, U1Irrep, Vect, dim, dual,
     scalar, space, ←, ⊗
 using Test: @test, @test_throws, @testset
@@ -68,6 +68,33 @@ using Test: @test, @test_throws, @testset
         @test sca((u * s * v) * w) ≈ sca(a3 * w)
         q, r = qr_compact(a3, (i,), (j, k))
         @test sca((q * r) * w) ≈ sca(a3 * w)
+
+        # Map-shaped construction forwards the codomain/domain split to the `TensorMap`:
+        # `randn((i,), (j,))` stores a `Vi ← Vj` map rather than flattening all-codomain. The
+        # domain index reads back with its own space, so externally the tensor is normal.
+        m = randn(rng, elt, (i,), (j,))
+        @test unnamed(m) isa AbstractTensorMap
+        @test space(unnamed(m)) == (Vi ← dual(Vj))
+        @test space(unnamed(m), 1) == Vi
+        @test space(unnamed(m), 2) == Vj
+        @test unnamed(rand(rng, elt, (i,), (j,))) isa AbstractTensorMap
+        @test norm(unnamed(zeros(elt, (i,), (j,)))) == 0
+        # The friendly forms agree with the underlying `TensorAlgebra` map hooks.
+        @test space(unnamed(TensorAlgebra.randn_map(elt, (i, j), (k,)))) ==
+            space(unnamed(randn(elt, (i, j), (k,))))
+
+        # `aligndims` reorders a `TensorMap`-backed tensor. The flat form gives an all-codomain
+        # result, the map form re-expresses the requested codomain/domain split; both keep each
+        # index's own space.
+        mf = aligndims(m, (j, i))
+        @test dimnames(mf) == [name(j), name(i)]
+        @test space(unnamed(mf), 1) == Vj
+        @test space(unnamed(mf), 2) == Vi
+        md = aligndims(m, (j,), (i,))
+        @test dimnames(md) == [name(j), name(i)]
+        @test space(unnamed(md)) == (Vj ← dual(Vi))
+        @test space(unnamed(md), 1) == Vj
+        @test space(unnamed(md), 2) == Vi
     end
 
     # `project` builds a `TensorMap`-backed operator/state from a dense basis matrix: the index

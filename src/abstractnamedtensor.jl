@@ -944,7 +944,32 @@ function aligndims(a::AbstractNamedTensor, dims)
             "Dimension name mismatch $(dimnames(a)), $(new_dimnames)."
         )
     )
-    return nameddims(permutedims(unnamed(a), perm), new_dimnames)
+    return nameddims(TensorAlgebra.permutedims(unnamed(a), perm), new_dimnames)
+end
+
+"""
+    aligndims(a::AbstractNamedTensor, codomain, domain)
+
+Reorder the dimensions of `a` into `(codomain..., domain...)`, matched by name, and forward
+the codomain/domain split to the underlying storage. Like the two-argument form, the result
+has the same data and dimension names as `a`, and a `NameMismatch` is thrown if
+`(codomain..., domain...)` is not a permutation of `a`'s dimension names. A storage backend
+that supports a bipartition (such as a TensorKit `TensorMap`) uses it, while a dense backend
+stores the result flat.
+"""
+function aligndims(a::AbstractNamedTensor, codomain, domain)
+    new_dimnames = (name.(codomain)..., name.(domain)...)
+    perm = Tuple(getperm(dimnames(a), new_dimnames))
+    isperm(perm) || throw(
+        NameMismatch(
+            "Dimension name mismatch $(dimnames(a)), $(new_dimnames)."
+        )
+    )
+    perm_codomain = perm[1:length(codomain)]
+    perm_domain = perm[(length(codomain) + 1):end]
+    return nameddims(
+        TensorAlgebra.permutedims(unnamed(a), perm_codomain, perm_domain), new_dimnames
+    )
 end
 
 """
@@ -1050,6 +1075,65 @@ for f in [:zeros, :ones], dimtype in [:NamedInteger, :NamedUnitRange]
         Base.$f(dims::Tuple{$dimtype, Vararg{$dimtype}}) = $f(default_eltype(), dims)
         Base.$f(dim1::$dimtype, dims::Vararg{$dimtype}) = $f((dim1, dims...))
     end
+end
+# Map-shaped construction takes a codomain and a domain index tuple and forwards the split
+# down to `TensorAlgebra`'s map constructors: a `TensorMap` backend stores it as a
+# `codomain ← domain` map, a dense backend stores flat. The result is named with the codomain
+# names followed by the domain names. The `rand`/`randn`/`zeros` two-tuple forms
+# (`randn((i,), (j,))`) forward to these. The domain spaces are conjugated on the way down
+# because every backend dualizes the domain once (a `TensorMap` stores its domain dual, the
+# dense/graded fallback conjugates it), so each domain index reads back as its own space.
+for f in [:rand, :randn]
+    f_map = Symbol(f, :_map)
+    @eval begin
+        function TensorAlgebra.$f_map(
+                rng::AbstractRNG, elt::Type{<:Number},
+                codomain::Tuple{Vararg{NamedUnitRange}},
+                domain::Tuple{Vararg{NamedUnitRange}}
+            )
+            a = TensorAlgebra.$f_map(
+                rng, elt, unnamed.(codomain), conj.(unnamed.(domain))
+            )
+            return a[Name.(name.((codomain..., domain...)))...]
+        end
+        function Base.$f(
+                codomain::Tuple{Vararg{NamedUnitRange}},
+                domain::Tuple{Vararg{NamedUnitRange}}
+            )
+            return TensorAlgebra.$f_map(codomain, domain)
+        end
+        function Base.$f(
+                elt::Type{<:Number}, codomain::Tuple{Vararg{NamedUnitRange}},
+                domain::Tuple{Vararg{NamedUnitRange}}
+            )
+            return TensorAlgebra.$f_map(elt, codomain, domain)
+        end
+        function Base.$f(
+                rng::AbstractRNG, elt::Type{<:Number},
+                codomain::Tuple{Vararg{NamedUnitRange}},
+                domain::Tuple{Vararg{NamedUnitRange}}
+            )
+            return TensorAlgebra.$f_map(rng, elt, codomain, domain)
+        end
+    end
+end
+function TensorAlgebra.zeros_map(
+        elt::Type{<:Number}, codomain::Tuple{Vararg{NamedUnitRange}},
+        domain::Tuple{Vararg{NamedUnitRange}}
+    )
+    a = TensorAlgebra.zeros_map(elt, unnamed.(codomain), conj.(unnamed.(domain)))
+    return a[Name.(name.((codomain..., domain...)))...]
+end
+function Base.zeros(
+        codomain::Tuple{Vararg{NamedUnitRange}}, domain::Tuple{Vararg{NamedUnitRange}}
+    )
+    return TensorAlgebra.zeros_map(codomain, domain)
+end
+function Base.zeros(
+        elt::Type{<:Number}, codomain::Tuple{Vararg{NamedUnitRange}},
+        domain::Tuple{Vararg{NamedUnitRange}}
+    )
+    return TensorAlgebra.zeros_map(elt, codomain, domain)
 end
 for dimtype in [:NamedInteger, :NamedUnitRange]
     @eval begin
