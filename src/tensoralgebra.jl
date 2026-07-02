@@ -508,3 +508,50 @@ for f in MATRIX_FUNCTIONS
         end
     end
 end
+
+#
+# Projection into a symmetry-restricted named tensor.
+#
+
+"""
+    TensorAlgebra.project(a::AbstractArray, codomain_inds, domain_inds) -> t
+    TensorAlgebra.project(a::AbstractArray, inds) -> t
+
+Build a named tensor from the dense array `a` by projecting it into the
+symmetry-restricted space described by the indices. The three-argument form
+takes an explicit codomain/domain split (an operator); the two-argument form
+takes a flat list of indices (a state, i.e. an empty domain). The index axes
+select the backend: dense ranges give an `Array`, graded ranges a block-sparse
+array, and TensorKit spaces a `TensorMap`. `a` is indexed positionally in the
+order `(codomain_inds..., domain_inds...)`.
+
+See [`TensorAlgebra.checked_project`](@ref) for a version that verifies nothing
+outside the symmetry-allowed blocks was discarded.
+"""
+function TA.project(
+        a::AbstractArray,
+        codomain_inds::Tuple{NamedUnitRange, Vararg{NamedUnitRange}},
+        domain_inds::Tuple{Vararg{NamedUnitRange}}
+    )
+    raw = TA.project(a, unnamed.(codomain_inds), unnamed.(domain_inds))
+    return nameddims(raw, (name.(codomain_inds)..., name.(domain_inds)...))
+end
+function TA.project(a::AbstractArray, inds::Tuple{NamedUnitRange, Vararg{NamedUnitRange}})
+    raw = TA.project(a, unnamed.(inds))
+    return nameddims(raw, name.(inds))
+end
+
+function TA.checked_project(
+        a::AbstractArray,
+        codomain_inds::Tuple{NamedUnitRange, Vararg{NamedUnitRange}},
+        domain_inds::Tuple{Vararg{NamedUnitRange}}; kwargs...
+    )
+    raw = TA.checked_project(a, unnamed.(codomain_inds), unnamed.(domain_inds); kwargs...)
+    return nameddims(raw, (name.(codomain_inds)..., name.(domain_inds)...))
+end
+function TA.checked_project(
+        a::AbstractArray, inds::Tuple{NamedUnitRange, Vararg{NamedUnitRange}}; kwargs...
+    )
+    raw = TA.checked_project(a, unnamed.(inds); kwargs...)
+    return nameddims(raw, name.(inds))
+end

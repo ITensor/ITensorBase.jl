@@ -1,9 +1,10 @@
-using ITensorBase: ITensorBase, Index, dimnames, name, unnamed
+using ITensorBase: ITensorBase, Index, dimnames, name, prime, unnamed
 using LinearAlgebra: norm
 using MatrixAlgebraKit: qr_compact, svd_compact
 using StableRNGs: StableRNG
+using TensorAlgebra: checked_project, project
 using TensorKit: TensorKit, @tensor, AbstractTensorMap, SU2Irrep, U1Irrep, Vect, dim, dual,
-    scalar, space, ⊗
+    scalar, space, ←, ⊗
 using Test: @test, @test_throws, @testset
 
 # A native TensorKit space flows into `Index`, so an `ITensor` wraps a `TensorMap` directly.
@@ -67,5 +68,31 @@ using Test: @test, @test_throws, @testset
         @test sca((u * s * v) * w) ≈ sca(a3 * w)
         q, r = qr_compact(a3, (i,), (j, k))
         @test sca((q * r) * w) ≈ sca(a3 * w)
+    end
+
+    # `project` builds a `TensorMap`-backed operator/state from a dense basis matrix: the index
+    # spaces select the backend, so the same call that yields an `Array` on dense indices yields a
+    # `TensorMap` here, keeping only the symmetry-allowed blocks.
+    @testset "project" begin
+        W = Vect[U1Irrep](0 => 1, 1 => 1)
+        w = Index(W)
+        Sz = elt[0.5 0; 0 -0.5]
+        Sx = elt[0 0.5; 0.5 0]
+
+        top = project(Sz, (prime(w),), (w,))
+        @test unnamed(top) isa AbstractTensorMap
+        @test space(unnamed(top)) == (W ← W)
+        @test Set(dimnames(top)) == Set(name.((prime(w), w)))
+
+        # a charge-breaking operator is projected to zero; `checked_project` rejects the discard
+        @test norm(unnamed(project(Sx, (prime(w),), (w,)))) == 0
+        @test_throws InexactError checked_project(Sx, (prime(w),), (w,); atol = 0, rtol = 0)
+
+        # the two-argument form builds an all-codomain state; only the trivial-charge component
+        # of the dense vector survives
+        pv = project(elt[1, 0], (w,))
+        @test unnamed(pv) isa AbstractTensorMap
+        @test norm(unnamed(pv)) ≈ 1
+        @test norm(unnamed(project(elt[0, 1], (w,)))) == 0
     end
 end
