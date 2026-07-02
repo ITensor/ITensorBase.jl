@@ -157,9 +157,11 @@ end
 # Generic construction of named dims arrays.
 
 """
-    nameddims(a::AbstractArray, inds)
+    nameddims(a, dimnames)
 
-Construct a named dimensions array from an unnamed array `a` and named dimensions `inds`.
+Construct a named dimensions array from an unnamed parent `a` and named dimensions
+`dimnames`. The parent is usually an `AbstractArray`, but any object that a `NamedTensor`
+can wrap works (e.g. a TensorKit `TensorMap`).
 
 # Examples
 
@@ -173,17 +175,19 @@ named(Base.OneTo(2), :i)×named(Base.OneTo(3), :j) NamedTensor{Symbol}:
 
 See also [`NamedTensor`](@ref), [`named`](@ref).
 """
-function nameddims(a::AbstractArray, inds)
-    return NamedTensor(a, inds)
+function nameddims(a, dimnames)
+    return NamedTensor(a, dimnames)
 end
 
 #=
-    nameddimsof(a::AbstractNamedTensor, b::AbstractArray)
+    nameddimsof(a::AbstractNamedTensor, b)
 
 Construct a named dimensions array with the dimension names of `a`
-and with the data from `b`.
+and with the data from `b`. The parent `b` is usually an `AbstractArray` but may be any
+object a `NamedTensor` can wrap (e.g. a TensorKit `TensorMap`), so `copy`/`zero` of a
+named tensor round-trip through whatever backend `unnamed(a)` uses.
 =#
-function nameddimsof(a::AbstractNamedTensor, b::AbstractArray)
+function nameddimsof(a::AbstractNamedTensor, b)
     return nameddims(b, dimnames(a))
 end
 
@@ -283,8 +287,10 @@ function Base.AbstractArray{T, N}(a::AbstractNamedTensor) where {T, N}
     return dest
 end
 
+# Read the parent's axes through TensorAlgebra's interface (not `Base.axes`) so a non-array
+# backend like a TensorMap, whose axes are its native spaces, is supported.
 function Base.axes(a::AbstractNamedTensor)
-    return named.(axes(unnamed(a)), Tuple(dimnames(a)))
+    return named.(TensorAlgebra.axes(unnamed(a)), Tuple(dimnames(a)))
 end
 function Base.size(a::AbstractNamedTensor)
     return length.(axes(a))
@@ -300,8 +306,9 @@ Base.axes(a::AbstractNamedTensor, d) = axes(a)[d]
 # Circumvent issue when ndims isn't known at compile time.
 Base.size(a::AbstractNamedTensor, d) = size(a)[d]
 
-# Circumvent issue when ndims isn't known at compile time.
-Base.ndims(a::AbstractNamedTensor) = ndims(unnamed(a))
+# Circumvent issue when ndims isn't known at compile time. Read through TensorAlgebra's
+# interface (not `Base.ndims`) so a non-array backend like a TensorMap is supported.
+Base.ndims(a::AbstractNamedTensor) = TensorAlgebra.ndims(unnamed(a))
 
 # Circumvent issue when eltype isn't known at compile time.
 Base.eltype(a::AbstractNamedTensor) = eltype(unnamed(a))
@@ -777,13 +784,16 @@ function ArrayLayouts.sub_materialize(::NamedTensorLayout, a, ax)
     return copy(a)
 end
 
+# Attaching names to a bare parent is not slicing, so this accepts any parent a `NamedTensor`
+# can wrap (an `AbstractArray`, or a non-array backend like a TensorKit `TensorMap`). `Name` is
+# an ITensorBase-owned index type, so the generic parent is not type piracy. The `AbstractArray`
+# methods carry the identical body and exist only to disambiguate against
+# `Base.getindex`/`view(::AbstractArray, I...)`, which would otherwise tie with the generic ones.
 # TODO: Should this be a view?
-function Base.getindex(a::AbstractArray, I1::Name, Irest::Name...)
-    return copy(view(a, I1, Irest...))
-end
-function Base.view(a::AbstractArray, I1::Name, Irest::Name...)
-    return nameddims(a, name.((I1, Irest...)))
-end
+Base.getindex(a, I1::Name, Irest::Name...) = copy(view(a, I1, Irest...))
+Base.getindex(a::AbstractArray, I1::Name, Irest::Name...) = copy(view(a, I1, Irest...))
+Base.view(a, I1::Name, Irest::Name...) = nameddims(a, name.((I1, Irest...)))
+Base.view(a::AbstractArray, I1::Name, Irest::Name...) = nameddims(a, name.((I1, Irest...)))
 
 function Base.getindex(a::AbstractArray, I1::NamedViewIndex, Irest::NamedViewIndex...)
     return copy(view(a, I1, Irest...))
@@ -974,33 +984,20 @@ end
 
 using Random: Random, AbstractRNG
 
-# Like `Base.rand` but supports axes, not just size.
-# TODO: Come up with a better name for this.
-_rand(args...) = Base.rand(args...)
-function _rand(
-        rng::AbstractRNG, elt::Type, dims::Tuple{Base.OneTo{Int}, Vararg{Base.OneTo{Int}}}
-    )
-    return Base.rand(rng, elt, length.(dims))
-end
-
-# Like `Base.randn` but supports axes, not just size.
-# TODO: Come up with a better name for this.
-_randn(args...) = Base.randn(args...)
-function _randn(
-        rng::AbstractRNG, elt::Type, dims::Tuple{Base.OneTo{Int}, Vararg{Base.OneTo{Int}}}
-    )
-    return Base.randn(rng, elt, length.(dims))
-end
-
+# Cold-start `rand`/`randn`/`zeros` over axes build an all-codomain map (trivial domain) with
+# `TensorAlgebra`'s map constructors. They dispatch on the axis type, so dense `Base.OneTo`
+# axes build an `Array`, graded axes a block-sparse array, and TensorKit spaces a `TensorMap`,
+# without ITensorBase choosing a backend or pirating `Base.rand`/`randn`/`zeros`.
 default_eltype() = Float64
-for (f, f′) in [(:rand, :_rand), (:randn, :_randn)]
+for f in [:rand, :randn]
+    f_map = Symbol(f, :_map)
     @eval begin
         function Base.$f(
                 rng::AbstractRNG,
                 elt::Type{<:Number},
                 ax::Tuple{NamedUnitRange, Vararg{NamedUnitRange}}
             )
-            a = $f′(rng, elt, unnamed.(ax))
+            a = TensorAlgebra.$f_map(rng, elt, unnamed.(ax), ())
             return a[Name.(name.(ax))...]
         end
         function Base.$f(
@@ -1030,12 +1027,21 @@ for (f, f′) in [(:rand, :_rand), (:randn, :_randn)]
         end
     end
 end
+# `zeros` routes through `TensorAlgebra.zeros_map` (all-codomain map, trivial domain), which
+# dispatches on the axis type to build a dense `Array`, a block-sparse array, or a TensorKit
+# `TensorMap`. `ones` has no map hook (an all-ones symmetric tensor is not well-defined), so it
+# stays on `Base.ones`, which already accepts axes.
 for f in [:zeros, :ones], dimtype in [:NamedInteger, :NamedUnitRange]
+    parent = if f === :zeros
+        :(TensorAlgebra.zeros_map(elt, unnamed.(ax), ()))
+    else
+        :(Base.ones(elt, unnamed.(ax)))
+    end
     @eval begin
         function Base.$f(
                 elt::Type{<:Number}, ax::Tuple{$dimtype, Vararg{$dimtype}}
             )
-            a = $f(elt, unnamed.(ax))
+            a = $parent
             return a[Name.(name.(ax))...]
         end
         function Base.$f(elt::Type{<:Number}, dim1::$dimtype, dims::Vararg{$dimtype})

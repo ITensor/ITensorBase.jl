@@ -1,6 +1,6 @@
 name = "ITensorBase"
 uuid = "4795dd04-0d67-49bb-8f44-b89c448a1dc7"
-version = "0.10.4"
+version = "0.10.5"
 authors = ["ITensor developers <support@itensor.org> and contributors"]
 
 [workspace]
@@ -28,11 +28,13 @@ WrappedUnions = "325db55a-9c6c-5b90-b1a2-ec87e7a38c44"
 [weakdeps]
 Adapt = "79e6a3ab-5dfb-504d-930d-738a2a938a0e"
 Mooncake = "da2b9cff-9c12-43a0-ae48-6db2b0edb7d6"
+TensorKit = "07d1fe3e-3e46-537d-9eac-e9e13d0d4cec"
 TensorOperations = "6aa20fa7-93e2-5fca-9bc0-fbd0db3c71a2"
 
 [extensions]
 ITensorBaseAdaptExt = "Adapt"
 ITensorBaseMooncakeExt = "Mooncake"
+ITensorBaseTensorKitExt = "TensorKit"
 ITensorBaseTensorOperationsExt = "TensorOperations"
 
 [compat]
@@ -50,10 +52,11 @@ OrderedCollections = "1.6"
 Random = "1.10"
 SimpleTraits = "0.9.4"
 TensorAlgebra = "0.16"
+TensorKit = "0.17"
 TensorOperations = "5.3.1"
 TermInterface = "2"
 TupleTools = "1.6"
 UUIDs = "1.10"
-VectorInterface = "0.5, 0.6"
+VectorInterface = "0.5"
 WrappedUnions = "0.3"
 julia = "1.10"
