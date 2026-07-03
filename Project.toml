@@ -1,6 +1,6 @@
 name = "ITensorBase"
 uuid = "4795dd04-0d67-49bb-8f44-b89c448a1dc7"
-version = "0.10.8"
+version = "0.10.9"
 authors = ["ITensor developers <support@itensor.org> and contributors"]
 
 [workspace]
@@ -60,6 +60,6 @@ TensorOperations = "5.3.1"
 TermInterface = "2"
 TupleTools = "1.6"
 UUIDs = "1.10"
-VectorInterface = "0.5"
+VectorInterface = "0.5, 0.6"
 WrappedUnions = "0.3"
 julia = "1.10"
