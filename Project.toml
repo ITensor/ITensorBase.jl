@@ -1,6 +1,6 @@
 name = "ITensorBase"
 uuid = "4795dd04-0d67-49bb-8f44-b89c448a1dc7"
-version = "0.10.7"
+version = "0.10.8"
 authors = ["ITensor developers <support@itensor.org> and contributors"]
 
 [workspace]
@@ -54,7 +54,7 @@ OMEinsumContractionOrders = "1"
 OrderedCollections = "1.6"
 Random = "1.10"
 SimpleTraits = "0.9.4"
-TensorAlgebra = "0.16"
+TensorAlgebra = "0.16.5"
 TensorKit = "0.17"
 TensorOperations = "5.3.1"
 TermInterface = "2"

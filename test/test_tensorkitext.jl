@@ -1,8 +1,8 @@
-using ITensorBase: ITensorBase, Index, dimnames, name, prime, unnamed
+using ITensorBase: ITensorBase, Index, aligndims, dimnames, name, prime, unnamed
 using LinearAlgebra: norm
 using MatrixAlgebraKit: qr_compact, svd_compact
 using StableRNGs: StableRNG
-using TensorAlgebra: checked_project, project
+using TensorAlgebra: TensorAlgebra, checked_project, project
 using TensorKit: TensorKit, @tensor, AbstractTensorMap, SU2Irrep, U1Irrep, Vect, dim, dual,
     scalar, space, ←, ⊗
 using Test: @test, @test_throws, @testset
@@ -68,6 +68,49 @@ using Test: @test, @test_throws, @testset
         @test sca((u * s * v) * w) ≈ sca(a3 * w)
         q, r = qr_compact(a3, (i,), (j, k))
         @test sca((q * r) * w) ≈ sca(a3 * w)
+
+        # Map-shaped construction forwards the codomain/domain split to the `TensorMap`:
+        # `randn((i,), (j,))` stores a `Vi ← Vj` map rather than flattening all-codomain.
+        # Following the `similar_map` convention the domain appears dualized in the outward
+        # view, the same as a flat graded array would have axes `(Vi, dual(Vj))`.
+        m = randn(rng, elt, (i,), (j,))
+        @test unnamed(m) isa AbstractTensorMap
+        @test space(unnamed(m)) == (Vi ← Vj)
+        @test space(unnamed(m), 1) == Vi
+        @test space(unnamed(m), 2) == dual(Vj)
+        @test unnamed(rand(rng, elt, (i,), (j,))) isa AbstractTensorMap
+        @test norm(unnamed(zeros(elt, (i,), (j,)))) == 0
+        # The friendly forms agree with the underlying `TensorAlgebra` map hooks.
+        @test space(unnamed(TensorAlgebra.randn_map(elt, (i, j), (k,)))) ==
+            space(unnamed(randn(elt, (i, j), (k,))))
+        # An empty codomain builds an all-domain `TensorMap`, the mirror of an empty domain. The
+        # space type is read from the domain, since the empty codomain carries none. An all-empty
+        # split has no map meaning and errors rather than recursing.
+        cd = randn(rng, elt, (), (j,))
+        @test unnamed(cd) isa AbstractTensorMap
+        @test space(unnamed(cd)) == (one(Vj) ← Vj)
+        @test dimnames(cd) == [name(j)]
+        @test space(unnamed(zeros(elt, (), (j,)))) == (one(Vj) ← Vj)
+        @test_throws MethodError randn(rng, elt, (), ())
+
+        # `aligndims` reorders a `TensorMap`-backed tensor. The flat form gives an all-codomain
+        # result and the map form re-expresses the requested codomain/domain split, both
+        # carrying each index with its arrow to the new position.
+        mf = aligndims(m, (j, i))
+        @test dimnames(mf) == [name(j), name(i)]
+        @test space(unnamed(mf), 1) == dual(Vj)
+        @test space(unnamed(mf), 2) == Vi
+        md = aligndims(m, (j,), (i,))
+        @test dimnames(md) == [name(j), name(i)]
+        @test space(unnamed(md)) == (dual(Vj) ← dual(Vi))
+        @test space(unnamed(md), 1) == dual(Vj)
+        @test space(unnamed(md), 2) == Vi
+        # An empty codomain moves both indices into the domain, preserving the outward axes.
+        me = aligndims(m, (), (i, j))
+        @test dimnames(me) == [name(i), name(j)]
+        @test space(unnamed(me)) == (one(Vi) ← (dual(Vi) ⊗ Vj))
+        @test space(unnamed(me), 1) == Vi
+        @test space(unnamed(me), 2) == dual(Vj)
     end
 
     # `project` builds a `TensorMap`-backed operator/state from a dense basis matrix: the index
