@@ -2,7 +2,7 @@ using ITensorBase: ITensorBase, Index, aligndims, dimnames, name, prime, unnamed
 using LinearAlgebra: norm
 using MatrixAlgebraKit: qr_compact, svd_compact
 using StableRNGs: StableRNG
-using TensorAlgebra: TensorAlgebra, checked_project, project
+using TensorAlgebra: TensorAlgebra, project, unchecked_project
 using TensorKit: TensorKit, @tensor, AbstractTensorMap, SU2Irrep, U1Irrep, Vect, dim, dual,
     scalar, space, ←, ⊗
 using Test: @test, @test_throws, @testset
@@ -127,16 +127,17 @@ using Test: @test, @test_throws, @testset
         @test space(unnamed(top)) == (W ← W)
         @test Set(dimnames(top)) == Set(name.((prime(w), w)))
 
-        # a charge-breaking operator is projected to zero; `checked_project` rejects the discard
-        @test norm(unnamed(project(Sx, (prime(w),), (w,)))) == 0
-        @test_throws InexactError checked_project(Sx, (prime(w),), (w,); atol = 0, rtol = 0)
+        # a charge-breaking operator is projected to zero by `unchecked_project`; the checked
+        # `project` rejects the discard
+        @test norm(unnamed(unchecked_project(Sx, (prime(w),), (w,)))) == 0
+        @test_throws InexactError project(Sx, (prime(w),), (w,); atol = 0, rtol = 0)
 
         # the two-argument form builds an all-codomain state; only the trivial-charge component
         # of the dense vector survives
         pv = project(elt[1, 0], (w,))
         @test unnamed(pv) isa AbstractTensorMap
         @test norm(unnamed(pv)) ≈ 1
-        @test norm(unnamed(project(elt[0, 1], (w,)))) == 0
+        @test norm(unnamed(unchecked_project(elt[0, 1], (w,)))) == 0
 
         # the empty-codomain form builds an all-domain `TensorMap` (the mirror case)
         cobra = project(elt[1, 0], (), (w,))

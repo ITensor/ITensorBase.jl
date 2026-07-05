@@ -221,8 +221,10 @@ Base.CartesianIndices(a::AbstractNamedTensor) = CartesianIndices(axes(a))
 # Forward `conj` to the underlying so that graded axes flip their sector arrows.
 # The default `AbstractArray` fallback would broadcast `conj` over elements without
 # touching the axes, which silently changes the contraction convention for tensors
-# with graded (dual-tagged) axes.
-Base.conj(a::AbstractNamedTensor) = nameddimsof(a, conj(unnamed(a)))
+# with graded (dual-tagged) axes. Routed through `TensorAlgebra.conjugate` (not
+# `Base.conj`) so non-`AbstractArray` backends whose native conjugation is
+# `adjoint`-shaped (e.g. a `TensorMap`) can overload it without piracy.
+Base.conj(a::AbstractNamedTensor) = nameddimsof(a, TensorAlgebra.conjugate(unnamed(a)))
 
 # `LinearAlgebra.normalize` infers result eltype via `typeof(first(a)/nrm)`, which
 # scalar-indexes block-structured storage. `a / norm(a, p)` already preserves names.
@@ -399,14 +401,17 @@ end
 Base.axes(a::AbstractNamedTensor, dimname::Name) = axes(a, dim(a, dimname))
 Base.size(a::AbstractNamedTensor, dimname::Name) = size(a, dim(a, dimname))
 
+# Lowered through `TensorAlgebra.similar_map` (all-codomain, so identical to
+# `similar(parent, elt, axes)` for dense) so non-`AbstractArray` backends whose `similar`
+# wants a map-shaped space (e.g. a `TensorMap`) allocate through their own overload.
 function similar_nameddims(a::AbstractNamedTensor, elt::Type, ax)
     return nameddims(
-        similar(unnamed(a), elt, unnamed.(Tuple(ax))),
+        TensorAlgebra.similar_map(unnamed(a), elt, unnamed.(Tuple(ax)), ()),
         name.(ax)
     )
 end
 function similar_nameddims(a::AbstractArray, elt::Type, ax)
-    return nameddims(similar(a, elt, unnamed.(Tuple(ax))), name.(ax))
+    return nameddims(TensorAlgebra.similar_map(a, elt, unnamed.(Tuple(ax)), ()), name.(ax))
 end
 
 # Base.similar gets the eltype at compile time.
@@ -715,8 +720,10 @@ function Base.getindex(
     )
     return getindex(a, to_indices(a, (I1, Irest...))...)
 end
+# Routed through `TensorAlgebra.scalar` (default `a[]`) so non-`AbstractArray` backends
+# without trivial-sector scalar indexing (e.g. a `TensorMap`) can overload it.
 function Base.getindex(a::AbstractNamedTensor)
-    return getindex(unnamed(a))
+    return TensorAlgebra.scalar(unnamed(a))
 end
 # Linear indexing.
 function Base.getindex(a::AbstractNamedTensor, I::Int)
@@ -1191,9 +1198,10 @@ end
 # `sum` is routed to the underlying data rather than left to fall back on the
 # `mapreduce` method above because some array types (such as graded arrays) define
 # `Base.sum` directly but not the general `mapreduce`, so the unnamed `sum` is the
-# path that works for them.
+# path that works for them. Routed through `TensorAlgebra.sum` so non-iterable
+# backends (e.g. a `TensorMap`) can overload it.
 function Base.sum(a::AbstractNamedTensor; kwargs...)
-    return sum(unnamed(a); kwargs...)
+    return TensorAlgebra.sum(unnamed(a); kwargs...)
 end
 
 function LinearAlgebra.promote_leaf_eltypes(a::AbstractNamedTensor)
