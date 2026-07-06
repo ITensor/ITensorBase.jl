@@ -136,7 +136,7 @@ for f in [
             domain = name.(dimnames_domain)
             x_unnamed, y_unnamed =
                 TA.$f(unnamed(a), dimnames(a), codomain, domain; kwargs...)
-            name_x = uniquename(dimnames(a, 1))
+            name_x = uniquename(dimnametype(a))
             name_y = name_x
             dimnames_x = (codomain..., name_x)
             dimnames_y = (name_y, domain...)
@@ -175,8 +175,8 @@ for f in [:svd_compact, :svd_full, :svd_trunc]
             u_unnamed, s_unnamed, v_unnamed = TA.$f(
                 unnamed(a), dimnames(a), codomain, domain; kwargs...
             )
-            name_u = uniquename(dimnames(a, 1))
-            name_v = uniquename(dimnames(a, 1))
+            name_u = uniquename(dimnametype(a))
+            name_v = uniquename(dimnametype(a))
             dimnames_u = (codomain..., name_u)
             dimnames_s = (name_u, name_v)
             dimnames_v = (name_v, domain...)
@@ -249,8 +249,8 @@ for f in [:eigh_full, :eig_full, :eigh_trunc, :eig_trunc]
             d_unnamed, v_unnamed = TA.$f(
                 unnamed(a), dimnames(a), codomain, domain; kwargs...
             )
-            name_d = uniquename(dimnames(a, 1))
-            name_d′ = uniquename(name_d)
+            name_d = uniquename(dimnametype(a))
+            name_d′ = uniquename(dimnametype(a))
             name_v = name_d
             dimnames_d = (name_d′, name_d)
             dimnames_v = (domain..., name_v)
@@ -294,7 +294,7 @@ function left_null_nameddims(
     codomain = name.(dimnames_codomain)
     domain = name.(dimnames_domain)
     n_unnamed = TA.left_null(unnamed(a), dimnames(a), codomain, domain; kwargs...)
-    name_n = uniquename(dimnames(a, 1))
+    name_n = uniquename(dimnametype(a))
     dimnames_n = (codomain..., name_n)
     return nameddims(n_unnamed, dimnames_n)
 end
@@ -319,7 +319,7 @@ function right_null_nameddims(
     codomain = name.(dimnames_codomain)
     domain = name.(dimnames_domain)
     n_unnamed = TA.right_null(unnamed(a), dimnames(a), codomain, domain; kwargs...)
-    name_n = uniquename(dimnames(a, 1))
+    name_n = uniquename(dimnametype(a))
     dimnames_n = (name_n, domain...)
     return nameddims(n_unnamed, dimnames_n)
 end
@@ -376,7 +376,7 @@ function gram_eigh_full_nameddims(
     codomain = name.(dimnames_codomain)
     domain = name.(dimnames_domain)
     x_unnamed = TA.gram_eigh_full(unnamed(a), dimnames(a), codomain, domain; kwargs...)
-    name_x = uniquename(dimnames(a, 1))
+    name_x = uniquename(dimnametype(a))
     dimnames_x = (domain..., name_x)
     return nameddims(x_unnamed, dimnames_x)
 end
@@ -432,7 +432,7 @@ function gram_eigh_full_with_pinv_nameddims(
     x_unnamed, y_unnamed = TA.gram_eigh_full_with_pinv(
         unnamed(a), dimnames(a), codomain, domain; kwargs...
     )
-    name_xy = uniquename(dimnames(a, 1))
+    name_xy = uniquename(dimnametype(a))
     dimnames_x = (domain..., name_xy)
     dimnames_y = (name_xy, domain...)
     return nameddims(x_unnamed, dimnames_x), nameddims(y_unnamed, dimnames_y)
