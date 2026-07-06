@@ -6,9 +6,10 @@ using Random: AbstractRNG, RandomDevice
 
 Mint a fresh, unique name. Given an existing `name` (or a name `type`), produce a new
 name of the same flavor that is distinct from any other, for example to label a freshly
-generated dimension in a matrix factorization. Randomness defaults to OS entropy
-(`Random.RandomDevice`) so that minting a name neither perturbs nor is perturbed by the
-numerical RNG. Pass an explicit `rng` for a reproducible name.
+generated dimension in a matrix factorization. For decorated name types the fresh name
+is bare: an `IndexName` seed's tags and prime level are not inherited. Randomness
+defaults to OS entropy (`Random.RandomDevice`) so that minting a name neither perturbs
+nor is perturbed by the numerical RNG. Pass an explicit `rng` for a reproducible name.
 
 # Examples
 

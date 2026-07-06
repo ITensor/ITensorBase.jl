@@ -441,10 +441,12 @@ end
 """
     TensorAlgebra.MatrixAlgebra.sqrth_safe(a::AbstractNamedTensor, dimnames_codomain, dimnames_domain; kwargs...) -> p
 
-Square root of a named array `a`, interpreting it as an approximately
-Hermitian positive semi-definite linear map from the domain to the codomain
-dimension names. The result carries the same dimension names as `a`.
-Eigenvalues below tolerance are clamped to zero.
+Square root of a named array `a`, interpreting it as a Hermitian positive
+semi-definite linear map from the domain to the codomain dimension names.
+The result carries the same dimension names as `a`. Eigenvalues below
+tolerance are clamped to zero. The input must be Hermitian: project with
+`MatrixAlgebraKit.project_hermitian` first if it is Hermitian only up to
+numerical noise.
 
 `kwargs` are forwarded to `TensorAlgebra.sqrth_safe` on the underlying
 unnamed array (e.g. `atol`, `rtol`).
@@ -469,11 +471,13 @@ end
 """
     TensorAlgebra.MatrixAlgebra.invsqrth_safe(a::AbstractNamedTensor, dimnames_codomain, dimnames_domain; kwargs...) -> p
 
-Pseudo-inverse square root of a named array `a`, interpreting it as an
-approximately Hermitian positive semi-definite linear map from the domain
-to the codomain dimension names. The result carries the same dimension
-names as `a`. Eigenvalues below tolerance are clamped to zero
-(Moore-Penrose convention).
+Pseudo-inverse square root of a named array `a`, interpreting it as a
+Hermitian positive semi-definite linear map from the domain to the codomain
+dimension names. The result carries the same dimension names as `a`.
+Eigenvalues below tolerance are clamped to zero (Moore-Penrose convention).
+The input must be Hermitian: project with
+`MatrixAlgebraKit.project_hermitian` first if it is Hermitian only up to
+numerical noise.
 
 `kwargs` are forwarded to `TensorAlgebra.invsqrth_safe` on the underlying
 unnamed array (e.g. `atol`, `rtol`).

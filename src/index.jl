@@ -33,9 +33,10 @@ function IndexName(
     )
     return IndexName(id, to_tags(tags), plev)
 end
-function uniquename(rng::AbstractRNG, n::IndexName)
-    return setid(n, uuid4(rng))
-end
+# Minting from an existing name deliberately drops its tags and prime level (the generic
+# name-instance fallback routes through this type form): a fresh name (a factorization's
+# new bond, an operator's fresh codomain) has no relationship to the seed's decoration,
+# only to its name type.
 function uniquename(rng::AbstractRNG, ::Type{<:IndexName})
     return IndexName(rng)
 end
