@@ -454,19 +454,7 @@ unnamed array (e.g. `atol`, `rtol`).
 See also [`TensorAlgebra.MatrixAlgebra.invsqrth_safe`](@ref) and
 [`TensorAlgebra.MatrixAlgebra.sqrth_invsqrth_safe`](@ref).
 """
-function MA.sqrth_safe(
-        a::AbstractNamedTensor, dimnames_codomain, dimnames_domain; kwargs...
-    )
-    return sqrth_safe_nameddims(a, dimnames_codomain, dimnames_domain; kwargs...)
-end
-function sqrth_safe_nameddims(
-        a::AbstractNamedTensor, dimnames_codomain, dimnames_domain; kwargs...
-    )
-    codomain = name.(dimnames_codomain)
-    domain = name.(dimnames_domain)
-    p_unnamed = TA.sqrth_safe(unnamed(a), dimnames(a), codomain, domain; kwargs...)
-    return nameddims(p_unnamed, (codomain..., domain...))
-end
+MA.sqrth_safe
 
 """
     TensorAlgebra.MatrixAlgebra.invsqrth_safe(a::AbstractNamedTensor, dimnames_codomain, dimnames_domain; kwargs...) -> p
@@ -485,19 +473,7 @@ unnamed array (e.g. `atol`, `rtol`).
 See also [`TensorAlgebra.MatrixAlgebra.sqrth_safe`](@ref) and
 [`TensorAlgebra.MatrixAlgebra.sqrth_invsqrth_safe`](@ref).
 """
-function MA.invsqrth_safe(
-        a::AbstractNamedTensor, dimnames_codomain, dimnames_domain; kwargs...
-    )
-    return invsqrth_safe_nameddims(a, dimnames_codomain, dimnames_domain; kwargs...)
-end
-function invsqrth_safe_nameddims(
-        a::AbstractNamedTensor, dimnames_codomain, dimnames_domain; kwargs...
-    )
-    codomain = name.(dimnames_codomain)
-    domain = name.(dimnames_domain)
-    p_unnamed = TA.invsqrth_safe(unnamed(a), dimnames(a), codomain, domain; kwargs...)
-    return nameddims(p_unnamed, (codomain..., domain...))
-end
+MA.invsqrth_safe
 
 """
     TensorAlgebra.MatrixAlgebra.sqrth_invsqrth_safe(a::AbstractNamedTensor, dimnames_codomain, dimnames_domain; kwargs...) -> p, pinv
@@ -510,12 +486,31 @@ eigendecomposition. Both results carry the same dimension names as `a`.
 `kwargs` are forwarded to `TensorAlgebra.sqrth_invsqrth_safe` on the underlying
 unnamed array (e.g. `atol`, `rtol`).
 """
-function MA.sqrth_invsqrth_safe(
-        a::AbstractNamedTensor, dimnames_codomain, dimnames_domain; kwargs...
-    )
-    return sqrth_invsqrth_safe_nameddims(a, dimnames_codomain, dimnames_domain; kwargs...)
+MA.sqrth_invsqrth_safe
+
+"""
+    MatrixAlgebraKit.project_hermitian(a::AbstractNamedTensor, dimnames_codomain, dimnames_domain; kwargs...) -> h
+
+Hermitian part `(m + m') / 2` of a named array `a`, interpreting it as a
+linear map `m` from the domain to the codomain dimension names. The result
+carries the same dimension names as `a`.
+"""
+MAK.project_hermitian
+
+# The named forms above: lower to the corresponding tensor-level TensorAlgebra function on
+# the unnamed array and reattach the names, codomain first. `sqrth_invsqrth_safe` differs
+# only in fanning the names out over its result pair.
+for (M, f) in ((MA, :sqrth_safe), (MA, :invsqrth_safe), (MAK, :project_hermitian))
+    @eval function $M.$f(
+            a::AbstractNamedTensor, dimnames_codomain, dimnames_domain; kwargs...
+        )
+        codomain = name.(dimnames_codomain)
+        domain = name.(dimnames_domain)
+        p_unnamed = TA.$f(unnamed(a), dimnames(a), codomain, domain; kwargs...)
+        return nameddims(p_unnamed, (codomain..., domain...))
+    end
 end
-function sqrth_invsqrth_safe_nameddims(
+function MA.sqrth_invsqrth_safe(
         a::AbstractNamedTensor, dimnames_codomain, dimnames_domain; kwargs...
     )
     codomain = name.(dimnames_codomain)
@@ -525,27 +520,6 @@ function sqrth_invsqrth_safe_nameddims(
     )
     dimnames_p = (codomain..., domain...)
     return nameddims(p_unnamed, dimnames_p), nameddims(pinv_unnamed, dimnames_p)
-end
-
-"""
-    MatrixAlgebraKit.project_hermitian(a::AbstractNamedTensor, dimnames_codomain, dimnames_domain; kwargs...) -> h
-
-Hermitian part `(m + m') / 2` of a named array `a`, interpreting it as a
-linear map `m` from the domain to the codomain dimension names. The result
-carries the same dimension names as `a`.
-"""
-function MAK.project_hermitian(
-        a::AbstractNamedTensor, dimnames_codomain, dimnames_domain; kwargs...
-    )
-    return project_hermitian_nameddims(a, dimnames_codomain, dimnames_domain; kwargs...)
-end
-function project_hermitian_nameddims(
-        a::AbstractNamedTensor, dimnames_codomain, dimnames_domain; kwargs...
-    )
-    codomain = name.(dimnames_codomain)
-    domain = name.(dimnames_domain)
-    h_unnamed = TA.project_hermitian(unnamed(a), dimnames(a), codomain, domain; kwargs...)
-    return nameddims(h_unnamed, (codomain..., domain...))
 end
 
 """
