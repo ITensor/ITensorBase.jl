@@ -218,13 +218,14 @@ Base.zero(a::AbstractNamedTensor) = nameddimsof(a, zero(unnamed(a)))
 # `AbstractArray` fallback did through `axes`).
 Base.CartesianIndices(a::AbstractNamedTensor) = CartesianIndices(axes(a))
 
-# Forward `conj` to the underlying so that graded axes flip their sector arrows.
-# The default `AbstractArray` fallback would broadcast `conj` over elements without
-# touching the axes, which silently changes the contraction convention for tensors
-# with graded (dual-tagged) axes. Routed through `TensorAlgebra.conjugate` (not
-# `Base.conj`) so non-`AbstractArray` backends whose native conjugation is
-# `adjoint`-shaped (e.g. a `TensorMap`) can overload it without piracy.
-Base.conj(a::AbstractNamedTensor) = nameddimsof(a, TensorAlgebra.conjugate(unnamed(a)))
+# Eager conjugation reuses the linear-combination broadcast machinery: `conj.(a)` lowers to a
+# `ConjBroadcasted` leaf that the op primitives absorb (folding `conj` into their `op` flag) and
+# materializes into an all-codomain destination with dualized axes. This keeps one conjugation
+# mechanism shared by the lazy `conj.` path and eager `conj`, so a non-`AbstractArray` backend
+# (a `TensorMap`) needs no separate eager hook. The default `AbstractArray` `conj` would instead
+# map over elements without dualizing the axes, silently changing the contraction convention for
+# graded tensors.
+Base.conj(a::AbstractNamedTensor) = conj.(a)
 
 # `LinearAlgebra.normalize` infers result eltype via `typeof(first(a)/nrm)`, which
 # scalar-indexes block-structured storage. `a / norm(a, p)` already preserves names.

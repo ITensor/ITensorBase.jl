@@ -86,10 +86,17 @@ end
 # call re-specializes on the concrete runtime types and everything below is type-stable
 # (`eltype(lb)` is now inferrable, no runtime `promote_op`). Inlining the body into `copy`
 # instead costs one extra allocation per call.
+#
+# Allocate from `axes(lb)`, the flattened expression's axes, rather than the prototype's own:
+# an axis-changing operand (a `conj` leaf dualizes its axes) makes them differ, and the
+# destination must match the expression. All axes go in the codomain (empty domain), the
+# all-codomain output convention `@tensor` uses for an unbipartitioned left-hand side; on a
+# non-bipartitioned backend (a dense array) `similar_map` with an empty domain is a plain
+# `similar` over `axes(lb)`.
 function _copy_unnamed(bc_unnamed, prototype)
     lb = TA.tryflattenlinear(bc_unnamed)
     isnothing(lb) && return copy(bc_unnamed)
-    return copyto!(similar(prototype, eltype(lb)), lb)
+    return copyto!(TA.similar_map(prototype, eltype(lb), axes(lb), ()), lb)
 end
 
 # `Base.Broadcast.materialize!` otherwise reconstructs the broadcast over `axes(dest)` and
