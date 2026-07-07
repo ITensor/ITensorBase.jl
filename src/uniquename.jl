@@ -4,9 +4,12 @@ using Random: AbstractRNG, RandomDevice
     uniquename([rng,] name)
     uniquename([rng,] type::Type)
 
-Mint a fresh, unique name. Given an existing `name` (or a name `type`), produce a new
-name of the same flavor that is distinct from any other, for example to label a freshly
-generated dimension in a matrix factorization. Randomness defaults to OS entropy
+Mint a fresh, unique name. Given an existing `name`, produce a new name of the same flavor
+that is distinct from any other, for example to label a freshly generated dimension in a
+matrix factorization. Decoration carried by the seed is kept: `uniquename` on an `IndexName`
+keeps its tags and prime level, minting only a fresh id. Pass the name `type` instead of an
+instance to mint a bare name (for `IndexName`, no tags and prime level zero), for a fresh
+dimension that should not inherit any seed's decoration. Randomness defaults to OS entropy
 (`Random.RandomDevice`) so that minting a name neither perturbs nor is perturbed by the
 numerical RNG. Pass an explicit `rng` for a reproducible name.
 

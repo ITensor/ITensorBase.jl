@@ -6,7 +6,7 @@ using MatrixAlgebraKit: left_null, left_orth, left_polar, lq_compact, lq_full, q
 using StableRNGs: StableRNG
 using TensorAlgebra.MatrixAlgebra: gram_eigh_full, gram_eigh_full_with_pinv
 using TensorAlgebra:
-    TensorAlgebra, checked_project, contract, matricize, project, unmatricize
+    TensorAlgebra, contract, matricize, project, unchecked_project, unmatricize
 using Test: @test, @test_broken, @testset
 
 @testset "TensorAlgebra (eltype=$(elt))" for elt in
@@ -165,8 +165,8 @@ using Test: @test, @test_broken, @testset
         @test eltype(top) === elt
         @test Set(dimnames(top)) == Set(name.((prime(i), i)))
         @test unname(top, (prime(i), i)) == Sz
-        # `checked_project` accepts the (for dense, always exact) projection
-        @test unname(checked_project(Sz, (prime(i),), (i,)), (prime(i), i)) == Sz
+        # `unchecked_project` skips the (for dense, always exact) verification
+        @test unname(unchecked_project(Sz, (prime(i),), (i,)), (prime(i), i)) == Sz
         # the two-argument form builds a state (empty domain)
         v = elt[1, 0]
         s = project(v, (i,))

@@ -1,6 +1,6 @@
 using ITensorBase: ITensorBase, Index, IndexName, NamedTensor, dimnametype, gettag, hastag,
-    id, inds, mapinds, name, named, plev, prime, setplev, settag, tags, unname, unnamed,
-    unsettag
+    id, inds, mapinds, name, named, plev, prime, setplev, settag, tags, uniquename, unname,
+    unnamed, unsettag
 using Test: @test, @test_broken, @test_throws, @testset
 using UUIDs: UUID
 
@@ -46,6 +46,25 @@ using UUIDs: UUID
         @test tags(n)["X"] == "Y"
         @test gettag(n, "X") isa AbstractString
         @test ITensorBase.tags_stored(n)[:X] === :Y
+    end
+    @testset "uniquename" begin
+        i = settag(prime(Index(2)), "X", "Y")
+        # On an instance, only the id is fresh: tags and prime level are kept.
+        n = uniquename(name(i))
+        @test n != name(i)
+        @test id(n) != id(name(i))
+        @test plev(n) == plev(i)
+        @test tags(n) == tags(i)
+        # On the name type, a bare name: no tags, prime level zero.
+        m = uniquename(IndexName)
+        @test m isa IndexName
+        @test plev(m) == 0
+        @test isempty(tags(m))
+        # On an `Index`, recurse into the name and keep its decoration.
+        i′ = uniquename(i)
+        @test name(i′) != name(i)
+        @test plev(i′) == plev(i)
+        @test tags(i′) == tags(i)
     end
     @testset "Index basics" begin
         i = Index(2)

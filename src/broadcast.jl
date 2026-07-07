@@ -27,7 +27,7 @@ function broadcasted_unnamed(a::AbstractNamedTensor, names)
     # common case for the rest) needs no permutation, avoiding a `getperm` allocation and the
     # identity `permuteddims` wrapper. Skipping it makes a small add several times slower.
     dimnames(a) == names && return unnamed(a)
-    return _broadcast_permuteddims_to(unnamed(a), getperm(dimnames(a), names))
+    return _broadcast_permuteddims(unnamed(a), getperm(dimnames(a), names))
 end
 # Broadcasting-only alignment: unlike the public `unnamed(a, names)` (which returns a
 # `Base.PermutedDimsArray`, a full array), this wraps in `TensorAlgebra.PermutedDims`, which stores
@@ -35,10 +35,11 @@ end
 # from the runtime permutation and is a broadcast leaf the linear-combination fold absorbs via
 # `bipermutedimsopadd!`. `PermutedDims` has almost no array interface, so it stays confined to this
 # hot path and is never handed back to users. Function barrier: `unnamed(a)` is abstractly typed,
-# so dispatching on the concrete array makes `ndims` a compile-time constant for the inferrable
-# `ntuple(…, Val(ndims))` permutation.
-@noinline function _broadcast_permuteddims_to(array::AbstractArray, perm)
-    return TA.PermutedDims(array, ntuple(i -> perm[i], Val(ndims(array))))
+# so dispatching on the concrete array makes the rank a compile-time constant for the inferrable
+# `ntuple(…, Val(ndims))` permutation. The rank comes from `TensorAlgebra.ndims`, which also
+# covers non-`AbstractArray` backends like a `TensorMap`.
+@noinline function _broadcast_permuteddims(array, perm)
+    return TA.PermutedDims(array, ntuple(i -> perm[i], Val(TA.ndims(array))))
 end
 function broadcasted_unnamed(bc::Broadcasted, names)
     return broadcasted(bc.f, Base.Fix2(broadcasted_unnamed, names).(bc.args)...)
@@ -85,10 +86,17 @@ end
 # call re-specializes on the concrete runtime types and everything below is type-stable
 # (`eltype(lb)` is now inferrable, no runtime `promote_op`). Inlining the body into `copy`
 # instead costs one extra allocation per call.
+#
+# Allocate from `axes(lb)`, the flattened expression's axes, rather than the prototype's own:
+# an axis-changing operand (a `conj` leaf dualizes its axes) makes them differ, and the
+# destination must match the expression. All axes go in the codomain (empty domain), the
+# all-codomain output convention `@tensor` uses for an unbipartitioned left-hand side; on a
+# non-bipartitioned backend (a dense array) `similar_map` with an empty domain is a plain
+# `similar` over `axes(lb)`.
 function _copy_unnamed(bc_unnamed, prototype)
     lb = TA.tryflattenlinear(bc_unnamed)
     isnothing(lb) && return copy(bc_unnamed)
-    return copyto!(similar(prototype, eltype(lb)), lb)
+    return copyto!(TA.similar_map(prototype, eltype(lb), axes(lb), ()), lb)
 end
 
 # `Base.Broadcast.materialize!` otherwise reconstructs the broadcast over `axes(dest)` and

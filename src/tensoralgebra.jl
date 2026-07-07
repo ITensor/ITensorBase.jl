@@ -136,7 +136,7 @@ for f in [
             domain = name.(dimnames_domain)
             x_unnamed, y_unnamed =
                 TA.$f(unnamed(a), dimnames(a), codomain, domain; kwargs...)
-            name_x = uniquename(dimnames(a, 1))
+            name_x = uniquename(dimnametype(a))
             name_y = name_x
             dimnames_x = (codomain..., name_x)
             dimnames_y = (name_y, domain...)
@@ -175,8 +175,8 @@ for f in [:svd_compact, :svd_full, :svd_trunc]
             u_unnamed, s_unnamed, v_unnamed = TA.$f(
                 unnamed(a), dimnames(a), codomain, domain; kwargs...
             )
-            name_u = uniquename(dimnames(a, 1))
-            name_v = uniquename(dimnames(a, 1))
+            name_u = uniquename(dimnametype(a))
+            name_v = uniquename(dimnametype(a))
             dimnames_u = (codomain..., name_u)
             dimnames_s = (name_u, name_v)
             dimnames_v = (name_v, domain...)
@@ -249,8 +249,8 @@ for f in [:eigh_full, :eig_full, :eigh_trunc, :eig_trunc]
             d_unnamed, v_unnamed = TA.$f(
                 unnamed(a), dimnames(a), codomain, domain; kwargs...
             )
-            name_d = uniquename(dimnames(a, 1))
-            name_d′ = uniquename(name_d)
+            name_d = uniquename(dimnametype(a))
+            name_d′ = uniquename(dimnametype(a))
             name_v = name_d
             dimnames_d = (name_d′, name_d)
             dimnames_v = (domain..., name_v)
@@ -294,7 +294,7 @@ function left_null_nameddims(
     codomain = name.(dimnames_codomain)
     domain = name.(dimnames_domain)
     n_unnamed = TA.left_null(unnamed(a), dimnames(a), codomain, domain; kwargs...)
-    name_n = uniquename(dimnames(a, 1))
+    name_n = uniquename(dimnametype(a))
     dimnames_n = (codomain..., name_n)
     return nameddims(n_unnamed, dimnames_n)
 end
@@ -319,7 +319,7 @@ function right_null_nameddims(
     codomain = name.(dimnames_codomain)
     domain = name.(dimnames_domain)
     n_unnamed = TA.right_null(unnamed(a), dimnames(a), codomain, domain; kwargs...)
-    name_n = uniquename(dimnames(a, 1))
+    name_n = uniquename(dimnametype(a))
     dimnames_n = (name_n, domain...)
     return nameddims(n_unnamed, dimnames_n)
 end
@@ -376,7 +376,7 @@ function gram_eigh_full_nameddims(
     codomain = name.(dimnames_codomain)
     domain = name.(dimnames_domain)
     x_unnamed = TA.gram_eigh_full(unnamed(a), dimnames(a), codomain, domain; kwargs...)
-    name_x = uniquename(dimnames(a, 1))
+    name_x = uniquename(dimnametype(a))
     dimnames_x = (domain..., name_x)
     return nameddims(x_unnamed, dimnames_x)
 end
@@ -432,10 +432,94 @@ function gram_eigh_full_with_pinv_nameddims(
     x_unnamed, y_unnamed = TA.gram_eigh_full_with_pinv(
         unnamed(a), dimnames(a), codomain, domain; kwargs...
     )
-    name_xy = uniquename(dimnames(a, 1))
+    name_xy = uniquename(dimnametype(a))
     dimnames_x = (domain..., name_xy)
     dimnames_y = (name_xy, domain...)
     return nameddims(x_unnamed, dimnames_x), nameddims(y_unnamed, dimnames_y)
+end
+
+"""
+    TensorAlgebra.MatrixAlgebra.sqrth_safe(a::AbstractNamedTensor, dimnames_codomain, dimnames_domain; kwargs...) -> p
+
+Square root of a named array `a`, interpreting it as a Hermitian positive
+semi-definite linear map from the domain to the codomain dimension names.
+The result carries the same dimension names as `a`. Eigenvalues below
+tolerance are clamped to zero. The input must be Hermitian: project with
+`MatrixAlgebraKit.project_hermitian` first if it is Hermitian only up to
+numerical noise.
+
+`kwargs` are forwarded to `TensorAlgebra.sqrth_safe` on the underlying
+unnamed array (e.g. `atol`, `rtol`).
+
+See also [`TensorAlgebra.MatrixAlgebra.invsqrth_safe`](@ref) and
+[`TensorAlgebra.MatrixAlgebra.sqrth_invsqrth_safe`](@ref).
+"""
+MA.sqrth_safe
+
+"""
+    TensorAlgebra.MatrixAlgebra.invsqrth_safe(a::AbstractNamedTensor, dimnames_codomain, dimnames_domain; kwargs...) -> p
+
+Pseudo-inverse square root of a named array `a`, interpreting it as a
+Hermitian positive semi-definite linear map from the domain to the codomain
+dimension names. The result carries the same dimension names as `a`.
+Eigenvalues below tolerance are clamped to zero (Moore-Penrose convention).
+The input must be Hermitian: project with
+`MatrixAlgebraKit.project_hermitian` first if it is Hermitian only up to
+numerical noise.
+
+`kwargs` are forwarded to `TensorAlgebra.invsqrth_safe` on the underlying
+unnamed array (e.g. `atol`, `rtol`).
+
+See also [`TensorAlgebra.MatrixAlgebra.sqrth_safe`](@ref) and
+[`TensorAlgebra.MatrixAlgebra.sqrth_invsqrth_safe`](@ref).
+"""
+MA.invsqrth_safe
+
+"""
+    TensorAlgebra.MatrixAlgebra.sqrth_invsqrth_safe(a::AbstractNamedTensor, dimnames_codomain, dimnames_domain; kwargs...) -> p, pinv
+
+Square root and pseudo-inverse square root of a named array `a` (see
+`TensorAlgebra.MatrixAlgebra.sqrth_safe` and
+`TensorAlgebra.MatrixAlgebra.invsqrth_safe`), from a single
+eigendecomposition. Both results carry the same dimension names as `a`.
+
+`kwargs` are forwarded to `TensorAlgebra.sqrth_invsqrth_safe` on the underlying
+unnamed array (e.g. `atol`, `rtol`).
+"""
+MA.sqrth_invsqrth_safe
+
+"""
+    MatrixAlgebraKit.project_hermitian(a::AbstractNamedTensor, dimnames_codomain, dimnames_domain; kwargs...) -> h
+
+Hermitian part `(m + m') / 2` of a named array `a`, interpreting it as a
+linear map `m` from the domain to the codomain dimension names. The result
+carries the same dimension names as `a`.
+"""
+MAK.project_hermitian
+
+# The named forms above: lower to the corresponding tensor-level TensorAlgebra function on
+# the unnamed array and reattach the names, codomain first. `sqrth_invsqrth_safe` differs
+# only in fanning the names out over its result pair.
+for (M, f) in ((MA, :sqrth_safe), (MA, :invsqrth_safe), (MAK, :project_hermitian))
+    @eval function $M.$f(
+            a::AbstractNamedTensor, dimnames_codomain, dimnames_domain; kwargs...
+        )
+        codomain = name.(dimnames_codomain)
+        domain = name.(dimnames_domain)
+        p_unnamed = TA.$f(unnamed(a), dimnames(a), codomain, domain; kwargs...)
+        return nameddims(p_unnamed, (codomain..., domain...))
+    end
+end
+function MA.sqrth_invsqrth_safe(
+        a::AbstractNamedTensor, dimnames_codomain, dimnames_domain; kwargs...
+    )
+    codomain = name.(dimnames_codomain)
+    domain = name.(dimnames_domain)
+    p_unnamed, pinv_unnamed = TA.sqrth_invsqrth_safe(
+        unnamed(a), dimnames(a), codomain, domain; kwargs...
+    )
+    dimnames_p = (codomain..., domain...)
+    return nameddims(p_unnamed, dimnames_p), nameddims(pinv_unnamed, dimnames_p)
 end
 
 """
@@ -513,69 +597,56 @@ end
 # Projection into a symmetry-restricted named tensor.
 #
 
-# Shared implementation: strip to `a`'s axes, lower to the TensorAlgebra hook, and reattach the
-# names. The dispatch entries below feed this from either a codomain/domain split or a flat list
-# (an empty domain). Two split entries per function read the index type from whichever side is
-# non-empty (an empty codomain is the all-domain case, the mirror of the empty-domain state), so
-# neither an empty codomain nor an empty domain falls through to the unnamed-axis generic.
-function project_nameddims(a, codomain_inds, domain_inds)
-    raw = TA.project(a, unnamed.(codomain_inds), unnamed.(domain_inds))
-    return nameddims(raw, (name.(codomain_inds)..., name.(domain_inds)...))
-end
-function checked_project_nameddims(a, codomain_inds, domain_inds; kwargs...)
-    raw = TA.checked_project(a, unnamed.(codomain_inds), unnamed.(domain_inds); kwargs...)
-    return nameddims(raw, (name.(codomain_inds)..., name.(domain_inds)...))
-end
-
 """
-    TensorAlgebra.project(a::AbstractArray, codomain_inds, domain_inds) -> t
-    TensorAlgebra.project(a::AbstractArray, inds) -> t
+    TensorAlgebra.project(a::AbstractArray, codomain_inds, domain_inds; kwargs...) -> t
+    TensorAlgebra.project(a::AbstractArray, inds; kwargs...) -> t
 
 Build a named tensor from the dense array `a` by projecting it into the
-symmetry-restricted space described by the indices. The three-argument form
-takes an explicit codomain/domain split (an operator); the two-argument form
-takes a flat list of indices (a state, i.e. an empty domain). The index axes
-select the backend: dense ranges give an `Array`, graded ranges a block-sparse
-array, and TensorKit spaces a `TensorMap`. `a` is indexed positionally in the
-order `(codomain_inds..., domain_inds...)`.
+symmetry-restricted space described by the indices, verifying that only a
+negligible component of `a` is discarded and throwing an `InexactError`
+otherwise (keyword arguments are forwarded to the `isapprox` tolerance
+check). The three-argument form takes an explicit codomain/domain split (an
+operator); the two-argument form takes a flat list of indices (a state, i.e.
+an empty domain). The index axes select the backend: dense ranges give an
+`Array`, graded ranges a block-sparse array, and TensorKit spaces a
+`TensorMap`. `a` is indexed positionally in the order
+`(codomain_inds..., domain_inds...)`.
 
-See `TensorAlgebra.checked_project` for a version that verifies nothing outside
-the symmetry-allowed blocks was discarded.
+`TensorAlgebra.tryproject` returns `nothing` instead of throwing, and
+`TensorAlgebra.unchecked_project` skips the verification.
 """
-function TA.project(
-        a::AbstractArray,
-        codomain_inds::Tuple{NamedUnitRange, Vararg{NamedUnitRange}},
-        domain_inds::Tuple{Vararg{NamedUnitRange}}
-    )
-    return project_nameddims(a, codomain_inds, domain_inds)
-end
-function TA.project(
-        a::AbstractArray,
-        codomain_inds::Tuple{},
-        domain_inds::Tuple{NamedUnitRange, Vararg{NamedUnitRange}}
-    )
-    return project_nameddims(a, codomain_inds, domain_inds)
-end
-function TA.project(a::AbstractArray, inds::Tuple{NamedUnitRange, Vararg{NamedUnitRange}})
-    return project_nameddims(a, inds, ())
-end
+TA.project
 
-function TA.checked_project(
-        a::AbstractArray,
-        codomain_inds::Tuple{NamedUnitRange, Vararg{NamedUnitRange}},
-        domain_inds::Tuple{Vararg{NamedUnitRange}}; kwargs...
-    )
-    return checked_project_nameddims(a, codomain_inds, domain_inds; kwargs...)
-end
-function TA.checked_project(
-        a::AbstractArray,
-        codomain_inds::Tuple{},
-        domain_inds::Tuple{NamedUnitRange, Vararg{NamedUnitRange}}; kwargs...
-    )
-    return checked_project_nameddims(a, codomain_inds, domain_inds; kwargs...)
-end
-function TA.checked_project(
-        a::AbstractArray, inds::Tuple{NamedUnitRange, Vararg{NamedUnitRange}}; kwargs...
-    )
-    return checked_project_nameddims(a, inds, (); kwargs...)
+# Strip to `a`'s axes, lower to the TensorAlgebra verb, and reattach the names (passing
+# through a `nothing` from `tryproject`). Two split entries per verb read the index type from
+# whichever side is non-empty (an empty codomain is the all-domain case, the mirror of the
+# empty-domain state), so neither an empty codomain nor an empty domain falls through to the
+# unnamed-axis generic; the flat (state) form forwards to the split form.
+for f in (:project, :tryproject, :unchecked_project)
+    @eval begin
+        function TA.$f(
+                a::AbstractArray,
+                codomain_inds::Tuple{NamedUnitRange, Vararg{NamedUnitRange}},
+                domain_inds::Tuple{Vararg{NamedUnitRange}}; kwargs...
+            )
+            raw = TA.$f(a, unnamed.(codomain_inds), unnamed.(domain_inds); kwargs...)
+            isnothing(raw) && return nothing
+            return nameddims(raw, (name.(codomain_inds)..., name.(domain_inds)...))
+        end
+        function TA.$f(
+                a::AbstractArray,
+                codomain_inds::Tuple{},
+                domain_inds::Tuple{NamedUnitRange, Vararg{NamedUnitRange}}; kwargs...
+            )
+            raw = TA.$f(a, (), unnamed.(domain_inds); kwargs...)
+            isnothing(raw) && return nothing
+            return nameddims(raw, name.(domain_inds))
+        end
+        function TA.$f(
+                a::AbstractArray, inds::Tuple{NamedUnitRange, Vararg{NamedUnitRange}};
+                kwargs...
+            )
+            return TA.$f(a, inds, (); kwargs...)
+        end
+    end
 end
