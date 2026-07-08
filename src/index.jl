@@ -125,11 +125,13 @@ end
 
 """
     prime(i)
+    prime(t::AbstractNamedTensor)
 
 Increment the prime level of an index or index name by one, returning a new index that
 is distinct from `i`. Priming is the usual way to make a second copy of an index that
 carries the same tags but is not contracted against the original. The inverse is
-[`noprime`](@ref), which resets the prime level to zero.
+[`noprime`](@ref), which resets the prime level to zero. Given a tensor, prime all of its
+indices.
 
 # Examples
 
@@ -149,9 +151,11 @@ function prime end
 
 """
     noprime(i)
+    noprime(t::AbstractNamedTensor)
 
 Reset the prime level of an index or index name to zero, returning a new index. This
-undoes any number of [`prime`](@ref) calls.
+undoes any number of [`prime`](@ref) calls. Given a tensor, reset the prime level of all of
+its indices.
 
 # Examples
 
@@ -166,8 +170,34 @@ See also [`prime`](@ref), [`Index`](@ref).
 """
 function noprime end
 
+"""
+    sim(i)
+    sim(t::AbstractNamedTensor)
+
+Return a "similar" index: a new index (or, given a tensor, a tensor with all of its indices
+replaced) carrying the same tags and prime level as `i` but a fresh unique identifier, so it
+is distinct from `i` and will not contract against it. This is the index-manipulation
+spelling of [`uniquename`](@ref) on an index.
+
+# Examples
+
+```jldoctest
+julia> i = Index(2);
+
+julia> sim(i) == i
+false
+
+julia> length(sim(i))
+2
+```
+
+See also [`uniquename`](@ref), [`prime`](@ref).
+"""
+function sim end
+
 prime(n::IndexName) = setplev(n, plev(n) + 1)
 noprime(n::IndexName) = setplev(n, 0)
+sim(n::IndexName) = uniquename(n)
 
 # Show a short prefix of the `UUID` id rather than the full 36-character string,
 # enough to disambiguate indices at a glance without dominating the output. A
@@ -250,6 +280,13 @@ unsettag(i::Index, tagname) = setname(i, unsettag(name(i), tagname))
 setplev(i::Index, plev) = setname(i, setplev(name(i), plev))
 prime(i::Index) = setname(i, prime(name(i)))
 noprime(i::Index) = setname(i, noprime(name(i)))
+sim(i::Index) = setname(i, sim(name(i)))
+
+# Whole-tensor index manipulation: relabel every index name-only via `mapinds`, leaving the
+# data and spaces untouched.
+prime(a::AbstractNamedTensor) = mapinds(prime, a)
+noprime(a::AbstractNamedTensor) = mapinds(noprime, a)
+sim(a::AbstractNamedTensor) = mapinds(sim, a)
 
 function primestring(plev)
     if plev < 0

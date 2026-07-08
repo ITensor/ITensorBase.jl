@@ -454,6 +454,24 @@ function Base.similar(
     )
     return similar_nameddims(a, elt, inds)
 end
+
+# Rank-0 (empty named axes): a scalar tensor on `a`'s backend, e.g. a backend-matched unit
+# for a product accumulator. Spelled out separately because the tuple forms above require at
+# least one `NamedUnitRange`.
+Base.similar(a::AbstractNamedTensor, inds::Tuple{}) = similar(a, eltype(a), inds)
+function Base.similar(a::AbstractNamedTensor, elt::Type, inds::Tuple{})
+    return similar_nameddims(a, elt, inds)
+end
+
+"""
+    one(a::AbstractNamedTensor) -> AbstractNamedTensor
+
+Return a rank-0 (scalar) tensor holding `one(scalartype(a))` on `a`'s backend. This is the
+multiplicative unit matching `a`'s element type and backend (dense, graded, `TensorMap`, …),
+useful as the seed of a product accumulator.
+"""
+Base.one(a::AbstractNamedTensor) = fill!(similar(a, ()), one(scalartype(a)))
+
 function setdimnames(a::AbstractNamedTensor, dimnames)
     return nameddims(unnamed(a), dimnames)
 end
@@ -498,18 +516,33 @@ function replacedimnames(f, a::AbstractNamedTensor)
 end
 mapdimnames(f, a::AbstractNamedTensor) = replacedimnames(f, a)
 
-# Replace over `axes` (a `Tuple`) rather than `inds` (a `Vector`): `replace` on a `Vector`
-# is homogeneous and would fail to convert a replacement index backed by a different range
-# type (e.g. `UnitRange` into a `OneTo`-backed vector), whereas a `Tuple` admits the mixed
-# element types. The result is splatted into `getindex`, so only the order matters.
+"""
+    replaceinds(a::AbstractNamedTensor, replacements::Pair...)
+    replaceinds(f, a::AbstractNamedTensor)
+
+Return a tensor with the same data as `a` but with its indices relabeled, a backend-agnostic
+synonym for [`replacedimnames`](@ref). This is a name-only relabel: it rewrites the index
+names and leaves the underlying space untouched (replacing the space instead would
+scalar-index a graded axis). The first form takes `old => new` pairs, relabeling matching
+indices and leaving the rest unchanged; the second replaces each index with `f(index)`.
+
+See also [`mapinds`](@ref), [`replacedimnames`](@ref).
+"""
 function replaceinds(a::AbstractNamedTensor, replacements::Pair...)
-    new_inds = replace(axes(a), replacements...)
-    return unnamed(a)[new_inds...]
+    return replacedimnames(a, replacements...)
 end
-function replaceinds(f, a::AbstractNamedTensor)
-    new_inds = replace(f, axes(a))
-    return unnamed(a)[new_inds...]
-end
+replaceinds(f, a::AbstractNamedTensor) = replacedimnames(f, a)
+
+"""
+    mapinds(f, a::AbstractNamedTensor)
+
+Return a tensor with the same data as `a` but with each of its indices replaced by
+`f(index)`, a name-only relabel that leaves the underlying space untouched. This is the
+whole-tensor index-map primitive behind [`prime`](@ref), [`noprime`](@ref), and
+[`sim`](@ref).
+
+See also [`replaceinds`](@ref).
+"""
 mapinds(f, a::AbstractNamedTensor) = replaceinds(f, a)
 
 # `Base.isempty(a::AbstractArray)` is defined as `length(a) == 0`,

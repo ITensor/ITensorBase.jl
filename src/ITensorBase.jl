@@ -2,8 +2,8 @@ module ITensorBase
 
 export AbstractNamedTensor, NamedTensor, AbstractITensor, ITensor, Index,
     NamedUnitRange, aligndims, aligneddims, apply, codomainnames, dimnames,
-    dimnametype, domainnames, inds, named, nameddims, noprime, operator, prime,
-    similar_operator, state, uniquename
+    dimnametype, domainnames, inds, mapinds, named, nameddims, noprime, operator,
+    prime, replaceinds, sim, similar_operator, state, uniquename
 using Compat: @compat
 @compat public @names
 @compat public IndexName, name, nametype, replacedimnames, setname, unnamed, unnamedtype

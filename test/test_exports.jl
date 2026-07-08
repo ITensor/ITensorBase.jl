@@ -6,8 +6,8 @@ using Test: @test, @testset
         :Index, :NamedUnitRange,
         :aligndims, :aligneddims, :apply, :codomainnames, :dimnames, :dimnametype,
         :domainnames,
-        :inds, :named, :nameddims, :noprime, :operator, :prime, :similar_operator,
-        :state, :uniquename,
+        :inds, :mapinds, :named, :nameddims, :noprime, :operator, :prime, :replaceinds,
+        :sim, :similar_operator, :state, :uniquename,
     ]
     publics = [
         :IndexName, :name, :nametype, :replacedimnames, :setname, :unnamed,

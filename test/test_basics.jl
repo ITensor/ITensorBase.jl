@@ -1,6 +1,6 @@
-using ITensorBase: ITensorBase, ITensor, Index, IndexName, NamedTensor, dimnametype, gettag,
-    hastag, id, inds, mapinds, name, named, plev, prime, setplev, settag, tags, uniquename,
-    unname, unnamed, unsettag
+using ITensorBase: ITensorBase, AbstractNamedTensor, ITensor, Index, IndexName, NamedTensor,
+    dimnametype, gettag, hastag, id, inds, mapinds, name, named, noprime, plev, prime,
+    replaceinds, setplev, settag, sim, tags, uniquename, unname, unnamed, unsettag
 using Test: @test, @test_broken, @test_throws, @testset
 using UUIDs: UUID
 
@@ -175,5 +175,61 @@ using UUIDs: UUID
         i = settag(Index(2), "X", "Y")
         @test sprint(show, "text/plain", i) ==
             "Index(length=2|id=$(first(string(id(i)), 8))|X=>Y)"
+    end
+    @testset "whole-tensor index manipulation" begin
+        elt = Float64
+        i, j = Index.((2, 3))
+        a = randn(elt, i, j)
+
+        # `prime`/`noprime` relabel every index name-only, leaving the data untouched.
+        a′ = prime(a)
+        @test unnamed(a′) == unnamed(a)
+        @test issetequal(inds(a′), (prime(i), prime(j)))
+        @test noprime(a′) == a
+        @test issetequal(inds(noprime(prime(a′))), (i, j))
+
+        # `replaceinds` is a name-only synonym for the pair-based relabel.
+        k, l = Index.((2, 3))
+        a_r = replaceinds(a, i => k, j => l)
+        @test unnamed(a_r) == unnamed(a)
+        @test issetequal(inds(a_r), (k, l))
+
+        # `sim` mints fresh ids, so no index of `sim(a)` matches an index of `a`, while the
+        # data, lengths, tags, and prime levels are preserved.
+        a_s = sim(a)
+        @test unnamed(a_s) == unnamed(a)
+        @test !any(in(inds(a)), inds(a_s))
+        @test issetequal(length.(inds(a_s)), length.(inds(a)))
+
+        i2 = settag(prime(Index(2)), "X", "Y")
+        @test sim(i2) != i2
+        @test plev(sim(i2)) == 1
+        @test gettag(sim(i2), "X") == "Y"
+        @test length(sim(i2)) == 2
+    end
+    @testset "rank-0 similar and one" begin
+        elt = Float64
+        i, j = Index.((2, 3))
+        a = randn(elt, i, j)
+
+        # `similar(a, ())` mints a scalar (0-dim) tensor on `a`'s backend and element type.
+        s = similar(a, ())
+        @test s isa AbstractNamedTensor
+        @test eltype(s) === elt
+        @test isempty(inds(s))
+        @test ndims(unnamed(s)) == 0
+        fill!(s, 1)
+        @test unnamed(s)[] == 1
+
+        s32 = similar(a, Float32, ())
+        @test eltype(s32) === Float32
+        @test isempty(inds(s32))
+
+        # `one(a)` is a rank-0 tensor holding `one(eltype(a))`.
+        o = one(a)
+        @test o isa AbstractNamedTensor
+        @test eltype(o) === elt
+        @test isempty(inds(o))
+        @test unnamed(o)[] == one(elt)
     end
 end
