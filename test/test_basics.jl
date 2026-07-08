@@ -232,4 +232,38 @@ using UUIDs: UUID
         @test isempty(inds(o))
         @test unnamed(o)[] == one(elt)
     end
+    @testset "name-based index-set algebra" begin
+        elt = Float64
+        i, j, k = Index.((2, 3, 4))
+        a = randn(elt, i, j)
+        b = randn(elt, j, k)
+
+        namesof(is) = name.(is)
+
+        @test namesof(commoninds(a, b)) == namesof([j])
+        @test namesof(uniqueinds(a, b)) == namesof([i])
+        @test namesof(unioninds(a, b)) == namesof([i, j, k])
+        @test namesof(noncommoninds(a, b)) == namesof([i, k])
+        @test hascommoninds(a, b)
+
+        @test name(commonind(a, b)) == name(j)
+        @test name(uniqueind(a, b)) == name(i)
+        @test name(trycommonind(a, b)) == name(j)
+        @test name(trynoncommonind(a, b)) == name(i)
+
+        # No shared index.
+        c = randn(elt, k)
+        @test isempty(commoninds(a, c))
+        @test !hascommoninds(a, c)
+        @test isnothing(trycommonind(a, c))
+
+        # `commonind`/`uniqueind` error unless there is exactly one; the `try*` forms
+        # return `nothing` instead.
+        d = randn(elt, i, j)
+        @test_throws ArgumentError commonind(a, d)
+        @test isnothing(trycommonind(a, d))
+        @test_throws ArgumentError commonind(a, c)
+        @test_throws ArgumentError uniqueind(a, c)
+        @test isnothing(trynoncommonind(a, c))
+    end
 end

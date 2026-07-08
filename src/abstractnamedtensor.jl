@@ -545,6 +545,132 @@ See also [`replaceinds`](@ref).
 """
 mapinds(f, a::AbstractNamedTensor) = replaceinds(f, a)
 
+# Name-based index-set algebra (the `commoninds`/etc. surface). Layered in three:
+# small order-preserving set ops on arbitrary collections, the same ops keyed by index
+# name, and the tensor-family functions built on top.
+
+# Small-collection set operations keyed by a transform `by` (elements compare equal when
+# `by(x) == by(y)`). These scan linearly rather than building `Set`s: Base's `Set`-based ops
+# hash, and hashing a whole `Index` can be expensive or fall back to iterating a graded axis.
+# The intersect/setdiff/union/symdiff forms return elements of the first argument as `Vector`s.
+function smallintersect(a, b; by = identity)
+    return (kb = Iterators.map(by, b); [x for x in a if by(x) ∈ kb])
+end
+function smallsetdiff(a, b; by = identity)
+    return (kb = Iterators.map(by, b); [x for x in a if by(x) ∉ kb])
+end
+smallunion(a, b; by = identity) = vcat(collect(a), smallsetdiff(b, a; by))
+smallsymdiff(a, b; by = identity) = vcat(smallsetdiff(a, b; by), smallsetdiff(b, a; by))
+smallisdisjoint(a, b; by = identity) = (kb = Iterators.map(by, b); !any(x -> by(x) ∈ kb, a))
+smallissubset(a, b; by = identity) = (kb = Iterators.map(by, b); all(x -> by(x) ∈ kb, a))
+smallissetequal(a, b; by = identity) = smallissubset(a, b; by) && smallissubset(b, a; by)
+
+# The small ops keyed by index name (`by = name`) rather than full `Index` equality. On a
+# graded axis a shared bond appears as an index on one tensor and its dual (`conj`) on the
+# other (same name, opposite arrow), so full-`Index` `==` misses it while the names match.
+# On the dense backend the two coincide.
+nameintersect(a, b) = smallintersect(a, b; by = name)
+namesetdiff(a, b) = smallsetdiff(a, b; by = name)
+nameunion(a, b) = smallunion(a, b; by = name)
+namesymdiff(a, b) = smallsymdiff(a, b; by = name)
+nameisdisjoint(a, b) = smallisdisjoint(a, b; by = name)
+nameissubset(a, b) = smallissubset(a, b; by = name)
+nameissetequal(a, b) = smallissetequal(a, b; by = name)
+
+"""
+    commoninds(a::AbstractNamedTensor, b::AbstractNamedTensor)
+
+The indices shared by name between `a` and `b`, as a `Vector` in the order they appear in `a`.
+
+See also [`commonind`](@ref), [`uniqueinds`](@ref), [`hascommoninds`](@ref).
+"""
+commoninds(a::AbstractNamedTensor, b::AbstractNamedTensor) = nameintersect(inds(a), inds(b))
+
+"""
+    uniqueinds(a::AbstractNamedTensor, b::AbstractNamedTensor)
+
+The indices of `a` that do not appear by name in `b`, as a `Vector` in the order they appear
+in `a`.
+
+See also [`uniqueind`](@ref), [`commoninds`](@ref), [`noncommoninds`](@ref).
+"""
+uniqueinds(a::AbstractNamedTensor, b::AbstractNamedTensor) = namesetdiff(inds(a), inds(b))
+
+"""
+    unioninds(a::AbstractNamedTensor, b::AbstractNamedTensor)
+
+The union by name of the indices of `a` and `b`, as a `Vector`: the indices of `a` followed
+by the indices of `b` not already present in `a`.
+
+See also [`commoninds`](@ref), [`noncommoninds`](@ref).
+"""
+unioninds(a::AbstractNamedTensor, b::AbstractNamedTensor) = nameunion(inds(a), inds(b))
+
+"""
+    noncommoninds(a::AbstractNamedTensor, b::AbstractNamedTensor)
+
+The indices not shared by name between `a` and `b` (the symmetric difference), as a `Vector`:
+the indices unique to `a` followed by those unique to `b`.
+
+See also [`uniqueinds`](@ref), [`commoninds`](@ref).
+"""
+function noncommoninds(a::AbstractNamedTensor, b::AbstractNamedTensor)
+    return namesymdiff(inds(a), inds(b))
+end
+
+"""
+    hascommoninds(a::AbstractNamedTensor, b::AbstractNamedTensor)
+
+Whether `a` and `b` share any index by name.
+
+See also [`commoninds`](@ref).
+"""
+function hascommoninds(a::AbstractNamedTensor, b::AbstractNamedTensor)
+    return !nameisdisjoint(inds(a), inds(b))
+end
+
+"""
+    commonind(a::AbstractNamedTensor, b::AbstractNamedTensor)
+
+The single index shared by name between `a` and `b`. Errors unless there is exactly one
+shared index. Use [`trycommonind`](@ref) to get `nothing` instead of an error.
+
+See also [`commoninds`](@ref), [`uniqueind`](@ref).
+"""
+commonind(a::AbstractNamedTensor, b::AbstractNamedTensor) = only(commoninds(a, b))
+
+"""
+    uniqueind(a::AbstractNamedTensor, b::AbstractNamedTensor)
+
+The single index of `a` that does not appear by name in `b`. Errors unless there is exactly
+one such index. Use [`trynoncommonind`](@ref) to get `nothing` instead of an error.
+
+See also [`uniqueinds`](@ref), [`commonind`](@ref).
+"""
+uniqueind(a::AbstractNamedTensor, b::AbstractNamedTensor) = only(uniqueinds(a, b))
+
+"""
+    trycommonind(a::AbstractNamedTensor, b::AbstractNamedTensor)
+
+The single index shared by name between `a` and `b`, or `nothing` if they share no index or
+more than one. The non-erroring counterpart of [`commonind`](@ref).
+"""
+function trycommonind(a::AbstractNamedTensor, b::AbstractNamedTensor)
+    cs = commoninds(a, b)
+    return length(cs) == 1 ? only(cs) : nothing
+end
+
+"""
+    trynoncommonind(a::AbstractNamedTensor, b::AbstractNamedTensor)
+
+The single index of `a` that does not appear by name in `b`, or `nothing` if there is no such
+index or more than one. The non-erroring counterpart of [`uniqueind`](@ref).
+"""
+function trynoncommonind(a::AbstractNamedTensor, b::AbstractNamedTensor)
+    us = uniqueinds(a, b)
+    return length(us) == 1 ? only(us) : nothing
+end
+
 # `Base.isempty(a::AbstractArray)` is defined as `length(a) == 0`,
 # which involves comparing a named integer to an unnamed integer
 # which isn't well defined.
