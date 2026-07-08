@@ -520,26 +520,26 @@ mapdimnames(f, a::AbstractNamedTensor) = replacedimnames(f, a)
     replaceinds(a::AbstractNamedTensor, replacements::Pair...)
     replaceinds(f, a::AbstractNamedTensor)
 
-Return a tensor with the same data as `a` but with its indices relabeled, a backend-agnostic
-synonym for [`replacedimnames`](@ref). This is a name-only relabel: it rewrites the index
-names and leaves the underlying space untouched (replacing the space instead would
-scalar-index a graded axis). The first form takes `old => new` pairs, relabeling matching
-indices and leaving the rest unchanged; the second replaces each index with `f(index)`.
+Return a tensor with the same data as `a` but with its indices relabeled. Unlike
+[`replacedimnames`](@ref), whose function `f` receives a dimension name, `replaceinds` works
+at the index level: the pair form takes `old => new` index pairs, and the function form
+relabels each index `i` using `f(i)`. Either way this is a name-only relabel, taking just the
+name of the replacement and leaving the underlying space untouched (replacing the space
+instead would scalar-index a graded axis). Pairs whose index is absent are ignored.
 
 See also [`mapinds`](@ref), [`replacedimnames`](@ref).
 """
 function replaceinds(a::AbstractNamedTensor, replacements::Pair...)
     return replacedimnames(a, replacements...)
 end
-replaceinds(f, a::AbstractNamedTensor) = replacedimnames(f, a)
+replaceinds(f, a::AbstractNamedTensor) = replaceinds(a, map(i -> i => f(i), inds(a))...)
 
 """
     mapinds(f, a::AbstractNamedTensor)
 
-Return a tensor with the same data as `a` but with each of its indices replaced by
-`f(index)`, a name-only relabel that leaves the underlying space untouched. This is the
-whole-tensor index-map primitive behind [`prime`](@ref), [`noprime`](@ref), and
-[`sim`](@ref).
+Return a tensor with the same data as `a` but with each index `i` relabeled using `f(i)`, a
+name-only relabel that leaves the underlying space untouched. This is the whole-tensor
+index-map primitive behind [`prime`](@ref), [`noprime`](@ref), and [`sim`](@ref).
 
 See also [`replaceinds`](@ref).
 """
