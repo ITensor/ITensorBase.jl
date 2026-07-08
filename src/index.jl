@@ -23,15 +23,15 @@ is the dimension-name type behind the legacy ITensor surface, where `Index` is
 `NamedUnitRange{IndexName}` and [`ITensor`](@ref) is `NamedTensor{IndexName}`.
 """
 struct IndexName <: AbstractName
-    id::UUID
+    uuid::UUID
     tags::SortedDict{Symbol, Symbol}
     plev::Int
 end
 function IndexName(
-        rng::AbstractRNG = RandomDevice(); id::UUID = uuid4(rng),
+        rng::AbstractRNG = RandomDevice(); uuid::UUID = uuid4(rng),
         tags = (), plev::Int = 0
     )
-    return IndexName(id, to_tags(tags), plev)
+    return IndexName(uuid, to_tags(tags), plev)
 end
 # `uniquename` on an existing `IndexName` keeps its tags and prime level, minting only a
 # fresh id (the legacy `sim`). The type form drops them: a factorization bond or a fresh
@@ -56,7 +56,7 @@ to_symbol_pair(p::Pair) = Symbol(first(p)) => Symbol(last(p))
 to_tags(ps::Pair...) = to_tags(ps)
 to_tags(tags) = SortedDict{Symbol, Symbol}(to_symbol_pair(p) for p in tags)
 
-id(n::IndexName) = getfield(n, :id)
+uuid(n::IndexName) = getfield(n, :uuid)
 
 # Internal: the stored tags as `Symbol => Symbol`, used by the hot comparison,
 # hashing, and display paths. `tags` is the public string-valued view of this.
@@ -80,27 +80,28 @@ end
 plev(n::IndexName) = getfield(n, :plev)
 
 function Base.:(==)(n1::IndexName, n2::IndexName)
-    return id(n1) == id(n2) && plev(n1) == plev(n2) && tags_stored(n1) == tags_stored(n2)
+    return uuid(n1) == uuid(n2) && plev(n1) == plev(n2) &&
+        tags_stored(n1) == tags_stored(n2)
 end
 function Base.isequal(n1::IndexName, n2::IndexName)
-    return isequal(id(n1), id(n2)) &&
+    return isequal(uuid(n1), uuid(n2)) &&
         isequal(plev(n1), plev(n2)) &&
         isequal(tags_stored(n1), tags_stored(n2))
 end
 function Base.isless(n1::IndexName, n2::IndexName)
-    t1 = (id(n1), plev(n1), keys(tags_stored(n1)), values(tags_stored(n1)))
-    t2 = (id(n2), plev(n2), keys(tags_stored(n2)), values(tags_stored(n2)))
+    t1 = (uuid(n1), plev(n1), keys(tags_stored(n1)), values(tags_stored(n1)))
+    t2 = (uuid(n2), plev(n2), keys(tags_stored(n2)), values(tags_stored(n2)))
     return isless(t1, t2)
 end
 function Base.hash(n::IndexName, h::UInt)
     h = hash(:IndexName, h)
-    h = hash(id(n), h)
+    h = hash(uuid(n), h)
     h = hash(plev(n), h)
     h = hash(tags_stored(n), h)
     return h
 end
 
-setid(n::IndexName, id) = @set n.id = id
+setuuid(n::IndexName, uuid) = @set n.uuid = uuid
 settags(n::IndexName, tags) = @set n.tags = tags
 setplev(n::IndexName, plev) = @set n.plev = plev
 
@@ -203,10 +204,10 @@ sim(n::IndexName) = uniquename(n)
 # enough to disambiguate indices at a glance without dominating the output. A
 # leading prefix (here the first hyphen-delimited group) is the usual short-id
 # convention, as in git short hashes and Docker short ids.
-shortid(id::UUID) = first(string(id), 8)
+shortid(uuid::UUID) = first(string(uuid), 8)
 
 function Base.show(io::IO, i::IndexName)
-    idstr = "id=$(shortid(id(i)))"
+    idstr = "id=$(shortid(uuid(i)))"
     tagsstr = !isempty(tags_stored(i)) ? "|$(tagsstring(tags_stored(i)))" : ""
     primestr = primestring(plev(i))
     str = "IndexName($(idstr)$(tagsstr))$(primestr)"
@@ -263,7 +264,7 @@ const ITensor = NamedTensor{IndexName}
 const ITensorOperator = NamedTensorOperator{IndexName}
 
 # TODO: Define for `NamedViewIndex`.
-id(i::Index) = id(name(i))
+uuid(i::Index) = uuid(name(i))
 tags_stored(i::Index) = tags_stored(name(i))
 tags(i::Index) = tags(name(i))
 plev(i::Index) = plev(name(i))
@@ -303,7 +304,7 @@ end
 
 function Base.show(io::IO, i::Index)
     lenstr = "length=$(length(i))"
-    idstr = "|id=$(shortid(id(i)))"
+    idstr = "|id=$(shortid(uuid(i)))"
     tagsstr = !isempty(tags_stored(i)) ? "|$(tagsstring(tags_stored(i)))" : ""
     primestr = primestring(plev(i))
     str = "Index($(lenstr)$(idstr)$(tagsstr))$(primestr)"

@@ -599,6 +599,39 @@ function one_nameddims(
     return nameddims(raw, (codomain..., domain...))
 end
 
+"""
+    id(elt::Type, codomain, domain) -> Id
+
+Construct a from-scratch identity-operator-shaped named tensor over the `codomain` and
+`domain` indices, with element type `elt`. The fused codomain and domain sizes must match.
+Unlike [`one`](@ref), which follows a prototype tensor, `id` needs only the indices and an
+element type, so it is the right primitive when no prototype is in hand. The index axes select
+the backend: dense ranges give a dense tensor, graded ranges a block-sparse one.
+
+# Examples
+
+```jldoctest
+julia> using ITensorBase: apply, id, namedoneto, operator
+
+julia> i, j, k, l = namedoneto.((2, 3, 2, 3), ("i", "j", "k", "l"));
+
+julia> Id = operator(id(Float64, (i, j), (k, l)), ("i", "j"), ("k", "l"));
+
+julia> v = randn(k, l);
+
+julia> apply(Id, v) ≈ v
+true
+```
+
+See also [`one`](@ref).
+"""
+function id(elt::Type, codomain, domain)
+    codomain, domain = Tuple(codomain), Tuple(domain)
+    m = Matrix{elt}(LA.I, prod(length, codomain), prod(length, domain))
+    axissizes = (length.(codomain)..., length.(domain)...)
+    return TA.project(reshape(m, axissizes), codomain, domain)
+end
+
 const MATRIX_FUNCTIONS = [
     :exp, :cis, :log, :sqrt, :cbrt, :cos, :sin, :tan, :csc, :sec, :cot, :cosh, :sinh,
     :tanh,

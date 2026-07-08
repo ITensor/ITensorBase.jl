@@ -1,27 +1,27 @@
 using ITensorBase: ITensorBase, AbstractNamedTensor, ITensor, Index, IndexName, NamedTensor,
     dimnametype, gettag, hastag, id, inds, mapinds, name, named, noprime, plev, prime,
-    replaceinds, setplev, settag, sim, tags, uniquename, unname, unnamed, unsettag
+    replaceinds, setplev, settag, sim, tags, uniquename, unname, unnamed, unsettag, uuid
 using Test: @test, @test_broken, @test_throws, @testset
 using UUIDs: UUID
 
 @testset "ITensorBase" begin
     @testset "IndexName" begin
-        n1 = IndexName(; id = UUID(0))
-        n2 = IndexName(; id = UUID(0))
+        n1 = IndexName(; uuid = UUID(0))
+        n2 = IndexName(; uuid = UUID(0))
         @test n1 == n2
         @test isequal(n1, n2)
         @test hash(n1) ≡ hash(n2)
 
-        n1 = IndexName(; id = UUID(0))
-        n2 = IndexName(; id = UUID(1))
+        n1 = IndexName(; uuid = UUID(0))
+        n2 = IndexName(; uuid = UUID(1))
         @test n1 ≠ n2
         @test !isequal(n1, n2)
         @test n1 < n2
         @test isless(n1, n2)
         @test hash(n1) ≠ hash(n2)
 
-        n1 = IndexName(; id = UUID(0), plev = 0)
-        n2 = IndexName(; id = UUID(0), plev = 1)
+        n1 = IndexName(; uuid = UUID(0), plev = 0)
+        n2 = IndexName(; uuid = UUID(0), plev = 1)
         @test n1 ≠ n2
         @test !isequal(n1, n2)
         @test n1 < n2
@@ -49,10 +49,10 @@ using UUIDs: UUID
     end
     @testset "uniquename" begin
         i = settag(prime(Index(2)), "X", "Y")
-        # On an instance, only the id is fresh: tags and prime level are kept.
+        # On an instance, only the uuid is fresh: tags and prime level are kept.
         n = uniquename(name(i))
         @test n != name(i)
-        @test id(n) != id(name(i))
+        @test uuid(n) != uuid(name(i))
         @test plev(n) == plev(i)
         @test tags(n) == tags(i)
         # On the name type, a bare name: no tags, prime level zero.
@@ -170,11 +170,11 @@ using UUIDs: UUID
     @testset "show" begin
         i = Index(2)
         @test sprint(show, "text/plain", i) ==
-            "Index(length=2|id=$(first(string(id(i)), 8)))"
+            "Index(length=2|id=$(first(string(uuid(i)), 8)))"
 
         i = settag(Index(2), "X", "Y")
         @test sprint(show, "text/plain", i) ==
-            "Index(length=2|id=$(first(string(id(i)), 8))|X=>Y)"
+            "Index(length=2|id=$(first(string(uuid(i)), 8))|X=>Y)"
     end
     @testset "whole-tensor index manipulation" begin
         elt = Float64

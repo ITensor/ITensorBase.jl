@@ -5,7 +5,7 @@ using Test: @test, @testset
         :ITensorBase, :AbstractNamedTensor, :NamedTensor, :AbstractITensor, :ITensor,
         :Index, :NamedUnitRange,
         :aligndims, :aligneddims, :apply, :codomainnames, :commonind, :commoninds,
-        :dimnames, :dimnametype, :domainnames, :hascommoninds,
+        :dimnames, :dimnametype, :domainnames, :hascommoninds, :id,
         :inds, :mapinds, :named, :nameddims, :noncommoninds, :noprime, :operator,
         :prime,
         :replaceinds, :sim, :similar_operator, :state, :trycommonind, :trynoncommonind,
