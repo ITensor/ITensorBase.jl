@@ -1,4 +1,4 @@
-using TensorAlgebra: to_range
+using TensorAlgebra: TensorAlgebra, to_range, trivialrange
 
 """
     NamedUnitRange{Name}
@@ -63,6 +63,15 @@ end
 
 # This can be customized to output different named unit range types.
 namedunitrange(r::AbstractUnitRange, name) = NamedUnitRange(r, name)
+
+# Mint a fresh trivial *named* range matching `r`'s backend: the trivial range of the
+# underlying (unnamed) axis, carrying a fresh unique name of `r`'s name type.
+function TensorAlgebra.trivialrange(r::NamedUnitRange{Name}) where {Name}
+    return namedunitrange(trivialrange(unnamed(r)), uniquename(Name))
+end
+function TensorAlgebra.trivialrange(r::NamedUnitRange{Name}, n::Integer) where {Name}
+    return namedunitrange(trivialrange(unnamed(r), n), uniquename(Name))
+end
 
 # Shorthand: attach an existing name to a range.
 named(r::AbstractUnitRange, name) = namedunitrange(r, name)

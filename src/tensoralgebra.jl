@@ -159,7 +159,7 @@ end
 # SVD (three-output).
 #
 
-for f in [:svd_compact, :svd_full, :svd_trunc]
+for f in [:svd_compact, :svd_full]
     f_nameddims = Symbol(f, "_nameddims")
     @eval begin
         function MAK.$f(
@@ -197,6 +197,41 @@ for f in [:svd_compact, :svd_full, :svd_trunc]
             )
         end
     end
+end
+
+# `svd_trunc` mirrors the three-output SVD above but also returns the truncation error `ϵ`
+# (the 2-norm of the discarded singular values), matching MatrixAlgebraKit's four-output
+# `svd_trunc`, so it is spelled out here rather than sharing the loop.
+function MAK.svd_trunc(
+        a::AbstractNamedTensor, dimnames_codomain, dimnames_domain; kwargs...
+    )
+    return svd_trunc_nameddims(a, dimnames_codomain, dimnames_domain; kwargs...)
+end
+function svd_trunc_nameddims(
+        a::AbstractNamedTensor, dimnames_codomain, dimnames_domain; kwargs...
+    )
+    codomain = name.(dimnames_codomain)
+    domain = name.(dimnames_domain)
+    u_unnamed, s_unnamed, v_unnamed, ϵ = TA.svd_trunc(
+        unnamed(a), dimnames(a), codomain, domain; kwargs...
+    )
+    name_u = uniquename(dimnametype(a))
+    name_v = uniquename(dimnametype(a))
+    u = nameddims(u_unnamed, (codomain..., name_u))
+    s = nameddims(s_unnamed, (name_u, name_v))
+    v = nameddims(v_unnamed, (name_v, domain...))
+    return u, s, v, ϵ
+end
+function MAK.svd_trunc(a::AbstractNamedTensor, dimnames_codomain; kwargs...)
+    return svd_trunc_nameddims(a, dimnames_codomain; kwargs...)
+end
+function svd_trunc_nameddims(a::AbstractNamedTensor, dimnames_codomain; kwargs...)
+    return MAK.svd_trunc(
+        a,
+        dimnames_codomain,
+        dimnames_setdiff(dimnames(a), name.(dimnames_codomain));
+        kwargs...
+    )
 end
 
 #

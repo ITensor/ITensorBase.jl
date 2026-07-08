@@ -482,7 +482,13 @@ julia> dimnames(replacedimnames(a, :i => :k))
 See also [`dimnames`](@ref).
 """
 function replacedimnames end
+# Strip an `Index`/`NamedUnitRange` down to its dimension name so an index-keyed pair
+# (`i => j`) relabels like the name-keyed pair (`name(i) => name(j)`); `dimnames(a)` holds
+# names, so a raw-index key would never match and silently no-op.
+to_dimname(x) = x
+to_dimname(x::NamedUnitRange) = name(x)
 function replacedimnames(a::AbstractNamedTensor, replacements::Pair...)
+    replacements = map(p -> to_dimname(first(p)) => to_dimname(last(p)), replacements)
     new_dimnames = replace(dimnames(a), replacements...)
     return nameddims(unnamed(a), new_dimnames)
 end

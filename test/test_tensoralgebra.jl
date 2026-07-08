@@ -2,11 +2,11 @@ using ITensorBase: ITensorBase, Index, dimnames, inds, name, namedoneto, prime,
     replacedimnames, uniquename, unname, unnamed
 using LinearAlgebra: LinearAlgebra, norm
 using MatrixAlgebraKit: left_null, left_orth, left_polar, lq_compact, lq_full, qr_compact,
-    qr_full, right_null, right_orth, right_polar, svd_compact, svd_trunc
+    qr_full, right_null, right_orth, right_polar, svd_compact, svd_trunc, svd_vals
 using StableRNGs: StableRNG
 using TensorAlgebra.MatrixAlgebra: gram_eigh_full, gram_eigh_full_with_pinv
-using TensorAlgebra:
-    TensorAlgebra, contract, matricize, project, unchecked_project, unmatricize
+using TensorAlgebra: TensorAlgebra, contract, matricize, project, trivialrange,
+    unchecked_project, unmatricize
 using Test: @test, @test_broken, @testset
 
 @testset "TensorAlgebra (eltype=$(elt))" for elt in
@@ -106,11 +106,19 @@ using Test: @test, @test_broken, @testset
         u, s, v = svd_compact(a, (i, k), (j, l))
         @test u * s * v ≈ a
 
-        # Test truncation.
+        # Test truncation. `svd_trunc` returns a fourth output `ϵ`, the truncation error
+        # (2-norm of the discarded singular values), matching MatrixAlgebraKit.
         a = randn(elt, i, j, k, l)
-        u, s, v = svd_trunc(a, (i, k), (j, l); trunc = (; maxrank = 2))
+        res = svd_trunc(a, (i, k), (j, l); trunc = (; maxrank = 2))
+        @test length(res) == 4
+        u, s, v, ϵ = res
         @test u * s * v ≉ a
         @test size(s) == (2, 2)
+        @test ϵ isa Real
+        @test ϵ ≥ 0
+        # `ϵ` equals the 2-norm of the discarded singular values.
+        vals = svd_vals(a, (i, k), (j, l))
+        @test ϵ ≈ norm(sort(vals; rev = true)[3:end])
     end
     @testset "left_null/right_null" begin
         dims = (2, 2, 2, 2)
@@ -176,5 +184,30 @@ using Test: @test, @test_broken, @testset
         bra = project(v, (), (i,))
         @test dimnames(bra) == [name(i)]
         @test unname(bra, (i,)) == v
+    end
+    @testset "replacedimnames with index keys" begin
+        i, j, k = namedoneto.((2, 3, 2), ("i", "j", "k"))
+        a = randn(elt, i, j)
+        # An `Index`-keyed pair relabels like the name-keyed pair rather than silently
+        # no-opping, and the result stays an `ITensor` (not `NamedTensor{Any}`).
+        @test dimnames(replacedimnames(a, i => k)) ==
+            dimnames(replacedimnames(a, "i" => "k"))
+        @test replacedimnames(a, i => k) isa typeof(a)
+        # Mixed index/name keys and values are accepted.
+        @test dimnames(replacedimnames(a, i => "k")) ==
+            dimnames(replacedimnames(a, "i" => "k"))
+        @test dimnames(replacedimnames(a, "i" => k)) ==
+            dimnames(replacedimnames(a, "i" => "k"))
+    end
+    @testset "trivialrange on named ranges" begin
+        i = Index(3)
+        r = trivialrange(i)
+        @test r isa Index
+        @test length(r) == 1
+        @test name(r) != name(i)
+        rn = trivialrange(i, 4)
+        @test rn isa Index
+        @test length(rn) == 4
+        @test name(rn) != name(i)
     end
 end
