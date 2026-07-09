@@ -1,6 +1,6 @@
-using ITensorBase: ITensorBase, Index, dimnames, inds, name, namedoneto, prime,
-    replacedimnames, uniquename, unname, unnamed
-using LinearAlgebra: LinearAlgebra, norm
+using ITensorBase: ITensorBase, Index, dimnames, id, inds, name, namedoneto, operator,
+    prime, replacedimnames, uniquename, unname, unnamed
+using LinearAlgebra: LinearAlgebra, norm, tr
 using MatrixAlgebraKit: left_null, left_orth, left_polar, lq_compact, lq_full, qr_compact,
     qr_full, right_null, right_orth, right_polar, svd_compact, svd_trunc, svd_vals
 using StableRNGs: StableRNG
@@ -164,6 +164,19 @@ using Test: @test, @test_broken, @testset
             YXmat = unname(Y * X_fresh, (rank_name, fresh_rank))
             @test YXmat ≈ LinearAlgebra.I(size(YXmat, 1))
         end
+    end
+    @testset "tr" begin
+        i, j = namedoneto.((2, 3), ("i", "j"))
+        ip, jp = prime(i), prime(j)
+        a = randn(elt, i, j, ip, jp)
+        # The trace pairs (i, j) with (ip, jp), matching the dense matrix trace of the
+        # matricized map.
+        @test tr(a, (i, j), (ip, jp)) ≈ tr(reshape(unname(a, (i, j, ip, jp)), 6, 6))
+        # The identity map traces to its (shared) fused dimension.
+        @test tr(id(elt, (i, j), (ip, jp)), (i, j), (ip, jp)) ≈ 6
+        # The operator form traces over its intrinsic codomain/domain split.
+        op = operator(a, (name(i), name(j)), (name(ip), name(jp)))
+        @test tr(op) ≈ tr(a, (i, j), (ip, jp))
     end
     @testset "project" begin
         i = Index(2)

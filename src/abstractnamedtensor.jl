@@ -463,14 +463,25 @@ function Base.similar(a::AbstractNamedTensor, elt::Type, inds::Tuple{})
     return similar_nameddims(a, elt, inds)
 end
 
-"""
-    one(a::AbstractNamedTensor) -> AbstractNamedTensor
-
-Return a rank-0 (scalar) tensor holding `one(scalartype(a))` on `a`'s backend. This is the
-multiplicative unit matching `a`'s element type and backend (dense, graded, `TensorMap`, …),
-useful as the seed of a product accumulator.
-"""
-Base.one(a::AbstractNamedTensor) = fill!(similar(a, ()), one(scalartype(a)))
+# Map-shaped allocator: a shell over the `codomain`/`domain` named axes following `a`'s
+# backend, with the domain axes dualized in storage (as `TensorAlgebra.similar_map` does).
+# Unlike the single-axis-tuple forms above (all-codomain), this carries a nontrivial domain,
+# so a graded / `TensorMap` backend allocates the correct `codomain ← domain` block structure.
+function Base.similar(
+        a::AbstractNamedTensor,
+        codomain::Tuple{Vararg{NamedUnitRange}},
+        domain::Tuple{Vararg{NamedUnitRange}}
+    )
+    return similar(a, eltype(a), codomain, domain)
+end
+function Base.similar(
+        a::AbstractNamedTensor, elt::Type,
+        codomain::Tuple{Vararg{NamedUnitRange}},
+        domain::Tuple{Vararg{NamedUnitRange}}
+    )
+    raw = TensorAlgebra.similar_map(unnamed(a), elt, unnamed.(codomain), unnamed.(domain))
+    return nameddims(raw, (name.(codomain)..., name.(domain)...))
+end
 
 function setdimnames(a::AbstractNamedTensor, dimnames)
     return nameddims(unnamed(a), dimnames)

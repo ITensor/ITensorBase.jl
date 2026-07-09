@@ -207,7 +207,7 @@ using UUIDs: UUID
         @test gettag(sim(i2), "X") == "Y"
         @test length(sim(i2)) == 2
     end
-    @testset "rank-0 similar and one" begin
+    @testset "rank-0 similar" begin
         elt = Float64
         i, j = Index.((2, 3))
         a = randn(elt, i, j)
@@ -224,13 +224,6 @@ using UUIDs: UUID
         s32 = similar(a, Float32, ())
         @test eltype(s32) === Float32
         @test isempty(inds(s32))
-
-        # `one(a)` is a rank-0 tensor holding `one(eltype(a))`.
-        o = one(a)
-        @test o isa AbstractNamedTensor
-        @test eltype(o) === elt
-        @test isempty(inds(o))
-        @test unnamed(o)[] == one(elt)
     end
     @testset "name-based index-set algebra" begin
         elt = Float64

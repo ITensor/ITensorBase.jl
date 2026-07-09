@@ -632,6 +632,33 @@ function id(elt::Type, codomain, domain)
     return TA.project(reshape(m, axissizes), codomain, domain)
 end
 
+"""
+    LinearAlgebra.tr(a::AbstractNamedTensor, codomain, domain) -> scalar
+
+Trace of `a` viewed as a map, pairing each `codomain` index with the `domain` index in the
+same position (matching sizes) and summing the diagonal. `codomain` and `domain` together
+must cover all of `a`'s indices, so the result is a scalar. Contracts `a` against an identity
+built over the dual axes (`similar` a shell over the conjugated codomain/domain, filled by
+`one!`), so it follows `a`'s backend (dense, graded, or `TensorMap`).
+
+# Examples
+
+```jldoctest
+julia> using ITensorBase: id, namedoneto
+
+julia> i, j, k, l = namedoneto.((2, 3, 2, 3), ("i", "j", "k", "l"));
+
+julia> tr(id(Float64, (i, j), (k, l)), (i, j), (k, l))
+6.0
+```
+"""
+function LA.tr(a::AbstractNamedTensor, codomain, domain)
+    codomain, domain = Tuple(codomain), Tuple(domain)
+    Id = similar(a, conj.(codomain), conj.(domain))
+    TA.one!(unnamed(Id), Val(length(codomain)))
+    return (a * Id)[]
+end
+
 const MATRIX_FUNCTIONS = [
     :exp, :cis, :log, :sqrt, :cbrt, :cos, :sin, :tan, :csc, :sec, :cot, :cosh, :sinh,
     :tanh,
