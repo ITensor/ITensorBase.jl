@@ -87,15 +87,19 @@ setname(r::NamedUnitRange, name) = named(unnamed(r), name)
 # Equality and hashing answer identity ("is this the same leg?"), keyed on the name plus the
 # axis's ungraded extent (via `TensorAlgebra.ungrade`). Conjugation preserves the name and the
 # ungraded extent while flipping arrows and charge labels, so an index compares equal to its
-# dual and stock `Base` set-ops / `Dict` / `Set` treat the two as the same leg. `hash` is keyed
-# identically, and `isequal` delegates to `==` (the Base default, valid since `==` returns a
-# `Bool`), which also overrides the elementwise `AbstractArray` `isequal` that throws on a
-# space-backed axis.
+# dual and stock `Base` set-ops / `Dict` / `Set` treat the two as the same leg. `isequal`
+# delegates to `==` (the Base default, valid since `==` returns a `Bool`), which also overrides
+# the elementwise `AbstractArray` `isequal` that throws on a space-backed axis.
 function Base.:(==)(r1::NamedUnitRange, r2::NamedUnitRange)
     return name(r1) == name(r2) && ungrade(unnamed(r1)) == ungrade(unnamed(r2))
 end
 Base.isequal(r1::NamedUnitRange, r2::NamedUnitRange) = r1 == r2
-Base.hash(r::NamedUnitRange, h::UInt) = hash(ungrade(unnamed(r)), hash(name(r), h))
+# `ungrade` strips the grading from the underlying range, keeping the name, so hashing runs
+# through the shared `hash_named(:NamedArray, ...)` path on the ungraded range. That keeps `hash`
+# consistent with `==` above and with a named array of equal values (Base's `[1, 2, 3] == 1:3`
+# and `hash([1, 2, 3]) == hash(1:3)` contract).
+TensorAlgebra.ungrade(r::NamedUnitRange) = named(ungrade(unnamed(r)), name(r))
+Base.hash(r::NamedUnitRange, h::UInt) = hash_named(:NamedArray, ungrade(r), h)
 
 # Forward `conj` to the underlying range so graded axes flip their sector
 # arrows. The `Base.conj(::AbstractArray{<:Real}) = x` fallback would
