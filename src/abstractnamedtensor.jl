@@ -467,18 +467,13 @@ end
 # backend, with the domain axes dualized in storage (as `TensorAlgebra.similar_map` does).
 # Unlike the single-axis-tuple forms above (all-codomain), this carries a nontrivial domain,
 # so a graded / `TensorMap` backend allocates the correct `codomain ← domain` block structure.
-function Base.similar(
-        a::AbstractNamedTensor,
-        codomain::Tuple{Vararg{NamedUnitRange}},
-        domain::Tuple{Vararg{NamedUnitRange}}
-    )
+#
+# `codomain`/`domain` are any iterable of named axes (tuple or vector); the body is generic
+# over the collection, so no conversion is needed.
+function Base.similar(a::AbstractNamedTensor, codomain, domain)
     return similar(a, eltype(a), codomain, domain)
 end
-function Base.similar(
-        a::AbstractNamedTensor, elt::Type,
-        codomain::Tuple{Vararg{NamedUnitRange}},
-        domain::Tuple{Vararg{NamedUnitRange}}
-    )
+function Base.similar(a::AbstractNamedTensor, elt::Type, codomain, domain)
     raw = TensorAlgebra.similar_map(unnamed(a), elt, unnamed.(codomain), unnamed.(domain))
     return nameddims(raw, (name.(codomain)..., name.(domain)...))
 end
