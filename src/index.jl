@@ -40,8 +40,8 @@ end
 function uniquename(rng::AbstractRNG, name::IndexName)
     return IndexName(rng; tags = tags_stored(name), plev = plev(name))
 end
-function uniquename(rng::AbstractRNG, ::Type{<:IndexName}; tags = (), plev = 0)
-    return IndexName(rng; tags, plev)
+function uniquename(rng::AbstractRNG, ::Type{<:IndexName}; kwargs...)
+    return IndexName(rng; kwargs...)
 end
 
 # Derive contractions on integer labels: an `IndexName` carries an id and a tag dictionary and is
