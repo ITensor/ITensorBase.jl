@@ -77,14 +77,45 @@ end
 # Locate the named-dimension groups `group1`, `group2` within `a`, returning their two
 # positional index groups.
 function nameperm(a::AbstractNamedTensor, group1, group2)
-    return TA.biperm(dimnames(a), name.(group1), name.(group2))
+    return TA.biperm(dimnames(a), name.(Tuple(group1)), name.(Tuple(group2)))
 end
 
-# i, j, k, l = named.((2, 2, 2, 2), ("i", "j", "k", "l"))
-# a = randn(i, j, k, l)
-# matricize(a, (i, k) => "a", (j, l) => "b")
+"""
+    TensorAlgebra.matricize(a::AbstractNamedTensor, codomain => rowname, domain => colname)
+    TensorAlgebra.matricize(a::AbstractNamedTensor, codomain, domain)
+
+Reshape the named tensor `a` into a matrix, fusing the `codomain` dimension group into the
+rows and the `domain` group into the columns. `codomain` and `domain` are each any iterable
+of dimensions (or dimension names) of `a`, and together they must cover all of `a`'s
+dimensions. The pair form labels the two fused dimensions with the given `rowname` and
+`colname`; the positional form generates fresh unique names for them.
+
+# Examples
+
+```jldoctest
+julia> using ITensorBase: Index
+
+julia> using TensorAlgebra: matricize
+
+julia> i, j, k, l = Index.((2, 3, 2, 3));
+
+julia> a = randn(i, j, k, l);
+
+julia> size(matricize(a, (i, k), (j, l)))
+(4, 9)
+
+julia> Array(matricize(a, (i, k), (j, l))) ==
+       Array(matricize(a, (i, k) => "rows", (j, l) => "cols"))
+true
+```
+"""
 function TA.matricize(a::AbstractNamedTensor, fusions::Vararg{Pair, 2})
     return matricize_nameddims(a, fusions...)
+end
+function TA.matricize(a::AbstractNamedTensor, codomain, domain)
+    row_name = uniquename(dimnametype(a))
+    col_name = uniquename(dimnametype(a))
+    return TA.matricize(a, codomain => row_name, domain => col_name)
 end
 function matricize_nameddims(na::AbstractNamedTensor, fusions::Vararg{Pair, 2})
     group1, group2 = first.(fusions)

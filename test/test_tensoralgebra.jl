@@ -38,6 +38,15 @@ using Test: @test, @test_broken, @testset
                 length(j) * length(l),
             )
         )
+        # Positional form auto-generates the two fused dimension names, matching the
+        # pair form's data.
+        na_pos = matricize(na, (k, i), (j, l))
+        @test ndims(na_pos) == 2
+        @test Array(na_pos) == Array(na_fused)
+        # Groups may be any iterable of dimensions, not only tuples (no `Tuple` wrapping
+        # needed), in both the pair and positional forms.
+        @test Array(matricize(na, [k, i] => "a", [j, l] => "b")) == Array(na_fused)
+        @test Array(matricize(na, [k, i], [j, l])) == Array(na_pos)
     end
     @testset "unmatricize" begin
         a, b = namedoneto.((6, 20), ("a", "b"))
