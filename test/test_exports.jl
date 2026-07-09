@@ -14,6 +14,8 @@ using Test: @test, @testset
     publics = [
         :IndexName, :name, :nametype, :replacedimnames, :setname, :unnamed,
         :unnamedtype,
+        :decoration, :emptytags, :gettag, :gettags, :hastag, :plev, :settags, :tags,
+        :unsettags,
         Symbol("@names"),
     ]
     if VERSION ≥ v"1.11-"

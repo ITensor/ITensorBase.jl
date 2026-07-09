@@ -8,6 +8,15 @@ export AbstractNamedTensor, NamedTensor, AbstractITensor, ITensor, Index,
 using Compat: @compat
 @compat public @names
 @compat public IndexName, name, nametype, replacedimnames, setname, unnamed, unnamedtype
+@compat public decoration,
+    emptytags,
+    gettag,
+    gettags,
+    hastag,
+    plev,
+    settags,
+    tags,
+    unsettags
 
 # Named-array machinery (relocated from NamedDimsArrays.jl).
 include("isnamed.jl")

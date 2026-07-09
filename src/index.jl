@@ -40,8 +40,8 @@ end
 function uniquename(rng::AbstractRNG, name::IndexName)
     return IndexName(rng; tags = tags_stored(name), plev = plev(name))
 end
-function uniquename(rng::AbstractRNG, ::Type{<:IndexName})
-    return IndexName(rng)
+function uniquename(rng::AbstractRNG, ::Type{<:IndexName}; tags = (), plev = 0)
+    return IndexName(rng; tags, plev)
 end
 
 # Derive contractions on integer labels: an `IndexName` carries an id and a tag dictionary and is
@@ -77,6 +77,12 @@ function tags(n::IndexName)
     )
 end
 
+"""
+    plev(i)
+
+Return the prime level of an index or index name: a non-negative integer raised by
+[`prime`](@ref) and reset by [`noprime`](@ref).
+"""
 plev(n::IndexName) = getfield(n, :plev)
 
 function Base.:(==)(n1::IndexName, n2::IndexName)
@@ -102,27 +108,111 @@ function Base.hash(n::IndexName, h::UInt)
 end
 
 setuuid(n::IndexName, uuid) = @set n.uuid = uuid
-settags(n::IndexName, tags) = @set n.tags = tags
 setplev(n::IndexName, plev) = @set n.plev = plev
 
+# Internal whole-dictionary install. `settags` is the public merge-semantics verb;
+# this is the raw replace behind the single-key `settag`/`unsettag` primitives.
+setstoredtags(n::IndexName, tags) = @set n.tags = tags
+
+"""
+    hastag(i, key)
+
+Return `true` if the index or index name carries a tag under `key`.
+"""
 hastag(n::IndexName, tagname) = haskey(tags_stored(n), Symbol(tagname))
 
+"""
+    gettag(i, key)
+    gettag(i, key, default)
+
+Return the tag value stored under `key` as a `String`. The two-argument form throws if
+`key` is absent; the three-argument form returns `default` instead. See also
+[`gettags`](@ref).
+"""
 gettag(n::IndexName, tagname) = String(tags_stored(n)[Symbol(tagname)])
 function gettag(n::IndexName, tagname, default)
     t = tags_stored(n)
     k = Symbol(tagname)
     return haskey(t, k) ? String(t[k]) : default
 end
+
+"""
+    gettags(i, keys)
+
+Return the sub-dictionary of the index's tags whose keys are in `keys`, skipping any that
+are absent (so the result never has more keys than requested and never throws). The
+dictionary and string types are implementation details. See also [`gettag`](@ref), [`tags`](@ref).
+"""
+function gettags(n::IndexName, tagnames)
+    t = tags_stored(n)
+    ks = (Symbol(k) for k in tagnames)
+    return SortedDict{String, String}(
+        String(k) => String(t[k]) for k in ks if haskey(t, k)
+    )
+end
+
+# `settag`/`unsettag` are internal single-key primitives; the public plural verbs
+# `settags`/`unsettags` are built on them.
 function settag(n::IndexName, tagname, tag)
     newtags = copy(tags_stored(n))
     newtags[Symbol(tagname)] = Symbol(tag)
-    return settags(n, newtags)
+    return setstoredtags(n, newtags)
 end
 function unsettag(n::IndexName, tagname)
     newtags = copy(tags_stored(n))
     delete!(newtags, Symbol(tagname))
-    return settags(n, newtags)
+    return setstoredtags(n, newtags)
 end
+
+"""
+    settags(i, key => value, ...)
+    settags(i, pairs)
+
+Return a new index or index name with the given tags inserted or overwritten. This is a
+merge: tags under other keys are kept, and a key that already exists is overwritten. Tags
+are given as one or more `key => value` pairs, a collection of pairs, or an `AbstractDict`;
+keys and values may be `String`s or `Symbol`s. See also [`unsettags`](@ref),
+[`emptytags`](@ref).
+"""
+# A lone `Pair` iterates over its two elements, so it needs its own method rather
+# than falling through to the `for (k, v) in ps` loop (cf. `to_tags`).
+settags(n::IndexName, ps::Pair...) = settags(n, ps)
+function settags(n::IndexName, ps)
+    for (k, v) in ps
+        n = settag(n, k, v)
+    end
+    return n
+end
+
+"""
+    unsettags(i, keys)
+
+Return a new index or index name with the tags under each of `keys` removed. Keys that are
+not present are ignored, so this never throws. See also [`settags`](@ref), [`emptytags`](@ref).
+"""
+function unsettags(n::IndexName, tagnames)
+    for k in tagnames
+        n = unsettag(n, k)
+    end
+    return n
+end
+
+"""
+    emptytags(i)
+
+Return a new index or index name with all tags removed.
+"""
+emptytags(n::IndexName) = setstoredtags(n, empty(tags_stored(n)))
+
+"""
+    decoration(i)
+
+Return the tags and prime level of an index or index name as a `NamedTuple`
+`(; tags, plev)`. Splatting it into [`uniquename`](@ref) or the [`Index`](@ref) keyword
+constructor reproduces that decoration on a freshly minted, unique name, as in
+`uniquename(IndexName; decoration(i)...)`.
+"""
+decoration(n::IndexName) = (; tags = tags(n), plev = plev(n))
 
 """
     prime(i)
@@ -217,6 +307,7 @@ end
 
 """
     Index(space)
+    Index(space; tags, plev)
 
 An index of an [`ITensor`](@ref): a named unit range whose name is an [`IndexName`](@ref), a
 freshly minted, unique identifier carrying tags and a prime level. The argument is a space that is converted to a
@@ -225,6 +316,10 @@ range: `Index(2)` makes an index of length `2` over `Base.OneTo(2)`,
 `Index([U1(0) => 2, U1(1) => 3])` makes one over a graded range. Each call mints a new
 name, so two indices built the same way are still distinct, and tensors share a dimension
 only when they share the same `Index`.
+
+The keyword form decorates the freshly minted name, as in `Index(2; tags = "i" => "1", plev = 1)`.
+`tags` accepts the same inputs as [`settags`](@ref) (a pair, a collection of pairs, or an
+`AbstractDict`); `plev` sets the prime level.
 
 # Examples
 
@@ -236,6 +331,13 @@ julia> length(i)
 ```
 """
 const Index = NamedUnitRange{IndexName}
+
+# Keyword constructor: mint a fresh `Index` whose name carries `tags` and a prime level,
+# e.g. `Index(2; tags = "i" => "1", plev = 1)`. `Index(2)` still mints a bare name. Tag
+# inputs match `settags`: a pair, a collection of pairs, or an `AbstractDict`.
+function NamedUnitRange{IndexName}(space; tags = (), plev = 0)
+    return NamedUnitRange{IndexName}(space, uniquename(IndexName; tags, plev))
+end
 
 # `IndexName`-specialized aliases for the named-dims tensor hierarchy. The
 # name-generic primaries are defined earlier (`abstractnamedtensor.jl`,
@@ -275,8 +377,14 @@ hastag(i::Index, tagname) = hastag(name(i), tagname)
 # TODO: Define for `NamedViewIndex`.
 gettag(i::Index, tagname) = gettag(name(i), tagname)
 gettag(i::Index, tagname, default) = gettag(name(i), tagname, default)
+gettags(i::Index, tagnames) = gettags(name(i), tagnames)
 settag(i::Index, tagname, tag) = setname(i, settag(name(i), tagname, tag))
 unsettag(i::Index, tagname) = setname(i, unsettag(name(i), tagname))
+settags(i::Index, ps::Pair...) = setname(i, settags(name(i), ps...))
+settags(i::Index, ps) = setname(i, settags(name(i), ps))
+unsettags(i::Index, tagnames) = setname(i, unsettags(name(i), tagnames))
+emptytags(i::Index) = setname(i, emptytags(name(i)))
+decoration(i::Index) = decoration(name(i))
 
 setplev(i::Index, plev) = setname(i, setplev(name(i), plev))
 prime(i::Index) = setname(i, prime(name(i)))
