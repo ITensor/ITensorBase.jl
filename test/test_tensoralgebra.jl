@@ -166,7 +166,7 @@ using Test: @test, @test_broken, @testset
         end
     end
     @testset "tr" begin
-        i, j = namedoneto.((2, 3), ("i", "j"))
+        i, j = Index.((2, 3))
         ip, jp = prime(i), prime(j)
         a = randn(elt, i, j, ip, jp)
         # The trace pairs (i, j) with (ip, jp), matching the dense matrix trace of the

@@ -1,6 +1,8 @@
 using ITensorBase: ITensorBase, AbstractNamedTensor, ITensor, Index, IndexName, NamedTensor,
-    dimnametype, gettag, hastag, id, inds, mapinds, name, named, noprime, plev, prime,
-    replaceinds, setplev, settag, sim, tags, uniquename, unname, unnamed, unsettag, uuid
+    commonind, commoninds, dimnametype, gettag, hascommoninds, hastag, id, inds, mapinds,
+    name, named, noncommoninds, noprime, plev, prime, replaceinds, setplev, settag, sim,
+    tags, trycommonind, trynoncommonind, unioninds, uniqueind, uniqueinds, uniquename,
+    unname, unnamed, unsettag, uuid
 using Test: @test, @test_broken, @test_throws, @testset
 using UUIDs: UUID
 

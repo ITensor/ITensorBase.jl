@@ -637,9 +637,9 @@ end
 
 Trace of `a` viewed as a map, pairing each `codomain` index with the `domain` index in the
 same position (matching sizes) and summing the diagonal. `codomain` and `domain` together
-must cover all of `a`'s indices, so the result is a scalar. Contracts `a` against an identity
-built over the dual axes (`similar` a shell over the conjugated codomain/domain, filled by
-`one!`), so it follows `a`'s backend (dense, graded, or `TensorMap`).
+must cover all of `a`'s indices, so the result is a scalar. Forwards to `TensorAlgebra.tr` on
+the unnamed data, which matricizes `a` into its square matrix and takes the matrix trace, so it
+follows `a`'s backend (dense, graded, or `TensorMap`).
 
 # Examples
 
@@ -654,9 +654,7 @@ julia> tr(id(Float64, (i, j), (k, l)), (i, j), (k, l))
 """
 function LA.tr(a::AbstractNamedTensor, codomain, domain)
     codomain, domain = Tuple(codomain), Tuple(domain)
-    Id = similar(a, conj.(codomain), conj.(domain))
-    TA.one!(unnamed(Id), Val(length(codomain)))
-    return (a * Id)[]
+    return TA.tr(unnamed(a), dimnames(a), name.(codomain), name.(domain))
 end
 
 const MATRIX_FUNCTIONS = [

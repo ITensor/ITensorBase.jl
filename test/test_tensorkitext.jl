@@ -36,6 +36,15 @@ using Test: @test, @test_throws, @testset
         @test unnamed(conj(i)) == dual(Vi)
         @test name(conj(i)) == name(i)
 
+        # Equality is dual-insensitive: an index equals its dual (same name, same ungraded
+        # extent), hashes match, and a fresh index of the same space is a distinct leg. This is
+        # what lets `Base` set-ops / `Dict` / `Set` treat an index and its dual as one leg on a
+        # symmetric backend.
+        @test conj(i) == i
+        @test isequal(conj(i), i)
+        @test hash(conj(i)) == hash(i)
+        @test Index(Vi) != i
+
         # Cold-start construction wraps a `TensorMap`; size/eltype report dense values.
         a = randn(rng, elt, i, j)
         @test unnamed(a) isa AbstractTensorMap
