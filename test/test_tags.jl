@@ -69,8 +69,8 @@ newbond(t, keep) = only(filter(!in(keep), collect(inds(t))))
         j = Index(3)
         a = randn(2, 3)[i, j]
 
-        # Single new bond: `bondname`; default mints a bare bond.
-        q, r = qr_compact(a, (i,), (j,); bondname = (; tags = "Link" => "1"))
+        # Single new bond: `name`; default mints a bare bond.
+        q, r = qr_compact(a, (i,), (j,); name = (; tags = "Link" => "1"))
         @test tags(newbond(q, (i,))) == Dict("Link" => "1")
         @test isempty(tags(newbond(qr_compact(a, (i,), (j,))[1], (i,))))
 
@@ -112,7 +112,7 @@ newbond(t, keep) = only(filter(!in(keep), collect(inds(t))))
         @test tags(newbond(vec, (s1p,))) == Dict("col" => "1")
 
         # Single new bond on the null spaces.
-        n = left_null(a, (i,), (j,); bondname = (; tags = "n" => "1"))
+        n = left_null(a, (i,), (j,); name = (; tags = "n" => "1"))
         @test tags(newbond(n, (i,))) == Dict("n" => "1")
     end
 end
