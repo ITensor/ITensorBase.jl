@@ -568,21 +568,22 @@ The identity acts as the multiplicative identity for `ITensorBase.apply`: it
 contracts on the domain names and renames the resulting codomain names back to
 the domain names, leaving the input unchanged.
 
+Note that this is inspired by the tensor map function `TensorKit.one` in
+[TensorKit.jl](https://github.com/Jutho/TensorKit.jl).
+
 # Examples
 
 ```jldoctest
-julia> using ITensorBase: apply, namedoneto, operator
+julia> using ITensorBase: Index
 
-julia> i, j, k, l = namedoneto.((2, 3, 2, 3), ("i", "j", "k", "l"));
+julia> using LinearAlgebra: tr
+
+julia> i, j, k, l = Index.((2, 3, 2, 3));
 
 julia> a = randn(i, j, k, l);
 
-julia> Id = operator(one(a, (i, j), (k, l)), ("i", "j"), ("k", "l"));
-
-julia> v = randn(k, l);
-
-julia> apply(Id, v) ≈ v
-true
+julia> tr(one(a, (i, j), (k, l)), (i, j), (k, l))
+6.0
 ```
 """
 function Base.one(
@@ -608,19 +609,20 @@ Unlike [`one`](@ref), which follows a prototype tensor, `id` needs only the indi
 element type, so it is the right primitive when no prototype is in hand. The index axes select
 the backend: dense ranges give a dense tensor, graded ranges a block-sparse one.
 
+Note that this is inspired by the tensor map function `TensorKit.id` in
+[TensorKit.jl](https://github.com/Jutho/TensorKit.jl).
+
 # Examples
 
 ```jldoctest
-julia> using ITensorBase: apply, id, namedoneto, operator
+julia> using ITensorBase: Index, id
 
-julia> i, j, k, l = namedoneto.((2, 3, 2, 3), ("i", "j", "k", "l"));
+julia> using LinearAlgebra: tr
 
-julia> Id = operator(id(Float64, (i, j), (k, l)), ("i", "j"), ("k", "l"));
+julia> i, j, k, l = Index.((2, 3, 2, 3));
 
-julia> v = randn(k, l);
-
-julia> apply(Id, v) ≈ v
-true
+julia> tr(id(Float64, (i, j), (k, l)), (i, j), (k, l))
+6.0
 ```
 
 See also [`one`](@ref).
@@ -644,12 +646,14 @@ follows `a`'s backend (dense, graded, or `TensorMap`).
 # Examples
 
 ```jldoctest
-julia> using ITensorBase: id, namedoneto
+julia> using ITensorBase: Index
 
-julia> i, j, k, l = namedoneto.((2, 3, 2, 3), ("i", "j", "k", "l"));
+julia> using LinearAlgebra: tr
 
-julia> tr(id(Float64, (i, j), (k, l)), (i, j), (k, l))
-6.0
+julia> i, j, k, l = Index.((2, 3, 2, 3));
+
+julia> tr(fill(2.0, (i, j, k, l)), (i, j), (k, l))
+12.0
 ```
 """
 function LA.tr(a::AbstractNamedTensor, codomain, domain)

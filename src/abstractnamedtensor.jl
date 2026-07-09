@@ -525,12 +525,20 @@ mapdimnames(f, a::AbstractNamedTensor) = replacedimnames(f, a)
     replaceinds(a::AbstractNamedTensor, replacements::Pair...)
     replaceinds(f, a::AbstractNamedTensor)
 
-Return a tensor with the same data as `a` but with its indices relabeled. Unlike
-[`replacedimnames`](@ref), whose function `f` receives a dimension name, `replaceinds` works
-at the index level: the pair form takes `old => new` index pairs, and the function form
-relabels each index `i` using `f(i)`. Either way this is a name-only relabel, taking just the
-name of the replacement and leaving the underlying space untouched (replacing the space
-instead would scalar-index a graded axis). Pairs whose index is absent are ignored.
+Return a tensor with the same data as `a`, with its indices relabeled to the ones specified.
+The pair form takes `old => new` index pairs, and the function form relabels each index `i`
+using `f(i)`.
+
+# Examples
+
+```jldoctest
+julia> i, j, k = Index.((2, 3, 2));
+
+julia> t = randn(i, j);
+
+julia> inds(replaceinds(t, i => k)) == [k, j]
+true
+```
 
 See also [`mapinds`](@ref), [`replacedimnames`](@ref).
 """
@@ -542,9 +550,20 @@ replaceinds(f, a::AbstractNamedTensor) = replaceinds(a, map(i -> i => f(i), inds
 """
     mapinds(f, a::AbstractNamedTensor)
 
-Return a tensor with the same data as `a` but with each index `i` relabeled using `f(i)`, a
-name-only relabel that leaves the underlying space untouched. This is the whole-tensor
-index-map primitive behind [`prime`](@ref), [`noprime`](@ref), and [`sim`](@ref).
+Return a tensor with the same data as `a`, with each index `i` relabeled using `f(i)`. This is
+the function form of [`replaceinds`](@ref), taking a function input instead of `old => new`
+pairs.
+
+# Examples
+
+```jldoctest
+julia> i, j = Index.((2, 3));
+
+julia> t = randn(i, j);
+
+julia> inds(mapinds(prime, t)) == [prime(i), prime(j)]
+true
+```
 
 See also [`replaceinds`](@ref).
 """
@@ -587,6 +606,17 @@ nameissetequal(a, b) = smallissetequal(a, b; by = name)
 
 The indices shared by name between `a` and `b`, as a `Vector` in the order they appear in `a`.
 
+# Examples
+
+```jldoctest
+julia> i, j, k = Index.((2, 3, 2));
+
+julia> a, b = randn(i, j), randn(j, k);
+
+julia> commoninds(a, b) == [j]
+true
+```
+
 See also [`commonind`](@ref), [`uniqueinds`](@ref), [`hascommoninds`](@ref).
 """
 commoninds(a::AbstractNamedTensor, b::AbstractNamedTensor) = nameintersect(inds(a), inds(b))
@@ -596,6 +626,17 @@ commoninds(a::AbstractNamedTensor, b::AbstractNamedTensor) = nameintersect(inds(
 
 The indices of `a` that do not appear by name in `b`, as a `Vector` in the order they appear
 in `a`.
+
+# Examples
+
+```jldoctest
+julia> i, j, k = Index.((2, 3, 2));
+
+julia> a, b = randn(i, j), randn(j, k);
+
+julia> uniqueinds(a, b) == [i]
+true
+```
 
 See also [`uniqueind`](@ref), [`commoninds`](@ref), [`noncommoninds`](@ref).
 """
@@ -607,6 +648,17 @@ uniqueinds(a::AbstractNamedTensor, b::AbstractNamedTensor) = namesetdiff(inds(a)
 The union by name of the indices of `a` and `b`, as a `Vector`: the indices of `a` followed
 by the indices of `b` not already present in `a`.
 
+# Examples
+
+```jldoctest
+julia> i, j, k = Index.((2, 3, 2));
+
+julia> a, b = randn(i, j), randn(j, k);
+
+julia> unioninds(a, b) == [i, j, k]
+true
+```
+
 See also [`commoninds`](@ref), [`noncommoninds`](@ref).
 """
 unioninds(a::AbstractNamedTensor, b::AbstractNamedTensor) = nameunion(inds(a), inds(b))
@@ -616,6 +668,17 @@ unioninds(a::AbstractNamedTensor, b::AbstractNamedTensor) = nameunion(inds(a), i
 
 The indices not shared by name between `a` and `b` (the symmetric difference), as a `Vector`:
 the indices unique to `a` followed by those unique to `b`.
+
+# Examples
+
+```jldoctest
+julia> i, j, k = Index.((2, 3, 2));
+
+julia> a, b = randn(i, j), randn(j, k);
+
+julia> noncommoninds(a, b) == [i, k]
+true
+```
 
 See also [`uniqueinds`](@ref), [`commoninds`](@ref).
 """
@@ -627,6 +690,17 @@ end
     hascommoninds(a::AbstractNamedTensor, b::AbstractNamedTensor)
 
 Whether `a` and `b` share any index by name.
+
+# Examples
+
+```jldoctest
+julia> i, j, k = Index.((2, 3, 2));
+
+julia> a, b = randn(i, j), randn(j, k);
+
+julia> hascommoninds(a, b)
+true
+```
 
 See also [`commoninds`](@ref).
 """
@@ -640,6 +714,17 @@ end
 The single index shared by name between `a` and `b`. Errors unless there is exactly one
 shared index. Use [`trycommonind`](@ref) to get `nothing` instead of an error.
 
+# Examples
+
+```jldoctest
+julia> i, j, k = Index.((2, 3, 2));
+
+julia> a, b = randn(i, j), randn(j, k);
+
+julia> commonind(a, b) == j
+true
+```
+
 See also [`commoninds`](@ref), [`uniqueind`](@ref).
 """
 commonind(a::AbstractNamedTensor, b::AbstractNamedTensor) = only(commoninds(a, b))
@@ -650,6 +735,17 @@ commonind(a::AbstractNamedTensor, b::AbstractNamedTensor) = only(commoninds(a, b
 The single index of `a` that does not appear by name in `b`. Errors unless there is exactly
 one such index. Use [`trynoncommonind`](@ref) to get `nothing` instead of an error.
 
+# Examples
+
+```jldoctest
+julia> i, j, k = Index.((2, 3, 2));
+
+julia> a, b = randn(i, j), randn(j, k);
+
+julia> uniqueind(a, b) == i
+true
+```
+
 See also [`uniqueinds`](@ref), [`commonind`](@ref).
 """
 uniqueind(a::AbstractNamedTensor, b::AbstractNamedTensor) = only(uniqueinds(a, b))
@@ -659,6 +755,20 @@ uniqueind(a::AbstractNamedTensor, b::AbstractNamedTensor) = only(uniqueinds(a, b
 
 The single index shared by name between `a` and `b`, or `nothing` if they share no index or
 more than one. The non-erroring counterpart of [`commonind`](@ref).
+
+# Examples
+
+```jldoctest
+julia> i, j, k = Index.((2, 3, 2));
+
+julia> a, b = randn(i, j), randn(j, k);
+
+julia> trycommonind(a, b) == j
+true
+
+julia> isnothing(trycommonind(a, randn(k)))
+true
+```
 """
 function trycommonind(a::AbstractNamedTensor, b::AbstractNamedTensor)
     cs = commoninds(a, b)
@@ -670,6 +780,17 @@ end
 
 The single index of `a` that does not appear by name in `b`, or `nothing` if there is no such
 index or more than one. The non-erroring counterpart of [`uniqueind`](@ref).
+
+# Examples
+
+```jldoctest
+julia> i, j, k = Index.((2, 3, 2));
+
+julia> a, b = randn(i, j), randn(j, k);
+
+julia> trynoncommonind(a, b) == i
+true
+```
 """
 function trynoncommonind(a::AbstractNamedTensor, b::AbstractNamedTensor)
     us = uniqueinds(a, b)
