@@ -4,6 +4,7 @@ using ITensorBase: @names, AbstractNamedTensor, Name, NameMismatch, NamedDimsCar
     dimnametype, dims, inds, isnamed, mapinds, name, named, nameddims, namedoneto, product,
     replacedimnames, replaceinds, setdimnames, unname, unnamed, unnamedtype
 using LinearAlgebra: LinearAlgebra
+using TensorAlgebra: datatype
 using Test: @test, @test_throws, @testset
 using VectorInterface: scalartype
 
@@ -83,6 +84,7 @@ end
         na = nameddims(a, ("i", "j"))
         @test eltype(na) ≡ elt
         @test scalartype(na) ≡ elt
+        @test datatype(na) ≡ typeof(a)
         a′ = Array(na)
         @test eltype(a′) ≡ elt
         @test a′ isa Matrix{elt}

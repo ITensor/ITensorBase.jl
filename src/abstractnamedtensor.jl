@@ -316,6 +316,10 @@ Base.ndims(a::AbstractNamedTensor) = TensorAlgebra.ndims(unnamed(a))
 # Circumvent issue when eltype isn't known at compile time.
 Base.eltype(a::AbstractNamedTensor) = eltype(unnamed(a))
 
+# The storage array type, reached through `unnamed` (an ITensor's backing is an instance
+# operation) and delegated to `TensorAlgebra.datatype` so any further array wrappers unwrap.
+TensorAlgebra.datatype(a::AbstractNamedTensor) = TensorAlgebra.datatype(unnamed(a))
+
 # In-place zero of an NamedTensor, delegating to its unnamed parent array.
 TensorAlgebra.zero!(a::AbstractNamedTensor) = (zero!(unnamed(a)); a)
 
