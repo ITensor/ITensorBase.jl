@@ -207,11 +207,12 @@ emptytags(n::IndexName) = setstoredtags(n, empty(tags_stored(n)))
 """
     decoration(i)
 
-Return the tags and prime level of an index or index name as a `NamedTuple`
-`(; tags, plev)`. Splatting it into [`uniquename`](@ref) or the [`Index`](@ref) keyword
-constructor reproduces that decoration on a freshly minted, unique name, as in
-`uniquename(IndexName; decoration(i)...)`.
+Return the decoration of an index or index name as a `NamedTuple` `(; tags, plev)`. Splatting
+it into [`uniquename`](@ref) or the [`Index`](@ref) keyword constructor reproduces that
+decoration on a freshly minted, unique name, as in `uniquename(IndexName; decoration(i)...)`.
+A name that carries no decoration returns an empty `NamedTuple`.
 """
+decoration(n) = (;)
 decoration(n::IndexName) = (; tags = tags(n), plev = plev(n))
 
 """
@@ -331,13 +332,6 @@ julia> length(i)
 ```
 """
 const Index = NamedUnitRange{IndexName}
-
-# Keyword constructor: mint a fresh `Index` whose name carries `tags` and a prime level,
-# e.g. `Index(2; tags = "i" => "1", plev = 1)`. `Index(2)` still mints a bare name. Tag
-# inputs match `settags`: a pair, a collection of pairs, or an `AbstractDict`.
-function NamedUnitRange{IndexName}(space; tags = (), plev = 0)
-    return NamedUnitRange{IndexName}(space, uniquename(IndexName; tags, plev))
-end
 
 # `IndexName`-specialized aliases for the named-dims tensor hierarchy. The
 # name-generic primaries are defined earlier (`abstractnamedtensor.jl`,

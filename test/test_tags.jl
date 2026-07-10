@@ -62,6 +62,7 @@ newbond(t, keep) = only(filter(!in(keep), collect(inds(t))))
         @test tags(k) == Dict("Link" => "1")
         @test plev(k) == 2
         @test k != name(i)                                         # fresh id
+        @test decoration("x") == (;)                               # undecorated name
     end
 
     @testset "factorization bond-name decoration" begin

@@ -34,9 +34,10 @@ unnamedtype(::Type{<:NamedUnitRange{<:Any, <:Any, Unnamed}}) where {Unnamed} = U
 # anything `to_range` accepts (an `Integer`, an existing range, or a sector-pair vector
 # when GradedArrays is loaded), so `Index(2)`, `Index(1:3)`, and
 # `Index([U1(0) => 2, U1(1) => 3])` all work. Generic over the name type via `uniquename`,
-# so `Index` (a `NamedUnitRange{IndexName}` alias) needs no `Index`-specific constructor.
-function NamedUnitRange{Name}(space) where {Name}
-    return NamedUnitRange{Name}(space, uniquename(Name))
+# forwarding any keywords (e.g. `tags`/`plev` for `IndexName`) to it, so `Index` (a
+# `NamedUnitRange{IndexName}` alias) needs no `Index`-specific constructor.
+function NamedUnitRange{Name}(space; kwargs...) where {Name}
+    return NamedUnitRange{Name}(space, uniquename(Name; kwargs...))
 end
 # A space and an explicit name, name type fixed by the `Name` parameter: convert the space
 # to a range, then fall through to the base case below.

@@ -149,14 +149,16 @@ function unmatricize_nameddims(na::AbstractNamedTensor, splitters::Vararg{Pair, 
     return nameddims(a_split, names_split)
 end
 
-# Canonicalize a bond-name spec to a `nametype -> name` minting function. A `NamedTuple` is
-# splatted into `uniquename` (decoration kwargs such as `tags`/`plev`); a callable is used
+# Canonicalize a bond-name keyword to a `nametype -> name` minting function. A `NamedTuple` of
+# decoration is splatted into `uniquename` (kwargs such as `tags`/`plev`); a callable is used
 # as-is, for full control over how the name is minted. The default `(;)` reproduces the bare
-# `uniquename(nametype)`. Each factorization exposes one such spec per new bond it mints:
+# `uniquename(nametype)`. Each factorization exposes one such keyword per new bond it mints:
 # `name` for a single shared bond, and `rowname`/`colname` for the two legs of the central
 # matrix in SVD and eigendecomposition.
-bondnamer(spec::NamedTuple) = nametype -> uniquename(nametype; spec...)
-bondnamer(f) = f
+function to_uniquename_function(decoration::NamedTuple)
+    return nametype -> uniquename(nametype; decoration...)
+end
+to_uniquename_function(f) = f
 
 for f in [
         :left_orth, :left_polar, :lq_compact, :lq_full, :qr_compact, :qr_full,
@@ -178,7 +180,7 @@ for f in [
             domain = ITensorBase.name.(dimnames_domain)
             x_unnamed, y_unnamed =
                 TA.$f(unnamed(a), dimnames(a), codomain, domain; kwargs...)
-            name_x = bondnamer(name)(dimnametype(a))
+            name_x = to_uniquename_function(name)(dimnametype(a))
             name_y = name_x
             dimnames_x = (codomain..., name_x)
             dimnames_y = (name_y, domain...)
@@ -218,8 +220,8 @@ for f in [:svd_compact, :svd_full]
             u_unnamed, s_unnamed, v_unnamed = TA.$f(
                 unnamed(a), dimnames(a), codomain, domain; kwargs...
             )
-            name_u = bondnamer(rowname)(dimnametype(a))
-            name_v = bondnamer(colname)(dimnametype(a))
+            name_u = to_uniquename_function(rowname)(dimnametype(a))
+            name_v = to_uniquename_function(colname)(dimnametype(a))
             dimnames_u = (codomain..., name_u)
             dimnames_s = (name_u, name_v)
             dimnames_v = (name_v, domain...)
@@ -328,8 +330,8 @@ for f in [:eigh_full, :eig_full, :eigh_trunc, :eig_trunc]
             d_unnamed, v_unnamed = TA.$f(
                 unnamed(a), dimnames(a), codomain, domain; kwargs...
             )
-            name_d = bondnamer(colname)(dimnametype(a))
-            name_d′ = bondnamer(rowname)(dimnametype(a))
+            name_d = to_uniquename_function(colname)(dimnametype(a))
+            name_d′ = to_uniquename_function(rowname)(dimnametype(a))
             name_v = name_d
             dimnames_d = (name_d′, name_d)
             dimnames_v = (domain..., name_v)
@@ -374,7 +376,7 @@ function left_null_nameddims(
     codomain = ITensorBase.name.(dimnames_codomain)
     domain = ITensorBase.name.(dimnames_domain)
     n_unnamed = TA.left_null(unnamed(a), dimnames(a), codomain, domain; kwargs...)
-    name_n = bondnamer(name)(dimnametype(a))
+    name_n = to_uniquename_function(name)(dimnametype(a))
     dimnames_n = (codomain..., name_n)
     return nameddims(n_unnamed, dimnames_n)
 end
@@ -400,7 +402,7 @@ function right_null_nameddims(
     codomain = ITensorBase.name.(dimnames_codomain)
     domain = ITensorBase.name.(dimnames_domain)
     n_unnamed = TA.right_null(unnamed(a), dimnames(a), codomain, domain; kwargs...)
-    name_n = bondnamer(name)(dimnametype(a))
+    name_n = to_uniquename_function(name)(dimnametype(a))
     dimnames_n = (name_n, domain...)
     return nameddims(n_unnamed, dimnames_n)
 end
