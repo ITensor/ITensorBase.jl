@@ -174,9 +174,9 @@ are given as one or more `key => value` pairs, a collection of pairs, or an `Abs
 keys and values may be `String`s or `Symbol`s. See also [`unsettags`](@ref),
 [`emptytags`](@ref).
 """
-# A lone `Pair` iterates over its two elements, so it needs its own method rather
-# than falling through to the `for (k, v) in ps` loop (cf. `to_tags`).
 settags(n::IndexName, ps::Pair...) = settags(n, ps)
+# A lone `Pair` iterates over its two elements, so the varargs method above needs to exist
+# rather than letting a single pair fall through to the `for (k, v) in ps` loop (cf. `to_tags`).
 function settags(n::IndexName, ps)
     for (k, v) in ps
         n = settag(n, k, v)
