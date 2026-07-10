@@ -1,5 +1,5 @@
 using ITensorBase: ITensorBase as NDA, NamedTensor, NamedTensorOperator, apply,
-    codomainnames, dimnames, domainnames, nameddims, namedoneto, operator, product,
+    codomainnames, dimnames, domainnames, id, nameddims, namedoneto, operator, product,
     replacedimnames, similar_operator, state, unname, unnamed
 using LinearAlgebra: I, norm
 using Random: Random
@@ -82,6 +82,19 @@ end
     @test issetequal(dimnames(Id), ("p", "r", "q", "s"))
     Id_mat = matricize(Id, (p, q) => "row", (r, s) => "col")
     @test unname(Id_mat, ("row", "col")) ≈ I(8)
+end
+
+@testset "id(elt, codomain, domain)" begin
+    # From-scratch identity map (no prototype): matricized form is the identity matrix.
+    i, j, k, l = namedoneto.((2, 3, 2, 3), ("i", "j", "k", "l"))
+    Id = id(Float64, (i, j), (k, l))
+    @test eltype(Id) === Float64
+    @test issetequal(dimnames(Id), ("i", "j", "k", "l"))
+    Id_mat = matricize(Id, (i, j) => "row", (k, l) => "col")
+    @test unname(Id_mat, ("row", "col")) ≈ I(6)
+
+    # The requested element type is honored.
+    @test eltype(id(ComplexF64, (i, j), (k, l))) === ComplexF64
 end
 
 @testset "similar_operator" begin

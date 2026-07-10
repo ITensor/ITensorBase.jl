@@ -26,15 +26,23 @@ struct NamedTensor{DimName} <: AbstractNamedTensor{DimName}
     unnamed::Any
     dimnames::Vector{DimName}
     function NamedTensor{DimName}(unnamed, dimnames) where {DimName}
-        dimnames = collect(DimName, dimnames)
-        # Catch the common ITensors.jl-style mistake of passing indices as the names.
-        any(dimname -> dimname isa NamedUnitRange, dimnames) && throw(
+        # Catch the common ITensors.jl-style mistake of passing indices (`NamedUnitRange`s
+        # such as `Index`) as the names. Checked before `collect(DimName, ...)`, which would
+        # otherwise fail with an opaque `convert` error when `DimName` is the dimension-name
+        # type (e.g. `ITensor`'s `IndexName`).
+        (
+            dimnames isa NamedUnitRange ||
+                any(dimname -> dimname isa NamedUnitRange, dimnames)
+        ) && throw(
             ArgumentError(
-                "The `NamedTensor` constructor takes dimension names only, not indices \
-                (`NamedUnitRange`s), got $(dimnames). To build a `NamedTensor` from an \
-                array and indices, index the array instead, as in `array[i, j]`."
+                "The `NamedTensor`/`ITensor` constructor takes dimension names, not indices \
+                (`NamedUnitRange`s such as `Index`), got $(dimnames). To build a tensor from \
+                an array and indices, either index the array to inherit the space from the \
+                indices, as in `array[i, j]`, or attach only the names and take the space \
+                from the array, as in `ITensor(array, name.((i, j)))`."
             )
         )
+        dimnames = collect(DimName, dimnames)
         TensorAlgebra.ndims(unnamed) == length(dimnames) ||
             throw(ArgumentError("Number of named dims must match ndims."))
         allunique(dimnames) ||

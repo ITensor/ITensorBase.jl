@@ -77,14 +77,45 @@ end
 # Locate the named-dimension groups `group1`, `group2` within `a`, returning their two
 # positional index groups.
 function nameperm(a::AbstractNamedTensor, group1, group2)
-    return TA.biperm(dimnames(a), name.(group1), name.(group2))
+    return TA.biperm(dimnames(a), name.(Tuple(group1)), name.(Tuple(group2)))
 end
 
-# i, j, k, l = named.((2, 2, 2, 2), ("i", "j", "k", "l"))
-# a = randn(i, j, k, l)
-# matricize(a, (i, k) => "a", (j, l) => "b")
+"""
+    TensorAlgebra.matricize(a::AbstractNamedTensor, codomain => rowname, domain => colname)
+    TensorAlgebra.matricize(a::AbstractNamedTensor, codomain, domain)
+
+Reshape the named tensor `a` into a matrix, fusing the `codomain` dimension group into the
+rows and the `domain` group into the columns. `codomain` and `domain` are each any iterable
+of dimensions (or dimension names) of `a`, and together they must cover all of `a`'s
+dimensions. The pair form labels the two fused dimensions with the given `rowname` and
+`colname`; the positional form generates fresh unique names for them.
+
+# Examples
+
+```jldoctest
+julia> using ITensorBase: Index
+
+julia> using TensorAlgebra: matricize
+
+julia> i, j, k, l = Index.((2, 3, 2, 3));
+
+julia> a = randn(i, j, k, l);
+
+julia> size(matricize(a, (i, k), (j, l)))
+(4, 9)
+
+julia> Array(matricize(a, (i, k), (j, l))) ==
+       Array(matricize(a, (i, k) => "rows", (j, l) => "cols"))
+true
+```
+"""
 function TA.matricize(a::AbstractNamedTensor, fusions::Vararg{Pair, 2})
     return matricize_nameddims(a, fusions...)
+end
+function TA.matricize(a::AbstractNamedTensor, codomain, domain)
+    row_name = uniquename(dimnametype(a))
+    col_name = uniquename(dimnametype(a))
+    return TA.matricize(a, codomain => row_name, domain => col_name)
 end
 function matricize_nameddims(na::AbstractNamedTensor, fusions::Vararg{Pair, 2})
     group1, group2 = first.(fusions)
@@ -159,7 +190,7 @@ end
 # SVD (three-output).
 #
 
-for f in [:svd_compact, :svd_full, :svd_trunc]
+for f in [:svd_compact, :svd_full]
     f_nameddims = Symbol(f, "_nameddims")
     @eval begin
         function MAK.$f(
@@ -197,6 +228,41 @@ for f in [:svd_compact, :svd_full, :svd_trunc]
             )
         end
     end
+end
+
+# `svd_trunc` mirrors the three-output SVD above but also returns the truncation error `ϵ`
+# (the 2-norm of the discarded singular values), matching MatrixAlgebraKit's four-output
+# `svd_trunc`, so it is spelled out here rather than sharing the loop.
+function MAK.svd_trunc(
+        a::AbstractNamedTensor, dimnames_codomain, dimnames_domain; kwargs...
+    )
+    return svd_trunc_nameddims(a, dimnames_codomain, dimnames_domain; kwargs...)
+end
+function svd_trunc_nameddims(
+        a::AbstractNamedTensor, dimnames_codomain, dimnames_domain; kwargs...
+    )
+    codomain = name.(dimnames_codomain)
+    domain = name.(dimnames_domain)
+    u_unnamed, s_unnamed, v_unnamed, ϵ = TA.svd_trunc(
+        unnamed(a), dimnames(a), codomain, domain; kwargs...
+    )
+    name_u = uniquename(dimnametype(a))
+    name_v = uniquename(dimnametype(a))
+    u = nameddims(u_unnamed, (codomain..., name_u))
+    s = nameddims(s_unnamed, (name_u, name_v))
+    v = nameddims(v_unnamed, (name_v, domain...))
+    return u, s, v, ϵ
+end
+function MAK.svd_trunc(a::AbstractNamedTensor, dimnames_codomain; kwargs...)
+    return svd_trunc_nameddims(a, dimnames_codomain; kwargs...)
+end
+function svd_trunc_nameddims(a::AbstractNamedTensor, dimnames_codomain; kwargs...)
+    return MAK.svd_trunc(
+        a,
+        dimnames_codomain,
+        dimnames_setdiff(dimnames(a), name.(dimnames_codomain));
+        kwargs...
+    )
 end
 
 #
@@ -533,21 +599,22 @@ The identity acts as the multiplicative identity for `ITensorBase.apply`: it
 contracts on the domain names and renames the resulting codomain names back to
 the domain names, leaving the input unchanged.
 
+Note that this is inspired by the tensor map function `TensorKit.one` in
+[TensorKit.jl](https://github.com/Jutho/TensorKit.jl).
+
 # Examples
 
 ```jldoctest
-julia> using ITensorBase: apply, namedoneto, operator
+julia> using ITensorBase: Index
 
-julia> i, j, k, l = namedoneto.((2, 3, 2, 3), ("i", "j", "k", "l"));
+julia> using LinearAlgebra: tr
+
+julia> i, j, k, l = Index.((2, 3, 2, 3));
 
 julia> a = randn(i, j, k, l);
 
-julia> Id = operator(one(a, (i, j), (k, l)), ("i", "j"), ("k", "l"));
-
-julia> v = randn(k, l);
-
-julia> apply(Id, v) ≈ v
-true
+julia> tr(one(a, (i, j), (k, l)), (i, j), (k, l))
+6.0
 ```
 """
 function Base.one(
@@ -562,6 +629,67 @@ function one_nameddims(
     domain = name.(dimnames_domain)
     raw = TA.one(unnamed(a), dimnames(a), codomain, domain)
     return nameddims(raw, (codomain..., domain...))
+end
+
+"""
+    id(elt::Type, codomain, domain) -> Id
+
+Construct a from-scratch identity-operator-shaped named tensor over the `codomain` and
+`domain` indices, with element type `elt`. The fused codomain and domain sizes must match.
+Unlike [`one`](@ref), which follows a prototype tensor, `id` needs only the indices and an
+element type, so it is the right primitive when no prototype is in hand. The index axes select
+the backend: dense ranges give a dense tensor, graded ranges a block-sparse one.
+
+Note that this is inspired by the tensor map function `TensorKit.id` in
+[TensorKit.jl](https://github.com/Jutho/TensorKit.jl).
+
+# Examples
+
+```jldoctest
+julia> using ITensorBase: Index, id
+
+julia> using LinearAlgebra: tr
+
+julia> i, j, k, l = Index.((2, 3, 2, 3));
+
+julia> tr(id(Float64, (i, j), (k, l)), (i, j), (k, l))
+6.0
+```
+
+See also [`one`](@ref).
+"""
+function id(elt::Type, codomain, domain)
+    codomain, domain = Tuple(codomain), Tuple(domain)
+    m = Matrix{elt}(LA.I, prod(length, codomain), prod(length, domain))
+    axissizes = (length.(codomain)..., length.(domain)...)
+    return TA.project(reshape(m, axissizes), codomain, domain)
+end
+
+"""
+    LinearAlgebra.tr(a::AbstractNamedTensor, codomain, domain) -> scalar
+
+Trace of `a` viewed as a map, pairing each `codomain` index with the `domain` index in the
+same position (matching sizes) and summing the diagonal. `codomain` and `domain` together
+must cover all of `a`'s indices, so the result is a scalar. Forwards to `TensorAlgebra.tr` on
+the unnamed data, which matricizes `a` into its square matrix and takes the matrix trace, so it
+follows `a`'s backend (dense, graded, or `TensorMap`).
+
+# Examples
+
+```jldoctest
+julia> using ITensorBase: Index
+
+julia> using LinearAlgebra: tr
+
+julia> i, j, k, l = Index.((2, 3, 2, 3));
+
+julia> tr(fill(2.0, (i, j, k, l)), (i, j), (k, l))
+12.0
+```
+"""
+function LA.tr(a::AbstractNamedTensor, codomain, domain)
+    codomain, domain = Tuple(codomain), Tuple(domain)
+    return TA.tr(unnamed(a), dimnames(a), name.(codomain), name.(domain))
 end
 
 const MATRIX_FUNCTIONS = [

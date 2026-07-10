@@ -23,15 +23,15 @@ is the dimension-name type behind the legacy ITensor surface, where `Index` is
 `NamedUnitRange{IndexName}` and [`ITensor`](@ref) is `NamedTensor{IndexName}`.
 """
 struct IndexName <: AbstractName
-    id::UUID
+    uuid::UUID
     tags::SortedDict{Symbol, Symbol}
     plev::Int
 end
 function IndexName(
-        rng::AbstractRNG = RandomDevice(); id::UUID = uuid4(rng),
+        rng::AbstractRNG = RandomDevice(); uuid::UUID = uuid4(rng),
         tags = (), plev::Int = 0
     )
-    return IndexName(id, to_tags(tags), plev)
+    return IndexName(uuid, to_tags(tags), plev)
 end
 # `uniquename` on an existing `IndexName` keeps its tags and prime level, minting only a
 # fresh id (the legacy `sim`). The type form drops them: a factorization bond or a fresh
@@ -56,7 +56,7 @@ to_symbol_pair(p::Pair) = Symbol(first(p)) => Symbol(last(p))
 to_tags(ps::Pair...) = to_tags(ps)
 to_tags(tags) = SortedDict{Symbol, Symbol}(to_symbol_pair(p) for p in tags)
 
-id(n::IndexName) = getfield(n, :id)
+uuid(n::IndexName) = getfield(n, :uuid)
 
 # Internal: the stored tags as `Symbol => Symbol`, used by the hot comparison,
 # hashing, and display paths. `tags` is the public string-valued view of this.
@@ -80,27 +80,28 @@ end
 plev(n::IndexName) = getfield(n, :plev)
 
 function Base.:(==)(n1::IndexName, n2::IndexName)
-    return id(n1) == id(n2) && plev(n1) == plev(n2) && tags_stored(n1) == tags_stored(n2)
+    return uuid(n1) == uuid(n2) && plev(n1) == plev(n2) &&
+        tags_stored(n1) == tags_stored(n2)
 end
 function Base.isequal(n1::IndexName, n2::IndexName)
-    return isequal(id(n1), id(n2)) &&
+    return isequal(uuid(n1), uuid(n2)) &&
         isequal(plev(n1), plev(n2)) &&
         isequal(tags_stored(n1), tags_stored(n2))
 end
 function Base.isless(n1::IndexName, n2::IndexName)
-    t1 = (id(n1), plev(n1), keys(tags_stored(n1)), values(tags_stored(n1)))
-    t2 = (id(n2), plev(n2), keys(tags_stored(n2)), values(tags_stored(n2)))
+    t1 = (uuid(n1), plev(n1), keys(tags_stored(n1)), values(tags_stored(n1)))
+    t2 = (uuid(n2), plev(n2), keys(tags_stored(n2)), values(tags_stored(n2)))
     return isless(t1, t2)
 end
 function Base.hash(n::IndexName, h::UInt)
     h = hash(:IndexName, h)
-    h = hash(id(n), h)
+    h = hash(uuid(n), h)
     h = hash(plev(n), h)
     h = hash(tags_stored(n), h)
     return h
 end
 
-setid(n::IndexName, id) = @set n.id = id
+setuuid(n::IndexName, uuid) = @set n.uuid = uuid
 settags(n::IndexName, tags) = @set n.tags = tags
 setplev(n::IndexName, plev) = @set n.plev = plev
 
@@ -125,11 +126,13 @@ end
 
 """
     prime(i)
+    prime(t::AbstractNamedTensor)
 
 Increment the prime level of an index or index name by one, returning a new index that
 is distinct from `i`. Priming is the usual way to make a second copy of an index that
 carries the same tags but is not contracted against the original. The inverse is
-[`noprime`](@ref), which resets the prime level to zero.
+[`noprime`](@ref), which resets the prime level to zero. Given a tensor, prime all of its
+indices.
 
 # Examples
 
@@ -149,9 +152,11 @@ function prime end
 
 """
     noprime(i)
+    noprime(t::AbstractNamedTensor)
 
 Reset the prime level of an index or index name to zero, returning a new index. This
-undoes any number of [`prime`](@ref) calls.
+undoes any number of [`prime`](@ref) calls. Given a tensor, reset the prime level of all of
+its indices.
 
 # Examples
 
@@ -166,17 +171,43 @@ See also [`prime`](@ref), [`Index`](@ref).
 """
 function noprime end
 
+"""
+    sim(i)
+    sim(t::AbstractNamedTensor)
+
+Return a "similar" index: a new index (or, given a tensor, a tensor with all of its indices
+replaced) carrying the same tags and prime level as `i` but a fresh unique identifier, so it
+is distinct from `i` and will not contract against it. This is the index-manipulation
+spelling of [`uniquename`](@ref) on an index.
+
+# Examples
+
+```jldoctest
+julia> i = Index(2);
+
+julia> sim(i) == i
+false
+
+julia> length(sim(i))
+2
+```
+
+See also [`uniquename`](@ref), [`prime`](@ref).
+"""
+function sim end
+
 prime(n::IndexName) = setplev(n, plev(n) + 1)
 noprime(n::IndexName) = setplev(n, 0)
+sim(n::IndexName) = uniquename(n)
 
 # Show a short prefix of the `UUID` id rather than the full 36-character string,
 # enough to disambiguate indices at a glance without dominating the output. A
 # leading prefix (here the first hyphen-delimited group) is the usual short-id
 # convention, as in git short hashes and Docker short ids.
-shortid(id::UUID) = first(string(id), 8)
+shortid(uuid::UUID) = first(string(uuid), 8)
 
 function Base.show(io::IO, i::IndexName)
-    idstr = "id=$(shortid(id(i)))"
+    idstr = "id=$(shortid(uuid(i)))"
     tagsstr = !isempty(tags_stored(i)) ? "|$(tagsstring(tags_stored(i)))" : ""
     primestr = primestring(plev(i))
     str = "IndexName($(idstr)$(tagsstr))$(primestr)"
@@ -233,7 +264,7 @@ const ITensor = NamedTensor{IndexName}
 const ITensorOperator = NamedTensorOperator{IndexName}
 
 # TODO: Define for `NamedViewIndex`.
-id(i::Index) = id(name(i))
+uuid(i::Index) = uuid(name(i))
 tags_stored(i::Index) = tags_stored(name(i))
 tags(i::Index) = tags(name(i))
 plev(i::Index) = plev(name(i))
@@ -250,6 +281,13 @@ unsettag(i::Index, tagname) = setname(i, unsettag(name(i), tagname))
 setplev(i::Index, plev) = setname(i, setplev(name(i), plev))
 prime(i::Index) = setname(i, prime(name(i)))
 noprime(i::Index) = setname(i, noprime(name(i)))
+sim(i::Index) = setname(i, sim(name(i)))
+
+# Whole-tensor index manipulation: relabel every index name-only via `mapinds`, leaving the
+# data and spaces untouched.
+prime(a::AbstractNamedTensor) = mapinds(prime, a)
+noprime(a::AbstractNamedTensor) = mapinds(noprime, a)
+sim(a::AbstractNamedTensor) = mapinds(sim, a)
 
 function primestring(plev)
     if plev < 0
@@ -266,7 +304,7 @@ end
 
 function Base.show(io::IO, i::Index)
     lenstr = "length=$(length(i))"
-    idstr = "|id=$(shortid(id(i)))"
+    idstr = "|id=$(shortid(uuid(i)))"
     tagsstr = !isempty(tags_stored(i)) ? "|$(tagsstring(tags_stored(i)))" : ""
     primestr = primestring(plev(i))
     str = "Index($(lenstr)$(idstr)$(tagsstr))$(primestr)"

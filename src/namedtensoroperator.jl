@@ -1,4 +1,5 @@
 using Base.Broadcast: Broadcast as BC, Broadcasted
+using LinearAlgebra: LinearAlgebra as LA
 using OrderedCollections: OrderedDict
 using Random: Random
 
@@ -467,6 +468,20 @@ true
 function Base.one(op::NamedTensorOperator)
     co, dom = codomainnames(op), domainnames(op)
     return operator(one(state(op), co, dom), co, dom)
+end
+
+"""
+    LinearAlgebra.tr(op::NamedTensorOperator) -> scalar
+
+Trace of a named operator: contracts each codomain index with its paired domain index and
+sums the diagonal, over the operator's intrinsic codomain/domain split.
+"""
+function LA.tr(op::NamedTensorOperator)
+    a = state(op)
+    byname = Dict(name(i) => i for i in inds(a))
+    codomain = map(n -> byname[n], Tuple(codomainnames(op)))
+    domain = map(n -> byname[n], Tuple(domainnames(op)))
+    return LA.tr(a, codomain, domain)
 end
 
 # === similar_operator ===

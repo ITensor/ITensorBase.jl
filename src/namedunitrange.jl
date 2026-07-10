@@ -1,4 +1,4 @@
-using TensorAlgebra: to_range
+using TensorAlgebra: TensorAlgebra, to_range, trivialrange, ungrade
 
 """
     NamedUnitRange{Name}
@@ -64,15 +64,42 @@ end
 # This can be customized to output different named unit range types.
 namedunitrange(r::AbstractUnitRange, name) = NamedUnitRange(r, name)
 
+# Mint a fresh trivial *named* range matching `r`'s backend: the trivial range of the
+# underlying (unnamed) axis, carrying a fresh unique name of `r`'s name type.
+function TensorAlgebra.trivialrange(r::NamedUnitRange{Name}) where {Name}
+    return namedunitrange(trivialrange(unnamed(r)), uniquename(Name))
+end
+function TensorAlgebra.trivialrange(r::NamedUnitRange{Name}, n::Integer) where {Name}
+    return namedunitrange(trivialrange(unnamed(r), n), uniquename(Name))
+end
+
 # Shorthand: attach an existing name to a range.
 named(r::AbstractUnitRange, name) = namedunitrange(r, name)
 
 # Derived interface. `setname` differs from the `AbstractNamedArray` method: it
 # rebuilds through `named` so the result stays a named unit range, not a named
-# array. The rest of the named interface (`==`, `hash`, `isnamed`, `unnamedtype`,
-# `nametype`, `uniquename`, `show`, `isempty`) is inherited from `AbstractNamedArray`.
+# array. The rest of the named interface (`isnamed`, `unnamedtype`, `nametype`,
+# `uniquename`, `show`, `isempty`) is inherited from `AbstractNamedArray`; `==`,
+# `isequal`, and `hash` are overridden just below.
 # TODO: Use `Accessors.@set`?
 setname(r::NamedUnitRange, name) = named(unnamed(r), name)
+
+# Equality and hashing answer identity ("is this the same leg?"), keyed on the name plus the
+# axis's ungraded extent (via `TensorAlgebra.ungrade`). Conjugation preserves the name and the
+# ungraded extent while flipping arrows and charge labels, so an index compares equal to its
+# dual and stock `Base` set-ops / `Dict` / `Set` treat the two as the same leg. `isequal`
+# delegates to `==` (the Base default, valid since `==` returns a `Bool`), which also overrides
+# the elementwise `AbstractArray` `isequal` that throws on a space-backed axis.
+function Base.:(==)(r1::NamedUnitRange, r2::NamedUnitRange)
+    return name(r1) == name(r2) && ungrade(unnamed(r1)) == ungrade(unnamed(r2))
+end
+Base.isequal(r1::NamedUnitRange, r2::NamedUnitRange) = r1 == r2
+# `ungrade` strips the grading from the underlying range, keeping the name, so hashing runs
+# through the shared `hash_named(:NamedArray, ...)` path on the ungraded range. That keeps `hash`
+# consistent with `==` above and with a named array of equal values (Base's `[1, 2, 3] == 1:3`
+# and `hash([1, 2, 3]) == hash(1:3)` contract).
+TensorAlgebra.ungrade(r::NamedUnitRange) = named(ungrade(unnamed(r)), name(r))
+Base.hash(r::NamedUnitRange, h::UInt) = hash_named(:NamedArray, ungrade(r), h)
 
 # Forward `conj` to the underlying range so graded axes flip their sector
 # arrows. The `Base.conj(::AbstractArray{<:Real}) = x` fallback would
