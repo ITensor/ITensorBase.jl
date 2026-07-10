@@ -142,6 +142,8 @@ using UUIDs: UUID
         @test eltype(a′) === elt
         @test a′ isa Matrix{elt}
         @test a′ == unnamed(a)
+        # `Array` returns a fresh copy, not the storage object itself.
+        @test a′ !== unnamed(a)
 
         i, j = Index.((3, 4))
         a = randn(elt, i, j)
