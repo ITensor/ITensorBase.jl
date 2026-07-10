@@ -307,7 +307,6 @@ function Base.show(io::IO, i::IndexName)
 end
 
 """
-    Index(space)
     Index(space; tags, plev)
 
 An index of an [`ITensor`](@ref): a named unit range whose name is an [`IndexName`](@ref), a
@@ -318,9 +317,9 @@ range: `Index(2)` makes an index of length `2` over `Base.OneTo(2)`,
 name, so two indices built the same way are still distinct, and tensors share a dimension
 only when they share the same `Index`.
 
-The keyword form decorates the freshly minted name, as in `Index(2; tags = "i" => "1", plev = 1)`.
-`tags` accepts the same inputs as [`settags`](@ref) (a pair, a collection of pairs, or an
-`AbstractDict`); `plev` sets the prime level.
+`tags` and `plev` decorate the freshly minted name, as in `Index(2; tags = "i" => "1", plev = 1)`,
+and default to no tags and prime level `0`. `tags` accepts the same inputs as [`settags`](@ref)
+(a pair, a collection of pairs, or an `AbstractDict`).
 
 # Examples
 
