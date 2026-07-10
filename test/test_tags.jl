@@ -75,10 +75,10 @@ newbond(t, keep) = only(filter(!in(keep), collect(inds(t))))
         @test tags(newbond(q, (i,))) == Dict("Link" => "1")
         @test isempty(tags(newbond(qr_compact(a, (i,), (j,))[1], (i,))))
 
-        # SVD: `rowname` (U-side) and `colname` (V-side); S carries both legs.
+        # SVD: `leftname` (U-side) and `rightname` (V-side); S carries both legs.
         u, s, v = svd_compact(
-            a, (i,), (j,); rowname = (; tags = "u" => "1"),
-            colname = (; tags = "v" => "1", plev = 1)
+            a, (i,), (j,); leftname = (; tags = "u" => "1"),
+            rightname = (; tags = "v" => "1", plev = 1)
         )
         ub = newbond(u, (i,))
         vb = newbond(v, (j,))
@@ -89,24 +89,24 @@ newbond(t, keep) = only(filter(!in(keep), collect(inds(t))))
 
         # A callable spec gets full control over minting.
         u2, _, _ =
-            svd_compact(a, (i,), (j,); rowname = nt -> uniquename(nt; tags = "c" => "9"))
+            svd_compact(a, (i,), (j,); leftname = nt -> uniquename(nt; tags = "c" => "9"))
         @test tags(newbond(u2, (i,))) == Dict("c" => "9")
 
         # `decoration` forwards an existing index's decoration onto a fresh bond.
         src = Index(2; tags = "Link" => "7", plev = 2)
-        u3, _, _ = svd_compact(a, (i,), (j,); rowname = decoration(src))
+        u3, _, _ = svd_compact(a, (i,), (j,); leftname = decoration(src))
         @test tags(newbond(u3, (i,))) == Dict("Link" => "7")
         @test plev(newbond(u3, (i,))) == 2
 
-        # Eigen: D's legs are row/col (independent); V shares the col leg.
+        # Eigen: D's legs are left/right (independent); V shares the right leg.
         s1 = Index(2)
         s1p = prime(s1)
         m = randn(2, 2)
         m = m + transpose(m)
         h = m[s1, s1p]
         d, vec = eigh_full(
-            h, (s1,), (s1p,); rowname = (; tags = "row" => "1"),
-            colname = (; tags = "col" => "1")
+            h, (s1,), (s1p,); leftname = (; tags = "row" => "1"),
+            rightname = (; tags = "col" => "1")
         )
         @test Set(Dict.(tags.(collect(inds(d))))) ==
             Set([Dict("row" => "1"), Dict("col" => "1")])

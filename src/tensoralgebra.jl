@@ -153,7 +153,7 @@ end
 # decoration is splatted into `uniquename` (kwargs such as `tags`/`plev`); a callable is used
 # as-is, for full control over how the name is minted. The default `(;)` reproduces the bare
 # `uniquename(nametype)`. Each factorization exposes one such keyword per new bond it mints:
-# `name` for a single shared bond, and `rowname`/`colname` for the two legs of the central
+# `name` for a single shared bond, and `leftname`/`rightname` for the two legs of the central
 # matrix in SVD and eigendecomposition.
 function to_uniquename_function(decoration::NamedTuple)
     return nametype -> uniquename(nametype; decoration...)
@@ -213,15 +213,15 @@ for f in [:svd_compact, :svd_full]
         end
         function $f_nameddims(
                 a::AbstractNamedTensor, dimnames_codomain, dimnames_domain;
-                rowname = (;), colname = (;), kwargs...
+                leftname = (;), rightname = (;), kwargs...
             )
             codomain = name.(dimnames_codomain)
             domain = name.(dimnames_domain)
             u_unnamed, s_unnamed, v_unnamed = TA.$f(
                 unnamed(a), dimnames(a), codomain, domain; kwargs...
             )
-            name_u = to_uniquename_function(rowname)(dimnametype(a))
-            name_v = to_uniquename_function(colname)(dimnametype(a))
+            name_u = to_uniquename_function(leftname)(dimnametype(a))
+            name_v = to_uniquename_function(rightname)(dimnametype(a))
             dimnames_u = (codomain..., name_u)
             dimnames_s = (name_u, name_v)
             dimnames_v = (name_v, domain...)
@@ -323,15 +323,15 @@ for f in [:eigh_full, :eig_full, :eigh_trunc, :eig_trunc]
         end
         function $f_nameddims(
                 a::AbstractNamedTensor, dimnames_codomain, dimnames_domain;
-                rowname = (;), colname = (;), kwargs...
+                leftname = (;), rightname = (;), kwargs...
             )
             codomain = name.(dimnames_codomain)
             domain = name.(dimnames_domain)
             d_unnamed, v_unnamed = TA.$f(
                 unnamed(a), dimnames(a), codomain, domain; kwargs...
             )
-            name_d = to_uniquename_function(colname)(dimnametype(a))
-            name_d′ = to_uniquename_function(rowname)(dimnametype(a))
+            name_d = to_uniquename_function(rightname)(dimnametype(a))
+            name_d′ = to_uniquename_function(leftname)(dimnametype(a))
             name_v = name_d
             dimnames_d = (name_d′, name_d)
             dimnames_v = (domain..., name_v)
