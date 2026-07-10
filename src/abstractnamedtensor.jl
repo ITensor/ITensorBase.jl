@@ -280,7 +280,15 @@ end
 
 # These are defined since the Base versions assume the eltype and ndims are known
 # at compile time, which isn't true for ITensors.
-Base.Array(a::AbstractNamedTensor) = Array(unnamed(a))
+# Workaround: `Array(::TensorKit.AbstractTensorMap)` is not defined yet (it should be), so a
+# TensorKit-backed ITensor cannot densify through the plain `Array(unnamed(a))`. Go through
+# `convert(Array, ...)`, which TensorKit does support, and restore the copy the `Array` constructor
+# would have made (`convert` returns the storage unchanged when it is already an `Array`). Once
+# TensorKit defines `Array(::AbstractTensorMap)`, simplify this back to `Array(unnamed(a))`.
+function Base.Array(a::AbstractNamedTensor)
+    array = convert(Array, unnamed(a))
+    return array === unnamed(a) ? copy(array) : array
+end
 Base.Array{T}(a::AbstractNamedTensor) where {T} = Array{T}(unnamed(a))
 Base.Array{T, N}(a::AbstractNamedTensor) where {T, N} = Array{T, N}(unnamed(a))
 Base.AbstractArray{T}(a::AbstractNamedTensor) where {T} = AbstractArray{T, ndims(a)}(a)

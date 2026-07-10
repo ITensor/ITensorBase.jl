@@ -78,6 +78,20 @@ using Test: @test, @test_throws, @testset
         q, r = qr_compact(a3, (i,), (j, k))
         @test sca((q * r) * w) ≈ sca(a3 * w)
 
+        # `Array` densifies a `TensorMap`-backed ITensor to a plain dense array (a fresh copy).
+        @test Array(a) isa Array{elt}
+        @test Array(a) == convert(Array, unnamed(a))
+
+        # `trivialrange` mints a fresh trivial axis over the native space (used e.g. by the
+        # boundary-MPS setup), routing through the `namedunitrange(::ElementarySpace, name)` overload.
+        t1 = TensorAlgebra.trivialrange(i)
+        @test t1 isa Index
+        @test length(t1) == 1
+        tn = TensorAlgebra.trivialrange(i, 3)
+        @test tn isa Index
+        @test length(tn) == 3
+        @test name(tn) != name(i)
+
         # Map-shaped construction forwards the codomain/domain split to the `TensorMap`:
         # `randn((i,), (j,))` stores a `Vi ← Vj` map rather than flattening all-codomain.
         # Following the `similar_map` convention the domain appears dualized in the outward
