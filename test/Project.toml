@@ -24,7 +24,7 @@ VectorInterface = "409d34a3-91d5-4945-b6ec-7529ddf182d8"
 WrappedUnions = "325db55a-9c6c-5b90-b1a2-ec87e7a38c44"
 
 [sources.ITensorBase]
-path = "/Users/mfishman/.julia/dev/ITensorBase/.worktrees/mf/nextgen-followups-round1"
+path = ".."
 
 [compat]
 AbstractTrees = "0.4.5"
