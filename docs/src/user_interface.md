@@ -127,14 +127,14 @@ truncated and full variants, along with keyword options controlling them; see th
 for the full list and the keyword syntax. The aim is to wrap all of them, but coverage is
 still being filled in, so please open an issue if one you need is not available yet.
 
-By default each new bond gets a bare freshly minted name. To decorate it, pass a keyword: `name`
-for the single shared bond of the QR, LQ, orthogonal, polar, and null-space factorizations, and
-`leftname`/`rightname` for the two bonds of the central factor in SVD and the eigendecompositions
-(`leftname` on the codomain side, `rightname` on the domain side). Each keyword takes a
-`NamedTuple` of decoration that is applied to the fresh name:
+The examples above leave each new bond with a bare freshly minted name. To decorate it, pass a
+keyword: `name` for the single shared bond of the QR, LQ, orthogonal, polar, and null-space
+factorizations, and `leftname`/`rightname` for the two bonds of the central factor in SVD and
+the eigendecompositions (`leftname` on the codomain side, `rightname` on the domain side). Each
+keyword takes a `NamedTuple` of decoration that is applied to the fresh name. Here is the same
+SVD, now tagging its two bonds:
 
 ```@example userinterface
-using MatrixAlgebraKit: svd_compact
 using ITensorBase: commonind, tags
 u, s, v = svd_compact(a, (i,); leftname = (; tags = "link" => "u"), rightname = (; tags = "link" => "v"))
 tags.((commonind(u, s), commonind(s, v)))
