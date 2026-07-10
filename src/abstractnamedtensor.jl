@@ -519,6 +519,9 @@ function replacedimnames end
 # (`name(i) => name(j)`). `dimnames(a)` holds names, so a raw-index key would never match and
 # silently no-op.
 function replacedimnames(a::AbstractNamedTensor, replacements::Pair...)
+    # Base's `replace(::AbstractArray)` with no pairs throws (unlike `replace(::AbstractString)`),
+    # so short-circuit the empty case: with no replacements there is nothing to relabel.
+    isempty(replacements) && return a
     replacements = map(p -> name(first(p)) => name(last(p)), replacements)
     new_dimnames = replace(dimnames(a), replacements...)
     return nameddims(unnamed(a), new_dimnames)

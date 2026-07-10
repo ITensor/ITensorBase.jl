@@ -233,6 +233,13 @@ end
         nb = mapinds(n -> n == named(1:3, "i") ? named(1:3, "k") : n, na)
         @test inds(nb) == [named(1:3, "k"), named(1:4, "j")]
         @test unnamed(nb) == a
+        # An empty replacement set relabels nothing.
+        nb = replacedimnames(na)
+        @test inds(nb) == inds(na)
+        @test unnamed(nb) == a
+        nb = replaceinds(na)
+        @test inds(nb) == inds(na)
+        @test unnamed(nb) == a
         na[1, 1] = 11
         @test na[1, 1] == 11
         @test size(na) == (3, 4)
