@@ -136,7 +136,7 @@ for the single shared bond of the QR, LQ, orthogonal, polar, and null-space fact
 ```@example userinterface
 using MatrixAlgebraKit: svd_compact
 using ITensorBase: commonind, tags
-u, s, v = svd_compact(a, (i,); leftname = (; tags = "Link" => "u"), rightname = (; tags = "Link" => "v"))
+u, s, v = svd_compact(a, (i,); leftname = (; tags = "link" => "u"), rightname = (; tags = "link" => "v"))
 tags.((commonind(u, s), commonind(s, v)))
 ```
 

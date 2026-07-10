@@ -56,10 +56,10 @@ newbond(t, keep) = only(filter(!in(keep), collect(inds(t))))
     end
 
     @testset "decoration round-trips through uniquename" begin
-        i = Index(2; tags = "Link" => "1", plev = 2)
-        @test decoration(i) == (; tags = Dict("Link" => "1"), plev = 2)
+        i = Index(2; tags = "link" => "1", plev = 2)
+        @test decoration(i) == (; tags = Dict("link" => "1"), plev = 2)
         k = uniquename(IndexName; decoration(i)...)
-        @test tags(k) == Dict("Link" => "1")
+        @test tags(k) == Dict("link" => "1")
         @test plev(k) == 2
         @test k != name(i)                                         # fresh id
         @test decoration("x") == (;)                               # undecorated name
@@ -71,8 +71,8 @@ newbond(t, keep) = only(filter(!in(keep), collect(inds(t))))
         a = randn(2, 3)[i, j]
 
         # Single new bond: `name`; default mints a bare bond.
-        q, r = qr_compact(a, (i,), (j,); name = (; tags = "Link" => "1"))
-        @test tags(newbond(q, (i,))) == Dict("Link" => "1")
+        q, r = qr_compact(a, (i,), (j,); name = (; tags = "link" => "1"))
+        @test tags(newbond(q, (i,))) == Dict("link" => "1")
         @test isempty(tags(newbond(qr_compact(a, (i,), (j,))[1], (i,))))
 
         # SVD: `leftname` (U-side) and `rightname` (V-side); S carries both legs.
@@ -93,9 +93,9 @@ newbond(t, keep) = only(filter(!in(keep), collect(inds(t))))
         @test tags(newbond(u2, (i,))) == Dict("c" => "9")
 
         # `decoration` forwards an existing index's decoration onto a fresh bond.
-        src = Index(2; tags = "Link" => "7", plev = 2)
+        src = Index(2; tags = "link" => "7", plev = 2)
         u3, _, _ = svd_compact(a, (i,), (j,); leftname = decoration(src))
-        @test tags(newbond(u3, (i,))) == Dict("Link" => "7")
+        @test tags(newbond(u3, (i,))) == Dict("link" => "7")
         @test plev(newbond(u3, (i,))) == 2
 
         # Eigen: D's legs are left/right (independent); V shares the right leg.
