@@ -90,9 +90,12 @@ end
 # Function barrier: `unnamed(a)` is abstractly typed, so dispatching on the concrete array here
 # makes `ndims` a compile-time constant. Building the permutation as an `ntuple(…, Val(ndims))`
 # (an `NTuple{N,Int}`) rather than `Tuple(perm)` (a length-non-inferrable `Tuple{Vararg{Int}}`)
-# lets `permuteddims` build a concretely-typed wrapper, roughly halving the permute cost.
-@noinline function _permuteddims_to(array::AbstractArray, perm)
-    return permuteddims(array, ntuple(i -> perm[i], Val(ndims(array))))
+# lets `permuteddims` build a concretely-typed wrapper, roughly halving the permute cost. Using
+# `TensorAlgebra.ndims` and leaving `array` unrestricted covers non-`AbstractArray` backends such
+# as a `TensorMap`, whose permuted view is a `TensorAlgebra.PermutedDims` rather than a
+# `Base.PermutedDimsArray`.
+@noinline function _permuteddims_to(array, perm)
+    return permuteddims(array, ntuple(i -> perm[i], Val(TensorAlgebra.ndims(array))))
 end
 unname(a::AbstractNamedTensor, inds) = unnamed(aligndims(a, inds))
 
@@ -324,88 +327,79 @@ Base.ndims(a::AbstractNamedTensor) = TensorAlgebra.ndims(unnamed(a))
 # Circumvent issue when eltype isn't known at compile time.
 Base.eltype(a::AbstractNamedTensor) = eltype(unnamed(a))
 
-# In-place zero of an NamedTensor, delegating to its unnamed parent array.
+# In-place `zero!`/`scale!`/`add!` of a named tensor, delegating to the unnamed parent array.
+# `add!` aligns `x` to `y`'s dimension order by name (the named analogue of the
+# identity-permutation `add!` on plain arrays) and does the block-wise permute-add on the
+# parents, so it never routes through a broadcast that aliases the destination with an operand.
 TensorAlgebra.zero!(a::AbstractNamedTensor) = (zero!(unnamed(a)); a)
-
-# Name-aware `VectorInterface` methods so that ITensors can be used directly as the vectors
-# in iterative solvers such as `KrylovKit.eigsolve`, which drive their Krylov vectors through
-# `VectorInterface`; the generic `AbstractArray` fallbacks are not name-aware. The `!` methods
-# operate in place via broadcasting; each `!!` method does so too when the result fits the
-# destination's element type, and otherwise allocates. `scalartype` is computed in the value
-# domain because an NamedTensor's element type is not encoded in its type.
-using VectorInterface: VectorInterface, add, add!, scalartype, scale, scale!, zerovector!
-VectorInterface.scalartype(a::AbstractNamedTensor) = scalartype(unnamed(a))
-function VectorInterface.scalartype(a::AbstractArray{<:AbstractNamedTensor})
-    return mapreduce(scalartype, promote_type, a; init = Bool)
-end
-
-function VectorInterface.zerovector(
-        a::AbstractNamedTensor,
-        ::Type{S}
-    ) where {S <: Number}
-    return zerovector!(similar(a, S))
-end
-VectorInterface.zerovector!(a::AbstractNamedTensor) = zero!(a)
-VectorInterface.zerovector!!(a::AbstractNamedTensor) = zerovector!(a)
-
-VectorInterface.scale(a::AbstractNamedTensor, α::Number) = a * α
-function VectorInterface.scale!(a::AbstractNamedTensor, α::Number)
-    @. a = a * α
+function TensorAlgebra.scale!(a::AbstractNamedTensor, α::Number)
+    TensorAlgebra.scale!(unnamed(a), α)
     return a
 end
-function VectorInterface.scale!(
-        b::AbstractNamedTensor,
-        a::AbstractNamedTensor,
-        α::Number
+function TensorAlgebra.add!(
+        y::AbstractNamedTensor, x::AbstractNamedTensor, α::Number, β::Number
     )
-    @. b = a * α
-    return b
-end
-function VectorInterface.scale!!(a::AbstractNamedTensor, α::Number)
-    promote_type(scalartype(a), typeof(α)) <: scalartype(a) || return scale(a, α)
-    return scale!(a, α)
-end
-function VectorInterface.scale!!(
-        b::AbstractNamedTensor,
-        a::AbstractNamedTensor,
-        α::Number
-    )
-    promote_type(scalartype(b), scalartype(a), typeof(α)) <: scalartype(b) ||
-        return scale(a, α)
-    return scale!(b, a, α)
-end
-
-function VectorInterface.add(
-        y::AbstractNamedTensor,
-        x::AbstractNamedTensor,
-        α::Number,
-        β::Number
-    )
-    return @. y * β + x * α
-end
-function VectorInterface.add!(
-        y::AbstractNamedTensor,
-        x::AbstractNamedTensor,
-        α::Number,
-        β::Number
-    )
-    @. y = y * β + x * α
+    TensorAlgebra.add!(unnamed(y), unnamed(x, dimnames(y)), α, β)
     return y
 end
-function VectorInterface.add!!(
-        y::AbstractNamedTensor,
-        x::AbstractNamedTensor,
-        α::Number,
-        β::Number
-    )
-    promote_type(scalartype(y), scalartype(x), typeof(α), typeof(β)) <: scalartype(y) ||
-        return add(y, x, α, β)
-    return add!(y, x, α, β)
+
+# Name-aware `VectorInterface` methods so ITensors can drive iterative solvers such as
+# `KrylovKit.eigsolve`, which push their Krylov vectors through `VectorInterface`. The generic
+# `AbstractArray` fallbacks are not name-aware, and the in-place methods forward to the name-aware
+# `TensorAlgebra` methods above rather than an aliasing in-place broadcast.
+using VectorInterface: VectorInterface as VI
+VI.scalartype(a::AbstractNamedTensor) = VI.scalartype(unnamed(a))
+function VI.scalartype(a::AbstractArray{<:AbstractNamedTensor})
+    return mapreduce(VI.scalartype, promote_type, a; init = Bool)
 end
 
-function VectorInterface.inner(x::AbstractNamedTensor, y::AbstractNamedTensor)
-    return (conj(x) * y)[]
+function VI.zerovector(a::AbstractNamedTensor, ::Type{S}) where {S <: Number}
+    return VI.zerovector!(similar(a, S))
 end
+VI.zerovector!(a::AbstractNamedTensor) = zero!(a)
+VI.zerovector!!(a::AbstractNamedTensor) = VI.zerovector!(a)
+# `VectorInterface` derives the rest: `zerovector(a)` defaults `S` to `scalartype(a)`, and
+# `zerovector!!(a, S)` recycles via `zerovector!!(a)` or widens via `zerovector(a, S)`.
+
+# Out-of-place `scale`/`add` allocate a destination of the promoted scalar type (via the public
+# `Base.promote_op`, since `VectorInterface`'s `promote_scale`/`promote_add` are internal), so
+# scaling a real tensor by a complex coefficient widens to a complex result.
+function VI.scale(a::AbstractNamedTensor, α::Number)
+    T = Base.promote_op(VI.scale, VI.scalartype(a), typeof(α))
+    return VI.scale!(similar(a, T), a, α)
+end
+VI.scale!(a::AbstractNamedTensor, α::Number) = TensorAlgebra.scale!(a, α)
+function VI.scale!(b::AbstractNamedTensor, a::AbstractNamedTensor, α::Number)
+    return TensorAlgebra.add!(b, a, α, false)
+end
+# The `!!` methods fall back to out-of-place allocation when the destination can't hold the result.
+function VI.scale!!(a::AbstractNamedTensor, α::Number)
+    T = Base.promote_op(VI.scale, VI.scalartype(a), typeof(α))
+    T <: VI.scalartype(a) || return VI.scale(a, α)
+    return VI.scale!(a, α)
+end
+function VI.scale!!(b::AbstractNamedTensor, a::AbstractNamedTensor, α::Number)
+    T = Base.promote_op(VI.scale, VI.scalartype(a), typeof(α))
+    T <: VI.scalartype(b) || return VI.scale(a, α)
+    return VI.scale!(b, a, α)
+end
+
+function VI.add(y::AbstractNamedTensor, x::AbstractNamedTensor, α::Number, β::Number)
+    T = Base.promote_op(VI.add, VI.scalartype(y), VI.scalartype(x), typeof(α), typeof(β))
+    return VI.add!(VI.scale!(similar(y, T), y, β), x, α, true)
+end
+function VI.add!(y::AbstractNamedTensor, x::AbstractNamedTensor, α::Number, β::Number)
+    return TensorAlgebra.add!(y, x, α, β)
+end
+function VI.add!!(y::AbstractNamedTensor, x::AbstractNamedTensor, α::Number, β::Number)
+    T = Base.promote_op(VI.add, VI.scalartype(y), VI.scalartype(x), typeof(α), typeof(β))
+    T <: VI.scalartype(y) || return VI.add(y, x, α, β)
+    return VI.add!(y, x, α, β)
+end
+# `VectorInterface` derives the two- and three-argument `add`/`add!`/`add!!` from these, defaulting
+# the omitted coefficients to `One()`.
+
+VI.inner(x::AbstractNamedTensor, y::AbstractNamedTensor) = LinearAlgebra.dot(x, y)
 
 Base.axes(a::AbstractNamedTensor, dimname::Name) = axes(a, dim(a, dimname))
 Base.size(a::AbstractNamedTensor, dimname::Name) = size(a, dim(a, dimname))

@@ -26,6 +26,9 @@ using Test: @test, @testset
     @test VI.scalartype(z) === elt
     @test iszero(unnamed(z))
     @test VI.zerovector!!(a) ≈ VI.zerovector(a)
+    # `zerovector!!(x, S)` recycles when `S` matches the scalar type and widens otherwise.
+    @test VI.scalartype(VI.zerovector!!(copy(a), ComplexF64)) === ComplexF64
+    @test VI.scalartype(VI.zerovector!!(copy(a), elt)) === elt
 
     # scale / scale! / scale!!
     @test unnamed(VI.scale(a, 2)) ≈ 2 * ua

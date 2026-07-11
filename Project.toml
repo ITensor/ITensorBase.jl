@@ -1,6 +1,6 @@
 name = "ITensorBase"
 uuid = "4795dd04-0d67-49bb-8f44-b89c448a1dc7"
-version = "0.11.3"
+version = "0.11.4"
 authors = ["ITensor developers <support@itensor.org> and contributors"]
 
 [workspace]
@@ -31,6 +31,10 @@ Mooncake = "da2b9cff-9c12-43a0-ae48-6db2b0edb7d6"
 OMEinsumContractionOrders = "6f22d1fd-8eed-4bb7-9776-e7d684900715"
 TensorKit = "07d1fe3e-3e46-537d-9eac-e9e13d0d4cec"
 TensorOperations = "6aa20fa7-93e2-5fca-9bc0-fbd0db3c71a2"
+
+[sources.TensorAlgebra]
+rev = "mf/tensormap-inplace-ops"
+url = "https://github.com/ITensor/TensorAlgebra.jl"
 
 [extensions]
 ITensorBaseAdaptExt = "Adapt"
