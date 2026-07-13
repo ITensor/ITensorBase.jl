@@ -5,18 +5,13 @@ export AbstractNamedTensor, NamedTensor, AbstractITensor, ITensor, Index,
     dimnames, dimnametype, domainnames, hascommoninds, id, inds, mapinds, named, nameddims,
     noncommoninds, noprime, operator, prime, replaceinds, sim, similar_operator, state,
     trycommonind, trynoncommonind, uniqueind, uniqueinds, unioninds, uniquename
-using Compat: @compat
-@compat public @names
-@compat public IndexName, name, nametype, replacedimnames, setname, unnamed, unnamedtype
-@compat public decoration,
-    emptytags,
-    gettag,
-    gettags,
-    hastag,
-    plev,
-    settags,
-    tags,
-    unsettags
+if VERSION >= v"1.11.0-DEV.469"
+    eval(
+        Meta.parse(
+            "public @names, IndexName, name, nametype, replacedimnames, setname, space, unnamed, unnamedtype, decoration, emptytags, gettag, gettags, hastag, plev, settags, tags, unsettags"
+        )
+    )
+end
 
 # Named-array machinery (relocated from NamedDimsArrays.jl).
 include("isnamed.jl")

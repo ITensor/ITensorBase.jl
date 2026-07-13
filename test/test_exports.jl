@@ -12,7 +12,7 @@ using Test: @test, @testset
         :uniqueind, :uniqueinds, :unioninds, :uniquename,
     ]
     publics = [
-        :IndexName, :name, :nametype, :replacedimnames, :setname, :unnamed,
+        :IndexName, :name, :nametype, :replacedimnames, :setname, :space, :unnamed,
         :unnamedtype,
         :decoration, :emptytags, :gettag, :gettags, :hastag, :plev, :settags, :tags,
         :unsettags,

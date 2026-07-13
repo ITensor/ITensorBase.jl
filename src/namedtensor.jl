@@ -25,24 +25,10 @@ struct NamedTensor{DimName} <: AbstractNamedTensor{DimName}
     # `axes`/algebra interface) can be the parent directly. See the TensorKit extension.
     unnamed::Any
     dimnames::Vector{DimName}
-    function NamedTensor{DimName}(unnamed, dimnames) where {DimName}
-        # Catch the common ITensors.jl-style mistake of passing indices (`NamedUnitRange`s
-        # such as `Index`) as the names. Checked before `collect(DimName, ...)`, which would
-        # otherwise fail with an opaque `convert` error when `DimName` is the dimension-name
-        # type (e.g. `ITensor`'s `IndexName`).
-        (
-            dimnames isa NamedUnitRange ||
-                any(dimname -> dimname isa NamedUnitRange, dimnames)
-        ) && throw(
-            ArgumentError(
-                "The `NamedTensor`/`ITensor` constructor takes dimension names, not indices \
-                (`NamedUnitRange`s such as `Index`), got $(dimnames). To build a tensor from \
-                an array and indices, either index the array to inherit the space from the \
-                indices, as in `array[i, j]`, or attach only the names and take the space \
-                from the array, as in `ITensor(array, name.((i, j)))`."
-            )
-        )
-        dimnames = collect(DimName, dimnames)
+    # The sole inner constructor: enforces the representation invariants (one name per dimension,
+    # names distinct) on already-collected names. The outer constructors below normalize the
+    # inputs (strip index names, fix the eltype) and funnel through here.
+    global function _NamedTensor(unnamed, dimnames::Vector{DimName}) where {DimName}
         TensorAlgebra.ndims(unnamed) == length(dimnames) ||
             throw(ArgumentError("Number of named dims must match ndims."))
         allunique(dimnames) ||
@@ -51,7 +37,30 @@ struct NamedTensor{DimName} <: AbstractNamedTensor{DimName}
     end
 end
 
-NamedTensor(unnamed, dims) = NamedTensor{eltype(dims)}(unnamed, dims)
+# `dimnames` can hold plain names or indices (`NamedUnitRange`s such as `Index`): `name` maps an
+# index to its name and is the identity on a plain name, so an index's space is ignored (the array
+# carries the axes). A single bare index is rejected, since it is ambiguous as `dimnames` (a
+# `NamedUnitRange` is itself an iterable of its range values). The two methods repeat this
+# normalization rather than one delegating to the other, so each strips names exactly once.
+function NamedTensor{DimName}(unnamed, dimnames) where {DimName}
+    dimnames isa NamedUnitRange && throw(
+        ArgumentError(
+            "Got a single index (`NamedUnitRange` such as `Index`) as the dimension names. \
+            Pass a tuple or vector, e.g. `ITensor(array, (i, j))`."
+        )
+    )
+    return _NamedTensor(unnamed, collect(DimName, name.(dimnames)))
+end
+# The dimension-name type is inferred from the names, so indices infer `IndexName`, not their type.
+function NamedTensor(unnamed, dimnames)
+    dimnames isa NamedUnitRange && throw(
+        ArgumentError(
+            "Got a single index (`NamedUnitRange` such as `Index`) as the dimension names. \
+            Pass a tuple or vector, e.g. `ITensor(array, (i, j))`."
+        )
+    )
+    return _NamedTensor(unnamed, collect(name.(dimnames)))
+end
 NamedTensor(a::AbstractNamedTensor, inds) = throw(ArgumentError("Already named."))
 NamedTensor(a::AbstractNamedTensor) = NamedTensor(unnamed(a), dimnames(a))
 
