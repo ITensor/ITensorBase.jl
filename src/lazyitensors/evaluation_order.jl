@@ -85,9 +85,6 @@ end
 
 abstract type EvaluationOrderAlgorithm end
 struct Greedy <: EvaluationOrderAlgorithm end
-# `Optimal` finds the cost-optimal contraction order. The method is provided by
-# the TensorOperations extension.
-struct Optimal <: EvaluationOrderAlgorithm end
 default_optimize_evaluation_order_alg(a) = Greedy()
 
 function optimize_contraction_order(alg, a)
