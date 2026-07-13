@@ -124,14 +124,18 @@ using UUIDs: UUID
         @test_throws ArgumentError NamedTensor(randn(elt, 4), (:i, :j))
         @test_throws MethodError NamedTensor(randn(elt, 2, 2), :i, :j)
 
-        # The constructor takes names only, not indices, so passing indices (the
-        # ITensors.jl idiom) errors, whether as a tuple, a vector, or a single index.
+        # Passing indices as a tuple or vector builds the tensor, using only their names and
+        # taking the space from the array. A single bare index still errors (it is ambiguous).
         i, j = Index.((2, 3))
-        @test_throws ArgumentError NamedTensor(randn(elt, 2, 2), Index.((2, 2)))
-        @test_throws ArgumentError ITensor(randn(elt, 2, 3), (i, j))
-        @test_throws ArgumentError ITensor(randn(elt, 2, 3), [i, j])
+        @test NamedTensor(randn(elt, 2, 3), (i, j)) isa ITensor
+        @test ITensor(randn(elt, 2, 3), (i, j)) isa ITensor
+        @test ITensor(randn(elt, 2, 3), [i, j]) isa ITensor
+        t = ITensor(randn(elt, 2, 3), (i, j))
+        @test issetequal(name.(inds(t)), name.((i, j)))
         @test_throws ArgumentError ITensor(randn(elt, 2), i)
-        # The two supported constructions: index the array (inherit the space from the
+        # The space is taken from the array, not from the index (a mismatched index dim is ignored).
+        @test size(unnamed(ITensor(randn(elt, 2, 3), (i, Index(9))))) == (2, 3)
+        # The other supported constructions: index the array (inherit the space from the
         # indices), or attach only the names (take the space from the array).
         @test randn(elt, 2, 3)[i, j] isa ITensor
         @test ITensor(randn(elt, 2, 3), name.((i, j))) isa ITensor

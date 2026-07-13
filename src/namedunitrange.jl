@@ -30,6 +30,14 @@ unnamed(i::NamedUnitRange) = i.value
 name(i::NamedUnitRange) = i.name
 unnamedtype(::Type{<:NamedUnitRange{<:Any, <:Any, Unnamed}}) where {Unnamed} = Unnamed
 
+"""
+    space(i::NamedUnitRange)
+
+The space of a named range `i`: its underlying (unnamed) range or axis object, with the name
+dropped. Equal to [`unnamed`](@ref) for a `NamedUnitRange`.
+"""
+space(i::NamedUnitRange) = unnamed(i)
+
 # Construct from a space, minting a fresh name of the requested flavor. The space is
 # anything `to_range` accepts (an `Integer`, an existing range, or a sector-pair vector
 # when GradedArrays is loaded), so `Index(2)`, `Index(1:3)`, and

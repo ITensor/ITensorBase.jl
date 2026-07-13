@@ -7,7 +7,14 @@ export AbstractNamedTensor, NamedTensor, AbstractITensor, ITensor, Index,
     trycommonind, trynoncommonind, uniqueind, uniqueinds, unioninds, uniquename
 using Compat: @compat
 @compat public @names
-@compat public IndexName, name, nametype, replacedimnames, setname, unnamed, unnamedtype
+@compat public IndexName,
+    name,
+    nametype,
+    replacedimnames,
+    setname,
+    space,
+    unnamed,
+    unnamedtype
 @compat public decoration,
     emptytags,
     gettag,
