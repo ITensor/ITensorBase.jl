@@ -185,7 +185,7 @@ function TA.directsum(
     shared = namesetdiff(inds(first(pair1)), last(pair1))
     summed_dims = length(shared) .+ eachindex(last(pair1))
     aligned = map(p -> unname(first(p), [shared; collect(last(p))]), ps)
-    a = TA.directsum(aligned...; dims = summed_dims)
+    a = TA.directsum(summed_dims, aligned...)
     return nameddims(a, [name.(shared); name.(collect(out_inds))])
 end
 function TA.directsum(
