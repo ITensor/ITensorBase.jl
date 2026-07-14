@@ -5,7 +5,7 @@ using MatrixAlgebraKit: left_null, left_orth, left_polar, lq_compact, lq_full, q
     qr_full, right_null, right_orth, right_polar, svd_compact, svd_trunc, svd_vals
 using StableRNGs: StableRNG
 using TensorAlgebra.MatrixAlgebra: gram_eigh_full, gram_eigh_full_with_pinv
-using TensorAlgebra: TensorAlgebra, contract, matricize, project, trivialrange,
+using TensorAlgebra: TensorAlgebra, contract, directsum, matricize, project, trivialrange,
     unchecked_project, unmatricize
 using Test: @test, @test_broken, @testset
 
@@ -59,6 +59,34 @@ using Test: @test, @test_broken, @testset
             unname(na, ("a", "b")),
             (unnamed(k), unnamed(i), unnamed(j), unnamed(l))
         )
+    end
+    @testset "directsum" begin
+        i = namedoneto(2, "i")            # shared index, carried through unchanged
+        j1, j2 = namedoneto.((2, 3), ("j1", "j2"))
+        k1, k2 = namedoneto.((2, 3), ("k1", "k2"))
+        a = randn(elt, i, j1, k1)
+        b = randn(elt, i, j2, k2)
+        ref = cat(unname(a, (i, j1, k1)), unname(b, (i, j2, k2)); dims = (2, 3))
+        # Fresh output indices: the shared index is kept and the summed indices trail it,
+        # and the minted indices are returned as a second output.
+        s, summed = directsum(a => (j1, k1), b => (j2, k2))
+        @test eltype(s) ≡ elt
+        @test i in inds(s)
+        @test issetequal(inds(s), (i, summed...))
+        @test sort(length.(summed)) == [5, 5]
+        @test unname(s, (i, summed...)) == ref
+        # Explicit output indices name the summed dimensions.
+        o1, o2 = namedoneto.((5, 5), ("o1", "o2"))
+        s2 = directsum((o1, o2), a => (j1, k1), b => (j2, k2))
+        @test issetequal(inds(s2), (i, o1, o2))
+        @test unname(s2, (i, o1, o2)) == ref
+        # A single summed dimension.
+        u1, u2 = namedoneto.((2, 3), ("u1", "u2"))
+        c = randn(elt, i, u1)
+        d = randn(elt, i, u2)
+        sc, (su,) = directsum(c => (u1,), d => (u2,))
+        @test length(su) == 5
+        @test unname(sc, (i, su)) == cat(unname(c, (i, u1)), unname(d, (i, u2)); dims = 2)
     end
     @testset "Matrix functions" begin
         for f in ITensorBase.MATRIX_FUNCTIONS

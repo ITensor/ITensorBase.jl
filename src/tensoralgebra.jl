@@ -149,6 +149,57 @@ function unmatricize_nameddims(na::AbstractNamedTensor, splitters::Vararg{Pair, 
     return nameddims(a_split, names_split)
 end
 
+"""
+    directsum(A => inds_A, B => inds_B, ...)
+    directsum(out_inds, A => inds_A, B => inds_B, ...)
+
+Direct sum of the named tensors `A, B, …` over the indices paired with each. The remaining
+("shared") indices are common to every tensor; they are aligned and carried through unchanged,
+while the paired indices are concatenated block-diagonally. The result has the shared indices
+first and the summed indices trailing.
+
+The first form mints fresh summed indices and returns `S => out_inds`, mirroring the
+`tensor => indices` inputs. The second form takes the summed indices' names from `out_inds`
+(names or `NamedUnitRange`s) and returns just `S`; the summed axes themselves come from the
+direct sum, so only the names of `out_inds` are used.
+
+# Examples
+
+```jldoctest
+julia> using ITensorBase: Index
+
+julia> using TensorAlgebra: directsum
+
+julia> i, j, k = Index.((2, 2, 3));
+
+julia> a = randn(i, j);
+
+julia> b = randn(i, k);
+
+julia> s, (l,) = directsum(a => (j,), b => (k,));
+
+julia> length(l)
+5
+```
+"""
+function TA.directsum(
+        out_inds, pair1::Pair{<:AbstractNamedTensor}, pairs::Pair{<:AbstractNamedTensor}...
+    )
+    ps = (pair1, pairs...)
+    shared = namesetdiff(inds(first(pair1)), last(pair1))
+    summed_dims = length(shared) .+ eachindex(last(pair1))
+    aligned = map(p -> unname(first(p), [shared; collect(last(p))]), ps)
+    a = TA.directsum(summed_dims, aligned...)
+    return nameddims(a, [name.(shared); name.(collect(out_inds))])
+end
+function TA.directsum(
+        pair1::Pair{<:AbstractNamedTensor}, pairs::Pair{<:AbstractNamedTensor}...
+    )
+    out_names = [uniquename(dimnametype(first(pair1))) for _ in last(pair1)]
+    s = TA.directsum(out_names, pair1, pairs...)
+    return s => last(inds(s), length(out_names))
+end
+
 # Canonicalize a bond-name keyword to a `nametype -> name` minting function. A `NamedTuple` of
 # decoration is splatted into `uniquename` (kwargs such as `tags`/`plev`); a callable is used
 # as-is, for full control over how the name is minted. The default `(;)` reproduces the bare
