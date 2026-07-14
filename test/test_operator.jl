@@ -1,6 +1,6 @@
-using ITensorBase: ITensorBase as NDA, NamedTensor, NamedTensorOperator, apply,
-    codomainnames, dimnames, domainnames, id, nameddims, namedoneto, operator, product,
-    replacedimnames, similar_operator, state, unname, unnamed
+using ITensorBase: ITensorBase as NDA, NamedTensor, NamedTensorOperator, apply, dimnames,
+    id, inputnames, nameddims, namedoneto, operator, outputnames, product, replacedimnames,
+    similar_operator, state, unname, unnamed
 using LinearAlgebra: I, norm
 using MatrixAlgebraKit: project_hermitian
 using Random: Random
@@ -14,22 +14,22 @@ using Test: @test, @test_throws, @testset
     o = operator(randn(2, 2, 2, 2), ("i'", "j'"), ("i", "j"))
     @test o isa NamedTensorOperator{String}
     @test eltype(o) ≡ Float64
-    @test issetequal(NDA.codomainnames(o), ("i'", "j'"))
-    @test issetequal(NDA.domainnames(o), ("i", "j"))
+    @test issetequal(NDA.outputnames(o), ("i'", "j'"))
+    @test issetequal(NDA.inputnames(o), ("i", "j"))
 
     o = operator(randn(2, 2, 2, 2), ("i'", "j'"), ("i", "j"))
     õ = similar(o)
     @test õ isa NamedTensorOperator{String}
     @test eltype(õ) ≡ Float64
-    @test issetequal(NDA.codomainnames(õ), ("i'", "j'"))
-    @test issetequal(NDA.domainnames(õ), ("i", "j"))
+    @test issetequal(NDA.outputnames(õ), ("i'", "j'"))
+    @test issetequal(NDA.inputnames(õ), ("i", "j"))
 
     o = operator(randn(2, 2, 2, 2), ("i'", "j'"), ("i", "j"))
     õ = similar(o, Float32)
     @test õ isa NamedTensorOperator{String}
     @test eltype(õ) ≡ Float32
-    @test issetequal(NDA.codomainnames(õ), ("i'", "j'"))
-    @test issetequal(NDA.domainnames(õ), ("i", "j"))
+    @test issetequal(NDA.outputnames(õ), ("i'", "j'"))
+    @test issetequal(NDA.inputnames(õ), ("i", "j"))
 
     o = operator(randn(2, 2, 2, 2), ("i'", "j'"), ("i", "j"))
     @test o isa NamedTensorOperator
@@ -48,13 +48,101 @@ using Test: @test, @test_throws, @testset
     @test ov ≈ replacedimnames(o * v, "i'" => "i", "j'" => "j")
 end
 
+@testset "product composition" begin
+    # Same-space single site: product is matrix multiplication, and it is
+    # bidirectional (product(B, A) is the other matrix order).
+    A = operator(randn(2, 2), ("a'",), ("a",))
+    B = operator(randn(2, 2), ("a'",), ("a",))
+    Am = unname(state(A), ("a'", "a"))
+    Bm = unname(state(B), ("a'", "a"))
+
+    AB = product(A, B)
+    @test AB isa NamedTensorOperator
+    @test issetequal(outputnames(AB), ("a'",))
+    @test issetequal(inputnames(AB), ("a",))
+    @test unname(state(AB), ("a'", "a")) ≈ Am * Bm
+
+    BA = product(B, A)
+    @test unname(state(BA), ("a'", "a")) ≈ Bm * Am
+
+    # Disjoint operators tensor into a two-site operator.
+    C = operator(randn(2, 2), ("i'",), ("i",))
+    D = operator(randn(3, 3), ("j'",), ("j",))
+    CD = product(C, D)
+    @test issetequal(outputnames(CD), ("i'", "j'"))
+    @test issetequal(inputnames(CD), ("i", "j"))
+
+    # Partial overlap: A on sites (1, 2), B on sites (2, 3), sharing site 2 →
+    # a three-site operator composed on 2 and tensored on 1 and 3.
+    A3 = operator(
+        nameddims(randn(2, 2, 2, 2), ("1'", "2'", "1", "2")),
+        ("1'", "2'"),
+        ("1", "2")
+    )
+    B3 = operator(
+        nameddims(randn(2, 2, 2, 2), ("2'", "3'", "2", "3")),
+        ("2'", "3'"),
+        ("2", "3")
+    )
+    AB3 = product(A3, B3)
+    @test issetequal(outputnames(AB3), ("1'", "2'", "3'"))
+    @test issetequal(inputnames(AB3), ("1", "2", "3"))
+    # Value: weld A's input 2 to B's output 2' and contract.
+    manual =
+        replacedimnames(state(A3), "2" => "bond") *
+        replacedimnames(state(B3), "2'" => "bond")
+    order = ("1'", "2'", "3'", "1", "2", "3")
+    @test unname(state(AB3), order) ≈ unname(manual, order)
+
+    # Batched: an operator applied to a state with a spectator index. The shared `i`
+    # contracts (a's input meets b's leg), `j` rides along, and the output stays on `i'`.
+    Aop = operator(randn(2, 2), ("i'",), ("i",))
+    v = NamedTensor(randn(2, 3), ("i", "j"))
+    Av = product(Aop, v)
+    @test issetequal(dimnames(Av), ("i'", "j"))
+    @test isempty(outputnames(Av))
+    @test isempty(inputnames(Av))
+    @test unname(state(Av), ("i'", "j")) ≈
+        unname(state(Aop), ("i'", "i")) * unname(v, ("i", "j"))
+
+    # Kraus: composing two operators that share both the i-wire and a dangling Kraus
+    # index `j` welds the wire and sums over `j`.
+    K = operator(nameddims(randn(2, 2, 3), ("i'", "i", "j")), ("i'",), ("i",))
+    KK = product(K, K)
+    @test issetequal(outputnames(KK), ("i'",))
+    @test issetequal(inputnames(KK), ("i",))
+    @test issetequal(dimnames(KK), ("i'", "i"))  # j contracted away
+    Km = unname(state(K), ("i'", "i", "j"))
+    manual_kraus = sum(Km[:, :, jj] * Km[:, :, jj] for jj in axes(Km, 3))
+    @test unname(state(KK), ("i'", "i")) ≈ manual_kraus
+
+    # Overlapping but mismatched wires are rejected. Shared input, differing output:
+    @test_throws ArgumentError product(
+        operator(randn(2, 2), ("j",), ("i",)), operator(randn(2, 2), ("k",), ("i",))
+    )
+    # ...and, symmetrically, shared output, differing input:
+    @test_throws ArgumentError product(
+        operator(randn(2, 2), ("j",), ("i",)), operator(randn(2, 2), ("j",), ("k",))
+    )
+
+    # Chaining (`a`'s output is `b`'s input) is not composition on a shared site; it is
+    # end-to-end contraction, so `product` rejects it and `*` handles it, returning the
+    # composed operator `a'←b`.
+    chain_a = operator(randn(2, 2), ("a'",), ("m",))
+    chain_b = operator(randn(2, 2), ("m",), ("b",))
+    @test_throws ArgumentError product(chain_a, chain_b)
+    chain = chain_a * chain_b
+    @test issetequal(outputnames(chain), ("a'",))
+    @test issetequal(inputnames(chain), ("b",))
+end
+
 @testset "operator from named ranges" begin
-    # Codomain/domain may be given as named ranges, not just names.
+    # Output/input may be given as named ranges, not just names.
     i, ip = namedoneto(2, "i"), namedoneto(2, "i'")
     o = operator(randn(2, 2), [ip], [i])
     @test o isa NamedTensorOperator{String}
-    @test issetequal(codomainnames(o), ("i'",))
-    @test issetequal(domainnames(o), ("i",))
+    @test issetequal(outputnames(o), ("i'",))
+    @test issetequal(inputnames(o), ("i",))
 end
 
 @testset "one(::NamedTensorOperator)" begin
@@ -63,8 +151,8 @@ end
     op = operator(randn(i, j, k, l), ("i", "j"), ("k", "l"))
     Id = one(op)
     @test Id isa NamedTensorOperator{String}
-    @test codomainnames(Id) == codomainnames(op)
-    @test domainnames(Id) == domainnames(op)
+    @test outputnames(Id) == outputnames(op)
+    @test inputnames(Id) == inputnames(op)
     Id_mat = matricize(state(Id), (i, j) => "row", (k, l) => "col")
     @test unname(Id_mat, ("row", "col")) ≈ I(6)
 end
@@ -100,23 +188,23 @@ end
 end
 
 @testset "similar_operator" begin
-    # Five-arg canonical: explicit element type, axes, codomain, domain names.
+    # Five-arg canonical: explicit element type, axes, output, input names.
     op = similar_operator(randn(3, 3), Float32, (Base.OneTo(3),), ("i'",), ("i",))
     @test op isa NamedTensorOperator{String}
-    @test issetequal(codomainnames(op), ("i'",))
-    @test issetequal(domainnames(op), ("i",))
+    @test issetequal(outputnames(op), ("i'",))
+    @test issetequal(inputnames(op), ("i",))
 
-    # Codomain names default to fresh `uniquename` outputs.
+    # Output names default to fresh `uniquename` outputs.
     op = similar_operator(randn(3, 3), Float64, (Base.OneTo(3),), ("i",))
     @test op isa NamedTensorOperator{String}
-    @test issetequal(domainnames(op), ("i",))
-    @test only(codomainnames(op)) != "i"
+    @test issetequal(inputnames(op), ("i",))
+    @test only(outputnames(op)) != "i"
 
-    # Named-axes form reuses each axis's name as the domain.
+    # Named-axes form reuses each axis's name as the input.
     i = namedoneto(3, "i")
     op = similar_operator(randn(3, 3), Float64, (i,))
-    @test issetequal(domainnames(op), ("i",))
-    @test only(codomainnames(op)) != "i"
+    @test issetequal(inputnames(op), ("i",))
+    @test only(outputnames(op)) != "i"
 
     # Element type defaults to `eltype(prototype)`.
     op = similar_operator(randn(ComplexF32, 3, 3), (Base.OneTo(3),), ("i'",), ("i",))
@@ -137,7 +225,7 @@ end
 @testset "operator-preserving broadcasting" begin
     # `+`, `-`, and scalar multiplication lower to broadcasting. An operator
     # broadcasts as itself (it is not peeled to its `state`), so these operations
-    # preserve the `NamedTensorOperator` wrapper and its codomain/domain bijection.
+    # preserve the `NamedTensorOperator` wrapper and its output/input pairing.
     # (Contraction `*` is operator-preserving too, in its own testset below.)
     o = operator(randn(2, 2), ("i'",), ("i",))
     s = state(o)
@@ -145,8 +233,8 @@ end
 
     for r in (o + o, o - o, -o, 2 * o, o * 2, 2 .* o, o .* 2, o ./ 2)
         @test r isa NamedTensorOperator
-        @test issetequal(codomainnames(r), ("i'",))
-        @test issetequal(domainnames(r), ("i",))
+        @test issetequal(outputnames(r), ("i'",))
+        @test issetequal(inputnames(r), ("i",))
     end
 
     @test unname(state(o + o), nms) ≈ 2 .* unname(s, nms)
@@ -159,54 +247,54 @@ end
     @test unname(state(o ./ 2), nms) ≈ unname(s, nms) ./ 2
 
     # `o` shares both its names with itself, so `o * o` fully contracts to a
-    # scalar with no surviving codomain/domain. It is still an `NamedTensorOperator`
-    # (with empty codomain/domain), so the product type does not depend on which
+    # scalar with no surviving output/input. It is still an `NamedTensorOperator`
+    # (with empty output/input), so the product type does not depend on which
     # names happen to contract.
     oo = o * o
     @test oo isa NamedTensorOperator
-    @test isempty(codomainnames(oo))
-    @test isempty(domainnames(oo))
+    @test isempty(outputnames(oo))
+    @test isempty(inputnames(oo))
 
     # Operator combined with a non-operator tensor is rejected.
     plain = NamedTensor(randn(2, 2), ("i'", "i"))
     @test_throws ArgumentError o .+ plain
 
-    # Two operators whose name sets match but whose codomain/domain split differs
+    # Two operators whose name sets match but whose output/input split differs
     # are rejected (the split would otherwise be ambiguous).
     o_swapped = operator(randn(2, 2), ("i",), ("i'",))
     @test_throws ArgumentError o .+ o_swapped
 end
 
 @testset "operator-preserving contraction" begin
-    # A shared *dangling* leg (in neither bijection) is summed away, and the
-    # surviving codomain/domain of each operand combine. This is the `c† * c`
+    # A shared *dangling* leg (in neither pairing) is summed away, and the
+    # surviving output/input of each operand combine. This is the `c† * c`
     # hopping pattern: two operators paired over an auxiliary link.
     a = operator(nameddims(randn(2, 2, 3), ("i'", "i", "aux")), ["i'"], ["i"])
     b = operator(nameddims(randn(2, 2, 3), ("j'", "j", "aux")), ["j'"], ["j"])
     ab = a * b
     @test ab isa NamedTensorOperator
-    @test issetequal(codomainnames(ab), ("i'", "j'"))
-    @test issetequal(domainnames(ab), ("i", "j"))
+    @test issetequal(outputnames(ab), ("i'", "j'"))
+    @test issetequal(inputnames(ab), ("i", "j"))
     @test !("aux" in dimnames(ab))
     @test state(ab) ≈ state(a) * state(b)
 
-    # A shared *paired* index (a's domain equals b's codomain) chains through the
-    # contraction: a's codomain partner pairs with b's domain partner.
+    # A shared *paired* index (a's input equals b's output) chains through the
+    # contraction: a's output partner pairs with b's input partner.
     A = operator(randn(2, 2), ("a'",), ("m",))
     B = operator(randn(2, 2), ("m",), ("b",))
     AB = A * B
     @test AB isa NamedTensorOperator
-    @test issetequal(codomainnames(AB), ("a'",))
-    @test issetequal(domainnames(AB), ("b",))
+    @test issetequal(outputnames(AB), ("a'",))
+    @test issetequal(inputnames(AB), ("b",))
 
-    # Applying an operator to a plain state contracts the operator's domain and
+    # Applying an operator to a plain state contracts the operator's input and
     # leaves its output dangling. The result stays an `NamedTensorOperator` with empty
-    # codomain/domain (the surviving `a'` leg is dangling, in neither).
+    # output/input (the surviving `a'` leg is dangling, in neither).
     v = nameddims(randn(2), ("m",))
     Av = operator(randn(2, 2), ("a'",), ("m",)) * v
     @test Av isa NamedTensorOperator
-    @test isempty(codomainnames(Av))
-    @test isempty(domainnames(Av))
+    @test isempty(outputnames(Av))
+    @test isempty(inputnames(Av))
     @test issetequal(dimnames(Av), ("a'",))
 end
 
