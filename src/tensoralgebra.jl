@@ -166,6 +166,10 @@ direct sum, so only the names of `out_inds` are used.
 # Examples
 
 ```jldoctest
+julia> using ITensorBase: Index
+
+julia> using TensorAlgebra: directsum
+
 julia> i, j, k = Index.((2, 2, 3));
 
 julia> a = randn(i, j);
