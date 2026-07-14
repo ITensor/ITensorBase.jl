@@ -1,8 +1,8 @@
 using ITensorBase: ITensorBase, AbstractNamedTensor, ITensor, Index, IndexName, NamedTensor,
     commonind, commoninds, dimnametype, gettag, hascommoninds, hastag, id, inds, mapinds,
-    name, named, noncommoninds, noprime, plev, prime, replaceinds, setplev, settag, sim,
-    tags, trycommonind, trynoncommonind, unioninds, uniqueind, uniqueinds, uniquename,
-    unname, unnamed, unsettag, uuid
+    name, named, noncommonind, noncommoninds, noprime, plev, prime, replaceinds, setplev,
+    settag, sim, tags, trycommonind, trynoncommonind, tryuniqueind, unioninds, uniqueind,
+    uniqueinds, uniquename, unname, unnamed, unsettag, uuid
 using Test: @test, @test_broken, @test_throws, @testset
 using UUIDs: UUID
 
@@ -250,7 +250,12 @@ using UUIDs: UUID
         @test name(commonind(a, b)) == name(j)
         @test name(uniqueind(a, b)) == name(i)
         @test name(trycommonind(a, b)) == name(j)
-        @test name(trynoncommonind(a, b)) == name(i)
+        @test name(tryuniqueind(a, b)) == name(i)
+
+        # The symmetric-difference single: the one index not shared across both tensors.
+        e = randn(elt, i, j, k)
+        @test name(noncommonind(a, e)) == name(k)
+        @test name(trynoncommonind(a, e)) == name(k)
 
         # No shared index.
         c = randn(elt, k)
@@ -265,6 +270,13 @@ using UUIDs: UUID
         @test isnothing(trycommonind(a, d))
         @test_throws ArgumentError commonind(a, c)
         @test_throws ArgumentError uniqueind(a, c)
-        @test isnothing(trynoncommonind(a, c))
+        @test isnothing(tryuniqueind(a, c))
+
+        # `noncommonind` errors / `trynoncommonind` is `nothing` unless there is exactly one
+        # non-shared index: two here (symdiff is `[i, k]`), zero for identical index sets.
+        @test_throws ArgumentError noncommonind(a, b)
+        @test isnothing(trynoncommonind(a, b))
+        @test_throws ArgumentError noncommonind(a, d)
+        @test isnothing(trynoncommonind(a, d))
     end
 end

@@ -738,7 +738,7 @@ commonind(a::AbstractNamedTensor, b::AbstractNamedTensor) = only(commoninds(a, b
     uniqueind(a::AbstractNamedTensor, b::AbstractNamedTensor)
 
 The single index of `a` that does not appear by name in `b`. Errors unless there is exactly
-one such index. Use [`trynoncommonind`](@ref) to get `nothing` instead of an error.
+one such index. Use [`tryuniqueind`](@ref) to get `nothing` instead of an error.
 
 # Examples
 
@@ -754,6 +754,28 @@ true
 See also [`uniqueinds`](@ref), [`commonind`](@ref).
 """
 uniqueind(a::AbstractNamedTensor, b::AbstractNamedTensor) = only(uniqueinds(a, b))
+
+"""
+    noncommonind(a::AbstractNamedTensor, b::AbstractNamedTensor)
+
+The single index not shared by name between `a` and `b` (the symmetric difference). Errors
+unless there is exactly one such index. Use [`trynoncommonind`](@ref) to get `nothing` instead
+of an error.
+
+# Examples
+
+```jldoctest
+julia> i, j, k = Index.((2, 3, 2));
+
+julia> a, b = randn(i, j), randn(i, j, k);
+
+julia> noncommonind(a, b) == k
+true
+```
+
+See also [`noncommoninds`](@ref), [`uniqueind`](@ref).
+"""
+noncommonind(a::AbstractNamedTensor, b::AbstractNamedTensor) = only(noncommoninds(a, b))
 
 """
     trycommonind(a::AbstractNamedTensor, b::AbstractNamedTensor)
@@ -781,7 +803,7 @@ function trycommonind(a::AbstractNamedTensor, b::AbstractNamedTensor)
 end
 
 """
-    trynoncommonind(a::AbstractNamedTensor, b::AbstractNamedTensor)
+    tryuniqueind(a::AbstractNamedTensor, b::AbstractNamedTensor)
 
 The single index of `a` that does not appear by name in `b`, or `nothing` if there is no such
 index or more than one. The non-erroring counterpart of [`uniqueind`](@ref).
@@ -793,13 +815,39 @@ julia> i, j, k = Index.((2, 3, 2));
 
 julia> a, b = randn(i, j), randn(j, k);
 
-julia> trynoncommonind(a, b) == i
+julia> tryuniqueind(a, b) == i
+true
+```
+"""
+function tryuniqueind(a::AbstractNamedTensor, b::AbstractNamedTensor)
+    us = uniqueinds(a, b)
+    return length(us) == 1 ? only(us) : nothing
+end
+
+"""
+    trynoncommonind(a::AbstractNamedTensor, b::AbstractNamedTensor)
+
+The single index not shared by name between `a` and `b` (the symmetric difference), or
+`nothing` if there is no such index or more than one. The non-erroring counterpart of
+[`noncommonind`](@ref).
+
+# Examples
+
+```jldoctest
+julia> i, j, k = Index.((2, 3, 2));
+
+julia> a, b = randn(i, j), randn(i, j, k);
+
+julia> trynoncommonind(a, b) == k
+true
+
+julia> isnothing(trynoncommonind(randn(i, j), randn(j, k)))
 true
 ```
 """
 function trynoncommonind(a::AbstractNamedTensor, b::AbstractNamedTensor)
-    us = uniqueinds(a, b)
-    return length(us) == 1 ? only(us) : nothing
+    ncs = noncommoninds(a, b)
+    return length(ncs) == 1 ? only(ncs) : nothing
 end
 
 # `Base.isempty(a::AbstractArray)` is defined as `length(a) == 0`,

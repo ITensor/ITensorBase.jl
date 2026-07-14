@@ -3,8 +3,10 @@ module ITensorBase
 export AbstractNamedTensor, NamedTensor, AbstractITensor, ITensor, Index,
     NamedUnitRange, aligndims, aligneddims, apply, codomainnames, commonind, commoninds,
     dimnames, dimnametype, domainnames, hascommoninds, id, inds, mapinds, named, nameddims,
-    noncommoninds, noprime, operator, prime, replaceinds, sim, similar_operator, state,
-    trycommonind, trynoncommonind, uniqueind, uniqueinds, unioninds, uniquename
+    noncommonind, noncommoninds, noprime, operator, prime, replaceinds, sim,
+    similar_operator, state,
+    trycommonind, trynoncommonind, tryuniqueind, uniqueind, uniqueinds, unioninds,
+    uniquename
 if VERSION >= v"1.11.0-DEV.469"
     eval(
         Meta.parse(
