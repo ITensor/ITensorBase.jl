@@ -6,10 +6,11 @@ using Test: @test, @testset
         :Index, :NamedUnitRange,
         :aligndims, :aligneddims, :apply, :codomainnames, :commonind, :commoninds,
         :dimnames, :dimnametype, :domainnames, :hascommoninds, :id,
-        :inds, :mapinds, :named, :nameddims, :noncommoninds, :noprime, :operator,
+        :inds, :mapinds, :named, :nameddims, :noncommonind, :noncommoninds, :noprime,
+        :operator,
         :prime,
         :replaceinds, :sim, :similar_operator, :state, :trycommonind, :trynoncommonind,
-        :uniqueind, :uniqueinds, :unioninds, :uniquename,
+        :tryuniqueind, :uniqueind, :uniqueinds, :unioninds, :uniquename,
     ]
     publics = [
         :IndexName, :name, :nametype, :replacedimnames, :setname, :space, :unnamed,
