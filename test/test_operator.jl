@@ -1,6 +1,6 @@
 using ITensorBase: ITensorBase as NDA, NamedTensor, NamedTensorOperator, apply, dimnames,
-    id, inputnames, nameddims, namedoneto, operator, outputnames, product, replacedimnames,
-    similar_operator, state, unname, unnamed
+    id, inputname, inputnames, nameddims, namedoneto, operator, outputname, outputnames,
+    product, replacedimnames, similar_operator, state, unname, unnamed
 using LinearAlgebra: I, norm
 using MatrixAlgebraKit: project_hermitian
 using Random: Random
@@ -46,6 +46,19 @@ using Test: @test, @test_throws, @testset
     ov = apply(o, v)
     @test issetequal(dimnames(ov), ("i", "j"))
     @test ov ≈ replacedimnames(o * v, "i'" => "i", "j'" => "j")
+end
+
+@testset "wire lookups" begin
+    o = operator(randn(2, 2), ("i'",), ("i",))
+    # Three-argument form returns the default for an unpaired name; two-argument form throws.
+    @test outputname(o, "i", "x") == "i'"
+    @test inputname(o, "i'", "x") == "i"
+    @test outputname(o, "z", "x") == "x"
+    @test outputname(o, "i") == "i'"
+    @test inputname(o, "i'") == "i"
+    @test_throws ArgumentError outputname(o, "z")
+    # A plain tensor has no pairing, so every two-argument lookup throws.
+    @test_throws ArgumentError inputname(NamedTensor(randn(2), ("i",)), "i")
 end
 
 @testset "product composition" begin

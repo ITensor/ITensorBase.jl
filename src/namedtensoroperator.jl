@@ -80,6 +80,20 @@ inputnames(a::AbstractNamedTensor) = ()
 # `Base.get`). A tensor with no operator pairing returns `default` for every name.
 outputname(a::AbstractNamedTensor, i, default) = default
 inputname(a::AbstractNamedTensor, i, default) = default
+# The two-argument forms return the paired name and throw when `i` is unpaired (a name on
+# no wire, or any name of a plain tensor), like indexing versus `get`. `nothing` is never a
+# valid name, so it is the "unpaired" sentinel; the `@something` fallback only builds the
+# error on a miss.
+function outputname(a::AbstractNamedTensor, i)
+    return @something outputname(a, i, nothing) throw(
+        ArgumentError("`$i` is not a paired input name")
+    )
+end
+function inputname(a::AbstractNamedTensor, i)
+    return @something inputname(a, i, nothing) throw(
+        ArgumentError("`$i` is not a paired output name")
+    )
+end
 
 """
     apply(x::AbstractNamedTensor, y::AbstractNamedTensor)
