@@ -95,13 +95,32 @@ function inputname(a::AbstractNamedTensor, i)
     )
 end
 
+# `apply(x, y)` lands each input of `x` on a matching output (or dangling leg) of `y`, so
+# every name shared between `x` and `y` must be an input of `x` that is not also an input of
+# `y`. Landing an input of `x` on an input of `y`, or sharing any other name, is rejected.
+function check_apply(x::AbstractNamedTensor, y::AbstractNamedTensor)
+    for s in intersect(dimnames(x), dimnames(y))
+        if !(s in inputnames(x)) || (s in inputnames(y))
+            throw(
+                ArgumentError(
+                    "`apply` contracts an input of the first operator with a matching " *
+                        "output of the second; the shared name `$s` is not such a pair."
+                )
+            )
+        end
+    end
+    return nothing
+end
+
 """
     apply(x::AbstractNamedTensor, y::AbstractNamedTensor)
 
-Apply the operator `x` to `y`. This contracts the state tensors of `x` and `y` over
-their shared names, then renames each surviving output name of `x` back to its paired
-input name, so the result carries the same names `y` would map to. Applying the
-identity operator leaves `y` unchanged.
+Apply the operator `x` to `y`, contracting each input of `x` with the matching output (or
+dangling leg) of `y` and renaming each consumed output of `x` back to its paired input, so
+the result sits on `x`'s input space. Uncontracted structure passes through: `y`'s remaining
+input wires stay wires, and a part of `x` disjoint from `y` is tensored in. Applying an
+operator to a bare state gives a bare state, so applying the identity operator leaves `y`
+unchanged; applying it to another operator gives an operator.
 
 # Examples
 
@@ -114,21 +133,19 @@ julia> apply(op, v) == v
 true
 ```
 
-See also [`operator`](@ref), [`state`](@ref), [`outputnames`](@ref),
+See also [`operator`](@ref), [`product`](@ref), [`state`](@ref), [`outputnames`](@ref),
 [`inputnames`](@ref).
 """
 function apply(x::AbstractNamedTensor, y::AbstractNamedTensor)
-    xy = state(x) * state(y)
-    return mapdimnames(xy) do i
-        return inputname(x, i, i)
-    end
-end
-
-function apply_dag(x::AbstractNamedTensor, y::AbstractNamedTensor)
-    xy = state(x) * state(y)
-    return mapdimnames(xy) do i
-        return outputname(y, i, i)
-    end
+    check_apply(x, y)
+    xy = x * y
+    relabels = [
+        ox => ix for (ox, ix) in zip(outputnames(x), inputnames(x)) if ix in dimnames(y)
+    ]
+    result = replacedimnames(xy, relabels...)
+    # A result with no surviving pairing is a plain state (e.g. an operator applied to a
+    # bare state), so return it unwrapped.
+    return isempty(outputnames(result)) ? state(result) : result
 end
 
 # TODO: Define versions that accept output and input names,

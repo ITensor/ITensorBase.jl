@@ -61,6 +61,40 @@ end
     @test_throws ArgumentError inputname(NamedTensor(randn(2), ("i",)), "i")
 end
 
+@testset "apply composition" begin
+    # Operator applied to another operator: `x` lands on `y`'s output, and the result is an
+    # operator on `x`'s input space keeping `y`'s input.
+    A = operator(randn(2, 2), ("k",), ("j",))
+    B = operator(randn(2, 2), ("j",), ("i",))
+    AB = apply(A, B)
+    @test AB isa NamedTensorOperator
+    @test issetequal(outputnames(AB), ("j",))
+    @test issetequal(inputnames(AB), ("i",))
+    Am = unname(state(A), ("k", "j"))
+    Bm = unname(state(B), ("j", "i"))
+    @test unname(state(AB), ("j", "i")) ≈ Am * Bm
+
+    # Applying to a bare state gives a bare state.
+    v = NamedTensor(randn(2, 2), ("j", "i"))
+    Av = apply(A, v)
+    @test Av isa NamedTensor
+    @test issetequal(dimnames(Av), ("j", "i"))
+    @test unname(Av, ("j", "i")) ≈ Am * unname(v, ("j", "i"))
+
+    # Disjoint apply tensors, like `*`/product.
+    C = operator(randn(2, 2), ("m",), ("n",))
+    D = operator(randn(2, 2), ("j",), ("i",))
+    CD = apply(C, D)
+    @test CD isa NamedTensorOperator
+    @test issetequal(outputnames(CD), ("m", "j"))
+    @test issetequal(inputnames(CD), ("n", "i"))
+
+    # Applying into `y`'s input side (not its codomain) errors.
+    @test_throws ArgumentError apply(
+        operator(randn(2, 2), ("k",), ("j",)), operator(randn(2, 2), ("i",), ("j",))
+    )
+end
+
 @testset "product composition" begin
     # Same-space single site: product is matrix multiplication, and it is
     # bidirectional (product(B, A) is the other matrix order).
