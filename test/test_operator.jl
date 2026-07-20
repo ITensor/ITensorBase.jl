@@ -2,9 +2,11 @@ using ITensorBase: ITensorBase as NDA, NamedTensor, NamedTensorOperator, apply,
     codomainnames, dimnames, domainnames, id, nameddims, namedoneto, operator, product,
     replacedimnames, similar_operator, state, unname, unnamed
 using LinearAlgebra: I, norm
+using MatrixAlgebraKit: project_hermitian
 using Random: Random
 using StableRNGs: StableRNG
-using TensorAlgebra.MatrixAlgebra: gram_eigh_full, gram_eigh_full_with_pinv
+using TensorAlgebra.MatrixAlgebra:
+    gram_eigh_full, gram_eigh_full_with_pinv, invsqrth_safe, sqrth_invsqrth_safe, sqrth_safe
 using TensorAlgebra: matricize
 using Test: @test, @test_throws, @testset
 
@@ -228,4 +230,34 @@ end
     Yp2 = parent(Y2)
     @test Xp2 * Xp2' ≈ A
     @test Yp2 * Xp2 ≈ I(n)
+end
+
+@testset "Hermitian square roots on NamedTensorOperator" begin
+    n = 5
+    B = randn(n, n)
+    A = B * B'  # Hermitian PSD
+    M_nda = nameddims(A, ("ket", "bra"))
+    M_op = operator(M_nda, ["ket"], ["bra"])
+
+    # `project_hermitian` keeps the operator structure; a non-Hermitian input maps to its
+    # Hermitian part.
+    H_op = project_hermitian(M_op)
+    @test H_op isa NamedTensorOperator
+    @test codomainnames(H_op) == codomainnames(M_op)
+    @test domainnames(H_op) == domainnames(M_op)
+    @test H_op ≈ M_op
+    N_op = operator(nameddims(B, ("ket", "bra")), ["ket"], ["bra"])
+    @test project_hermitian(N_op) ≈
+        operator(nameddims((B + B') / 2, ("ket", "bra")), ["ket"], ["bra"])
+
+    # The roots forward to the named-array entry, so match its data and shape.
+    @test parent(sqrth_safe(M_op)) ≈ parent(sqrth_safe(M_nda, ("ket",), ("bra",)))
+
+    P = parent(sqrth_safe(M_op))
+    @test P * P' ≈ A
+    @test parent(invsqrth_safe(M_op)) * P ≈ I(n)
+
+    P2, Pinv2 = sqrth_invsqrth_safe(M_op)
+    @test parent(P2) * parent(P2)' ≈ A
+    @test parent(P2) * parent(Pinv2) ≈ I(n)
 end
