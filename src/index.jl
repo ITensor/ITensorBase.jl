@@ -85,14 +85,18 @@ Return the prime level of an index or index name: a non-negative integer raised 
 """
 plev(n::IndexName) = getfield(n, :plev)
 
+# The tags dictionary is the only costly field to compare, so short-circuit it with `===`:
+# a name reused across tensors carries the same tags object and skips the dictionary walk.
 function Base.:(==)(n1::IndexName, n2::IndexName)
     return uuid(n1) == uuid(n2) && plev(n1) == plev(n2) &&
-        tags_stored(n1) == tags_stored(n2)
+        (tags_stored(n1) === tags_stored(n2) || tags_stored(n1) == tags_stored(n2))
 end
 function Base.isequal(n1::IndexName, n2::IndexName)
-    return isequal(uuid(n1), uuid(n2)) &&
-        isequal(plev(n1), plev(n2)) &&
-        isequal(tags_stored(n1), tags_stored(n2))
+    return isequal(uuid(n1), uuid(n2)) && isequal(plev(n1), plev(n2)) &&
+        (
+        tags_stored(n1) === tags_stored(n2) ||
+            isequal(tags_stored(n1), tags_stored(n2))
+    )
 end
 function Base.isless(n1::IndexName, n2::IndexName)
     t1 = (uuid(n1), plev(n1), keys(tags_stored(n1)), values(tags_stored(n1)))
