@@ -503,19 +503,19 @@ for f in (:gram_eigh_full, :gram_eigh_full_with_pinv)
 end
 
 function MAK.project_hermitian(a::NamedTensorOperator; kwargs...)
-    h = MAK.project_hermitian(state(a), codomainnames(a), domainnames(a); kwargs...)
-    return operator(h, codomainnames(a), domainnames(a))
+    h = MAK.project_hermitian(state(a), outputnames(a), inputnames(a); kwargs...)
+    return operator(h, outputnames(a), inputnames(a))
 end
 for f in (:sqrth_safe, :invsqrth_safe)
     @eval function MA.$f(a::NamedTensorOperator; kwargs...)
-        x = MA.$f(state(a), codomainnames(a), domainnames(a); kwargs...)
-        return operator(x, codomainnames(a), domainnames(a))
+        x = MA.$f(state(a), outputnames(a), inputnames(a); kwargs...)
+        return operator(x, outputnames(a), inputnames(a))
     end
 end
 function MA.sqrth_invsqrth_safe(a::NamedTensorOperator; kwargs...)
-    x, y = MA.sqrth_invsqrth_safe(state(a), codomainnames(a), domainnames(a); kwargs...)
-    return operator(x, codomainnames(a), domainnames(a)),
-        operator(y, codomainnames(a), domainnames(a))
+    x, y = MA.sqrth_invsqrth_safe(state(a), outputnames(a), inputnames(a); kwargs...)
+    return operator(x, outputnames(a), inputnames(a)),
+        operator(y, outputnames(a), inputnames(a))
 end
 
 """

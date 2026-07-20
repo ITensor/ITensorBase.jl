@@ -376,8 +376,8 @@ end
     # Hermitian part.
     H_op = project_hermitian(M_op)
     @test H_op isa NamedTensorOperator
-    @test codomainnames(H_op) == codomainnames(M_op)
-    @test domainnames(H_op) == domainnames(M_op)
+    @test outputnames(H_op) == outputnames(M_op)
+    @test inputnames(H_op) == inputnames(M_op)
     @test H_op ≈ M_op
     @test project_hermitian(operator(B, ["ket"], ["bra"])) ≈
         operator((B + B') / 2, ["ket"], ["bra"])
@@ -385,8 +385,8 @@ end
     # The roots are again bond operators, with the same codomain/domain as the input.
     for X in (sqrth_safe(M_op), invsqrth_safe(M_op), sqrth_invsqrth_safe(M_op)...)
         @test X isa NamedTensorOperator
-        @test codomainnames(X) == codomainnames(M_op)
-        @test domainnames(X) == domainnames(M_op)
+        @test outputnames(X) == outputnames(M_op)
+        @test inputnames(X) == inputnames(M_op)
     end
 
     P = unnamed(state(sqrth_safe(M_op)))
