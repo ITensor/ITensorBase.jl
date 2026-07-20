@@ -214,11 +214,10 @@ end
     n = 5
     B = randn(n, n)
     A = B * B'  # Hermitian PSD
-    M_nda = nameddims(A, ("ket", "bra"))
-    M_op = operator(M_nda, ["ket"], ["bra"])
+    M_op = operator(A, ["ket"], ["bra"])
 
     X_op = gram_eigh_full(M_op)
-    X_arr = gram_eigh_full(M_nda, ("ket",), ("bra",))
+    X_arr = gram_eigh_full(nameddims(A, ("ket", "bra")), ("ket",), ("bra",))
     # Operator entry forwards to the named-array entry: same data, same shape.
     @test size(parent(X_op)) == size(parent(X_arr))
 
@@ -236,8 +235,7 @@ end
     n = 5
     B = randn(n, n)
     A = B * B'  # Hermitian PSD
-    M_nda = nameddims(A, ("ket", "bra"))
-    M_op = operator(M_nda, ["ket"], ["bra"])
+    M_op = operator(A, ["ket"], ["bra"])
 
     # `project_hermitian` keeps the operator structure; a non-Hermitian input maps to its
     # Hermitian part.
@@ -246,18 +244,22 @@ end
     @test codomainnames(H_op) == codomainnames(M_op)
     @test domainnames(H_op) == domainnames(M_op)
     @test H_op ≈ M_op
-    N_op = operator(nameddims(B, ("ket", "bra")), ["ket"], ["bra"])
-    @test project_hermitian(N_op) ≈
-        operator(nameddims((B + B') / 2, ("ket", "bra")), ["ket"], ["bra"])
+    @test project_hermitian(operator(B, ["ket"], ["bra"])) ≈
+        operator((B + B') / 2, ["ket"], ["bra"])
 
-    # The roots forward to the named-array entry, so match its data and shape.
-    @test parent(sqrth_safe(M_op)) ≈ parent(sqrth_safe(M_nda, ("ket",), ("bra",)))
+    # The roots are again bond operators, with the same codomain/domain as the input.
+    for X in (sqrth_safe(M_op), invsqrth_safe(M_op), sqrth_invsqrth_safe(M_op)...)
+        @test X isa NamedTensorOperator
+        @test codomainnames(X) == codomainnames(M_op)
+        @test domainnames(X) == domainnames(M_op)
+    end
 
-    P = parent(sqrth_safe(M_op))
+    P = unnamed(state(sqrth_safe(M_op)))
     @test P * P' ≈ A
-    @test parent(invsqrth_safe(M_op)) * P ≈ I(n)
+    @test unnamed(state(invsqrth_safe(M_op))) * P ≈ I(n)
 
-    P2, Pinv2 = sqrth_invsqrth_safe(M_op)
-    @test parent(P2) * parent(P2)' ≈ A
-    @test parent(P2) * parent(Pinv2) ≈ I(n)
+    Psqrt, Pinv = sqrth_invsqrth_safe(M_op)
+    Pmat = unnamed(state(Psqrt))
+    @test Pmat * Pmat' ≈ A
+    @test Pmat * unnamed(state(Pinv)) ≈ I(n)
 end
