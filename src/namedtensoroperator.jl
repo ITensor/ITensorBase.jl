@@ -438,6 +438,22 @@ for f in (:gram_eigh_full, :gram_eigh_full_with_pinv)
     end
 end
 
+# Operator forms of the Hermitian-square-root family: the codomain/domain partition is
+# taken from the operator, so callers can compose with `transpose` to choose the
+# bipartition — e.g. project Hermitian in one bipartition and take the square root in the
+# transposed one, which induces the fermionic braid sign on the odd-parity sector.
+# `project_hermitian` returns an operator (its Hermitian part is again a bond operator); the
+# roots return bare named arrays like `gram_eigh_full`, being terminal factorization outputs.
+function MAK.project_hermitian(a::NamedTensorOperator; kwargs...)
+    h = MAK.project_hermitian(state(a), codomainnames(a), domainnames(a); kwargs...)
+    return operator(h, codomainnames(a), domainnames(a))
+end
+for f in (:sqrth_safe, :invsqrth_safe, :sqrth_invsqrth_safe)
+    @eval function MA.$f(a::NamedTensorOperator; kwargs...)
+        return MA.$f(state(a), codomainnames(a), domainnames(a); kwargs...)
+    end
+end
+
 """
     Base.one(op::NamedTensorOperator) -> Id
 
