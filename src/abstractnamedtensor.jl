@@ -79,7 +79,8 @@ Symbol
 """
 function dimnametype end
 dimnametype(a::AbstractNamedTensor) = dimnametype(typeof(a))
-dimnametype(type::Type{<:AbstractNamedTensor}) = Any
+dimnametype(::Type{<:AbstractNamedTensor{DimName}}) where {DimName} = DimName
+dimnametype(::Type{<:AbstractNamedTensor}) = Any
 
 # Unwrapping the names (named-array interface).
 # TODO: Use `IsNamed` trait?
