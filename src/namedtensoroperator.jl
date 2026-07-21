@@ -43,14 +43,14 @@ names are empty.
 ```jldoctest
 julia> op = operator(zeros(2, 2), ("i",), ("j",));
 
-julia> collect(outputnames(op))
+julia> outputnames(op)
 1-element Vector{String}:
  "i"
 ```
 
 See also [`inputnames`](@ref), [`operator`](@ref), [`apply`](@ref).
 """
-outputnames(a::AbstractNamedTensor) = ()
+outputnames(a::AbstractNamedTensor{DimName}) where {DimName} = DimName[]
 
 # Get the input dimension names of the operator.
 """
@@ -65,14 +65,14 @@ no pairing, so its input names are empty.
 ```jldoctest
 julia> op = operator(zeros(2, 2), ("i",), ("j",));
 
-julia> collect(inputnames(op))
+julia> inputnames(op)
 1-element Vector{String}:
  "j"
 ```
 
 See also [`outputnames`](@ref), [`operator`](@ref), [`apply`](@ref).
 """
-inputnames(a::AbstractNamedTensor) = ()
+inputnames(a::AbstractNamedTensor{DimName}) where {DimName} = DimName[]
 
 # `outputname(a, i, default)` returns the output name paired with input name `i`, and
 # `inputname(a, i, default)` returns the input name paired with output name `i`, each
@@ -291,11 +291,11 @@ as `Index`es. Recover the underlying tensor with [`state`](@ref) and the name se
 ```jldoctest
 julia> op = operator(zeros(2, 2), ("i",), ("j",));
 
-julia> collect(outputnames(op))
+julia> outputnames(op)
 1-element Vector{String}:
  "i"
 
-julia> collect(inputnames(op))
+julia> inputnames(op)
 1-element Vector{String}:
  "j"
 ```
@@ -588,7 +588,7 @@ graded axes) is delegated to `TensorAlgebra.similar_map`.
 ```jldoctest
 julia> op = similar_operator(zeros(2, 2), (Base.OneTo(2),), (:i,), (:j,));
 
-julia> collect(inputnames(op))
+julia> inputnames(op)
 1-element Vector{Symbol}:
  :j
 ```
