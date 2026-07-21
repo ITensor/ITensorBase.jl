@@ -133,7 +133,7 @@ julia> apply(op, v) == v
 true
 ```
 
-See also [`operator`](@ref), [`product`](@ref), [`state`](@ref), [`outputnames`](@ref),
+See also [`operator`](@ref), [`state`](@ref), [`outputnames`](@ref),
 [`inputnames`](@ref).
 """
 function apply(x::AbstractNamedTensor, y::AbstractNamedTensor)
