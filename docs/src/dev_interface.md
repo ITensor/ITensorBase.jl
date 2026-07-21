@@ -50,17 +50,17 @@ aligneddims
 ## Experimental
 
 These features support building and applying operators, where an operator is a tensor whose
-dimension names are split into a codomain (output) set and a domain (input) set. The API is
+dimension names are split into an output set and an input set. The API is
 still being refined and is subject to change. Build an operator with [`operator`](@ref) or
 allocate one with [`similar_operator`](@ref), apply it to a tensor with [`apply`](@ref), and
-recover its underlying tensor and name sets with [`state`](@ref), [`codomainnames`](@ref),
-and [`domainnames`](@ref).
+recover its underlying tensor and name sets with [`state`](@ref), [`outputnames`](@ref),
+and [`inputnames`](@ref).
 
 ```@docs; canonical=false
 operator
 similar_operator
 apply
 state
-codomainnames
-domainnames
+outputnames
+inputnames
 ```
