@@ -23,7 +23,6 @@ dimnames(a::SymbolicNamedTensor) = getfield(a, :dimnames)
 function Base.axes(a::SymbolicNamedTensor)
     return named.(Tuple(Base.OneTo.(getfield(a, :size))), Tuple(getfield(a, :dimnames)))
 end
-dimnametype(::Type{<:SymbolicNamedTensor{DimName}}) where {DimName} = DimName
 Base.ndims(a::SymbolicNamedTensor) = length(getfield(a, :dimnames))
 
 function Base.:(==)(a::SymbolicNamedTensor, b::SymbolicNamedTensor)

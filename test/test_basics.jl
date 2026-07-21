@@ -1,8 +1,8 @@
 using ITensorBase: ITensorBase, AbstractNamedTensor, ITensor, Index, IndexName, NamedTensor,
     commonind, commoninds, dimnametype, gettag, hascommoninds, hastag, id, inds, mapinds,
-    name, named, noncommonind, noncommoninds, noprime, plev, prime, replaceinds, setplev,
-    settag, sim, tags, trycommonind, trynoncommonind, tryuniqueind, unioninds, uniqueind,
-    uniqueinds, uniquename, unname, unnamed, unsettag, uuid
+    name, named, noncommonind, noncommoninds, noprime, operator, plev, prime, replaceinds,
+    setplev, settag, sim, tags, trycommonind, trynoncommonind, tryuniqueind, unioninds,
+    uniqueind, uniqueinds, uniquename, unname, unnamed, unsettag, uuid
 using Test: @test, @test_broken, @test_throws, @testset
 using UUIDs: UUID
 
@@ -172,6 +172,10 @@ using UUIDs: UUID
         @test dimnametype(a) === IndexName
         @test dimnametype(typeof(a)) === IndexName
         @test dimnametype(NamedTensor{IndexName}) === IndexName
+        # An operator reports the dimname flavor of its underlying tensor.
+        op = operator(a, (name(i),), (name(j),))
+        @test dimnametype(op) === IndexName
+        @test dimnametype(typeof(op)) === IndexName
         # Unparameterized `NamedTensor` does not fix its dimname flavor, like `eltype(Array)`.
         @test dimnametype(NamedTensor) === Any
     end

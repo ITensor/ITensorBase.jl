@@ -69,8 +69,6 @@ dimnames(a::NamedTensor) = a.dimnames
 unnamed(a::NamedTensor) = a.unnamed
 Base.parent(a::NamedTensor) = unnamed(a)
 
-dimnametype(::Type{<:NamedTensor{DimName}}) where {DimName} = DimName
-
 # The parent array is erased at the field level, so its concrete type is not part
 # of `NamedTensor`'s signature. An instance still carries the parent, so the instance
 # methods recover the concrete type while the type methods report `AbstractArray`.
