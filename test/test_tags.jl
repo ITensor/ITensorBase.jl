@@ -31,6 +31,26 @@ newbond(t, keep) = only(filter(!in(keep), collect(inds(t))))
             Dict("a" => "9", "b" => "2", "c" => "3")
     end
 
+    @testset "bare labels default to an empty value" begin
+        # A bare label (String or Symbol) is a tag with an empty value.
+        @test tags(Index(2; tags = "i")) == Dict("i" => "")
+        @test tags(Index(2; tags = :i)) == Dict("i" => "")
+        # A collection of bare labels.
+        @test tags(Index(2; tags = ["i", "Site"])) == Dict("i" => "", "Site" => "")
+        @test tags(Index(2; tags = [:i, :Site])) == Dict("i" => "", "Site" => "")
+        # Bare labels mix with `key => value` pairs in a collection.
+        @test tags(Index(2; tags = ("Site", "n" => "1"))) == Dict("Site" => "", "n" => "1")
+        # A bare label is exactly the empty-value pair.
+        @test tags(Index(2; tags = "flux")) == tags(Index(2; tags = "flux" => ""))
+        # settags accepts the same bare-label forms.
+        @test tags(settags(Index(2), "j")) == Dict("j" => "")
+        @test tags(settags(Index(2), ["a", "b"])) == Dict("a" => "", "b" => "")
+        # An empty-value tag prints as just its key; a `key => value` tag keeps the `=>`.
+        @test occursin("flux", sprint(show, Index(2; tags = "flux")))
+        @test !occursin("flux=>", sprint(show, Index(2; tags = "flux")))
+        @test occursin("n=>1", sprint(show, Index(2; tags = "n" => "1")))
+    end
+
     @testset "unsettags / emptytags are permissive" begin
         i = settags(Index(2), "a" => "1", "b" => "2", "c" => "3")
         @test tags(unsettags(i, ["a", "zzz"])) == Dict("b" => "2", "c" => "3")  # absent key ignored

@@ -3,7 +3,11 @@ using Random: AbstractRNG, RandomDevice
 using TensorAlgebra: TensorAlgebra as TA
 using UUIDs: UUID, uuid4
 
-tagpairstring(pair::Pair) = string(first(pair)) * "=>" * string(last(pair))
+# A tag with an empty value is a bare label: print just its key, so `"i" => ""` shows as `i`.
+function tagpairstring(pair::Pair)
+    key, value = string(first(pair)), string(last(pair))
+    return isempty(value) ? key : key * "=>" * value
+end
 function tagsstring(tags)
     tagpairs = collect(tags)  # SortedDict iterates in sorted-key order
     tagpair1, tagpair_rest = Iterators.peel(tagpairs)
@@ -55,6 +59,14 @@ to_symbol_pair(p::Pair) = Symbol(first(p)) => Symbol(last(p))
 # its two elements, so it can't fall through to the collection method below.
 to_tags(ps::Pair...) = to_tags(ps)
 to_tags(tags) = SortedDict{Symbol, Symbol}(to_symbol_pair(p) for p in tags)
+
+# A bare label (a `String` or `Symbol` with no value) is a tag with an empty value. A lone one
+# is a single tag, not a collection to iterate over (a `String` would iterate into its `Char`s),
+# so wrap it in a one-element tuple like the varargs `Pair` method above.
+for T in (AbstractString, Symbol)
+    @eval to_symbol_pair(tag::$T) = Symbol(tag) => Symbol("")
+    @eval to_tags(tag::$T) = to_tags((tag,))
+end
 
 uuid(n::IndexName) = getfield(n, :uuid)
 
@@ -174,15 +186,19 @@ end
 
 Return a new index or index name with the given tags inserted or overwritten. This is a
 merge: tags under other keys are kept, and a key that already exists is overwritten. Tags
-are given as one or more `key => value` pairs, a collection of pairs, or an `AbstractDict`;
-keys and values may be `String`s or `Symbol`s. See also [`unsettags`](@ref),
-[`emptytags`](@ref).
+are given as one or more `key => value` pairs, bare labels (a `String` or `Symbol`, taken as
+a tag with an empty value), a collection mixing these, or an `AbstractDict`; keys and values
+may be `String`s or `Symbol`s. See also [`unsettags`](@ref), [`emptytags`](@ref).
 """
 settags(n::IndexName, ps::Pair...) = settags(n, ps)
-# A lone `Pair` iterates over its two elements, so the varargs method above needs to exist
-# rather than letting a single pair fall through to the `for (k, v) in ps` loop (cf. `to_tags`).
+# A lone `Pair` or bare label iterates over its elements, so these single-tag methods need to
+# exist rather than letting one fall through to the `for p in ps` loop below (cf. `to_tags`).
+for T in (AbstractString, Symbol)
+    @eval settags(n::IndexName, tag::$T) = settags(n, (tag,))
+end
 function settags(n::IndexName, ps)
-    for (k, v) in ps
+    for p in ps
+        k, v = to_symbol_pair(p)
         n = settag(n, k, v)
     end
     return n
@@ -322,8 +338,9 @@ name, so two indices built the same way are still distinct, and tensors share a 
 only when they share the same `Index`.
 
 `tags` and `plev` decorate the freshly minted name, as in `Index(2; tags = "i" => "1", plev = 1)`,
-and default to no tags and prime level `0`. `tags` accepts the same inputs as [`settags`](@ref)
-(a pair, a collection of pairs, or an `AbstractDict`).
+and default to no tags and prime level `0`. `tags` accepts the same inputs as [`settags`](@ref):
+a `key => value` pair, a bare label like `"i"` (a `String` or `Symbol`, taken as a tag with an
+empty value), a collection mixing these, or an `AbstractDict`.
 
 # Examples
 
