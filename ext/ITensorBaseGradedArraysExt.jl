@@ -12,8 +12,7 @@ const NamedUnitRange = ITensorBase.NamedUnitRange
 # appending the aux to the (implicitly dualized) domain dangling last, so the physical axes
 # fuse to `c`. Mirrors the GradedArrays backend method. The sector may be a bare
 # `TensorKitSectors.Sector` or a `SectorRange`. This lives in an extension because ITensorBase
-# does not depend on the sector types. Covers the fills that have an `Index`-level split form
-# (`rand`/`randn`/`zeros`); `ones`/`fill` have none, so they are left out.
+# does not depend on the sector types.
 for S in (Sector, SectorRange)
     for f in (:rand, :randn)
         @eval begin
@@ -45,20 +44,28 @@ for S in (Sector, SectorRange)
             end
         end
     end
-    @eval begin
-        function Base.zeros(
-                elt::Type{<:Number}, c::$S,
-                codomain::Tuple{NamedUnitRange, Vararg{NamedUnitRange}},
-                domain::Tuple{Vararg{NamedUnitRange}} = ()
-            )
-            return Base.zeros(elt, codomain, (domain..., Index([c => 1])))
+    for f in (:zeros, :ones)
+        @eval begin
+            function Base.$f(
+                    elt::Type{<:Number}, c::$S,
+                    codomain::Tuple{NamedUnitRange, Vararg{NamedUnitRange}},
+                    domain::Tuple{Vararg{NamedUnitRange}} = ()
+                )
+                return Base.$f(elt, codomain, (domain..., Index([c => 1])))
+            end
+            function Base.$f(
+                    c::$S, codomain::Tuple{NamedUnitRange, Vararg{NamedUnitRange}},
+                    domain::Tuple{Vararg{NamedUnitRange}} = ()
+                )
+                return Base.$f(ITensorBase.default_eltype(), c, codomain, domain)
+            end
         end
-        function Base.zeros(
-                c::$S, codomain::Tuple{NamedUnitRange, Vararg{NamedUnitRange}},
-                domain::Tuple{Vararg{NamedUnitRange}} = ()
-            )
-            return Base.zeros(ITensorBase.default_eltype(), c, codomain, domain)
-        end
+    end
+    @eval function Base.fill(
+            value, c::$S, codomain::Tuple{NamedUnitRange, Vararg{NamedUnitRange}},
+            domain::Tuple{Vararg{NamedUnitRange}} = ()
+        )
+        return Base.fill(value, codomain, (domain..., Index([c => 1])))
     end
 end
 

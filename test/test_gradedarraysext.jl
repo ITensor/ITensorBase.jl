@@ -46,9 +46,16 @@ using Test: @test, @testset
     @test isdual(auxt) && length(auxt) == 1 &&
         only(sectors(space(auxt))) == FermionNumber(2)
 
-    # `zeros` mirrors `randn`; the default eltype is `Float64`.
+    # `zeros`/`ones`/`fill` mirror `randn` (`fill` takes the value first). Each carries the
+    # flux on an aux leg the same way.
     z = zeros(U1(1), (i, j))
     @test length(inds(z)) == 3
     @test eltype(zeros(elt, U1(1), (i, j))) == elt
     @test iszero(z)
+    o = ones(elt, U1(1), (i, j))
+    @test length(inds(o)) == 3
+    @test only(sectors(space(only(setdiff(collect(inds(o)), [i, j]))))) == U1(1)
+    fl = fill(elt(2), U1(1), (i,), (j,))
+    @test length(inds(fl)) == 3
+    @test eltype(fl) == elt
 end
