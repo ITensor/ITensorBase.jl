@@ -35,6 +35,10 @@ using Test: @test, @testset
     auxb = only(setdiff(collect(inds(b)), [i, j]))
     @test isdual(auxb) && length(auxb) == 1 && only(sectors(space(auxb))) == U1(1)
 
+    # The rng-first flux forms (default eltype) accept both flat and split axes.
+    @test length(inds(randn(rng, U1(1), (i, j)))) == 3
+    @test length(inds(randn(rng, U1(1), (i,), (j,)))) == 3
+
     # A bare `TensorKitSectors.Sector` (fermionic) works as the flux.
     s = [
         Index([FermionNumber(0) => 2, FermionNumber(1) => 2]; tags = "s" => "$n") for

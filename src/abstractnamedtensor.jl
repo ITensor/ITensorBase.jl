@@ -1379,6 +1379,12 @@ for f in [:rand, :randn]
                 )
                 return $f(rng, elt, (dim1, dims...))
             end
+            Base.$f(rng::AbstractRNG, dims::Tuple{$dimtype, Vararg{$dimtype}}) = $f(
+                rng, default_eltype(), dims
+            )
+            Base.$f(rng::AbstractRNG, dim1::$dimtype, dims::Vararg{$dimtype}) = $f(
+                rng, (dim1, dims...)
+            )
             Base.$f(elt::Type{<:Number}, dims::Tuple{$dimtype, Vararg{$dimtype}}) = $f(
                 Random.default_rng(), elt, dims
             )
@@ -1451,6 +1457,11 @@ for f in [:rand, :randn]
                     codomain::$codomain_type, domain::$domain_type
                 )
                 return TensorAlgebra.$f_map(rng, elt, codomain, domain)
+            end
+            function Base.$f(
+                    rng::AbstractRNG, codomain::$codomain_type, domain::$domain_type
+                )
+                return Base.$f(rng, default_eltype(), codomain, domain)
             end
             function Base.$f(
                     elt::Type{<:Number}, codomain::$codomain_type, domain::$domain_type

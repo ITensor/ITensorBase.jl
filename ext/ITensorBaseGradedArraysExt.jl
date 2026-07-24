@@ -24,6 +24,13 @@ for S in (Sector, SectorRange)
                 return Base.$f(rng, elt, codomain, (domain..., Index([c => 1])))
             end
             function Base.$f(
+                    rng::AbstractRNG, c::$S,
+                    codomain::Tuple{NamedUnitRange, Vararg{NamedUnitRange}},
+                    domain::Tuple{Vararg{NamedUnitRange}} = ()
+                )
+                return Base.$f(rng, ITensorBase.default_eltype(), c, codomain, domain)
+            end
+            function Base.$f(
                     elt::Type{<:Number}, c::$S,
                     codomain::Tuple{NamedUnitRange, Vararg{NamedUnitRange}},
                     domain::Tuple{Vararg{NamedUnitRange}} = ()
