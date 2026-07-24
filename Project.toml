@@ -31,10 +31,6 @@ OMEinsumContractionOrders = "6f22d1fd-8eed-4bb7-9776-e7d684900715"
 TensorKit = "07d1fe3e-3e46-537d-9eac-e9e13d0d4cec"
 TensorKitSectors = "13a9c161-d5da-41f0-bcbd-e1a08ae0647f"
 
-[sources.TensorAlgebra]
-rev = "mf/ones-fill-map"
-url = "https://github.com/ITensor/TensorAlgebra.jl"
-
 [extensions]
 ITensorBaseAdaptExt = "Adapt"
 ITensorBaseGradedArraysExt = ["GradedArrays", "TensorKitSectors"]

@@ -24,10 +24,6 @@ UUIDs = "cf7118a7-6976-5b1a-9a39-7adc72f591a4"
 VectorInterface = "409d34a3-91d5-4945-b6ec-7529ddf182d8"
 WrappedUnions = "325db55a-9c6c-5b90-b1a2-ec87e7a38c44"
 
-[sources.GradedArrays]
-rev = "mf/flux-canceling-constructor"
-url = "https://github.com/ITensor/GradedArrays.jl"
-
 [sources.ITensorBase]
 path = ".."
 
