@@ -1,4 +1,4 @@
-using TensorAlgebra: TensorAlgebra, to_range, trivialrange, ungrade
+using TensorAlgebra: TensorAlgebra, dual, isdual, to_range, trivialrange, ungrade
 
 """
     NamedUnitRange{Name}
@@ -114,6 +114,10 @@ Base.hash(r::NamedUnitRange, h::UInt) = hash_named(:NamedArray, ungrade(r), h)
 # arrows. The `Base.conj(::AbstractArray{<:Real}) = x` fallback would
 # otherwise short-circuit before the inner range is touched.
 Base.conj(r::NamedUnitRange) = named(conj(unnamed(r)), name(r))
+
+# Forward `dual`/`isdual` to the underlying range so an index answers its duality directly.
+TensorAlgebra.dual(r::NamedUnitRange) = named(dual(unnamed(r)), name(r))
+TensorAlgebra.isdual(r::NamedUnitRange) = isdual(unnamed(r))
 
 # Unit range functionality.
 Base.first(r::NamedUnitRange) = named(first(unnamed(r)), name(r))

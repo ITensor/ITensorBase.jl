@@ -36,6 +36,12 @@ using Test: @test, @test_throws, @testset
         @test unnamed(conj(i)) == dual(Vi)
         @test name(conj(i)) == name(i)
 
+        # `isdual`/`dual` forward to the underlying space.
+        @test TensorAlgebra.isdual(i) == false
+        @test TensorAlgebra.isdual(conj(i)) == true
+        @test unnamed(TensorAlgebra.dual(i)) == dual(Vi)
+        @test name(TensorAlgebra.dual(i)) == name(i)
+
         # Equality is dual-insensitive: an index equals its dual (same name, same ungraded
         # extent), hashes match, and a fresh index of the same space is a distinct leg. This is
         # what lets `Base` set-ops / `Dict` / `Set` treat an index and its dual as one leg on a
