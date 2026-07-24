@@ -18,15 +18,15 @@ named(1:3, :i)
 See also [`Index`](@ref), [`named`](@ref).
 """
 struct NamedUnitRange{Name, UnnamedT, Unnamed} <: AbstractNamedVector{Name, UnnamedT}
-    # The `value` is usually an integer `AbstractUnitRange`, but the bound is left open so a
-    # backend can store a richer axis object directly, e.g. a native TensorKit space, which is
-    # not an `AbstractUnitRange` but is its own axis (see the TensorKit extension).
-    value::Unnamed
+    # The `unnamed` value is usually an integer `AbstractUnitRange`, but the bound is left open
+    # so a backend can store a richer axis object directly, e.g. a native TensorKit space, which
+    # is not an `AbstractUnitRange` but is its own axis (see the TensorKit extension).
+    unnamed::Unnamed
     name::Name
 end
 
 # Minimal interface.
-unnamed(i::NamedUnitRange) = i.value
+unnamed(i::NamedUnitRange) = i.unnamed
 name(i::NamedUnitRange) = i.name
 unnamedtype(::Type{<:NamedUnitRange{<:Any, <:Any, Unnamed}}) where {Unnamed} = Unnamed
 

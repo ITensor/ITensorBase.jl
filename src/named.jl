@@ -5,7 +5,7 @@
 # under the numeric contract, and inherited fallbacks risk silently dropping the
 # name. So it supplies the integer-like surface it needs directly.
 struct Named{Name, Unnamed}
-    value::Unnamed
+    unnamed::Unnamed
     name::Name
 end
 
@@ -112,7 +112,7 @@ See also [`unnamed`](@ref), [`nametype`](@ref).
 function unnamedtype end
 
 # Minimal interface.
-unnamed(i::Named) = i.value
+unnamed(i::Named) = i.unnamed
 name(i::Named) = i.name
 
 """
@@ -132,7 +132,7 @@ named(value, name) = Named(value, name)
 
 # Derived interface.
 setname(i::Named, name) = named(unnamed(i), name)
-setvalue(i::Named, value) = named(value, name(i))
+setunnamed(i::Named, unnamed) = named(unnamed, name(i))
 
 unnamedtype(::Type{<:Named{<:Any, Unnamed}}) where {Unnamed} = Unnamed
 nametype(::Type{<:Named{Name}}) where {Name} = Name
@@ -167,7 +167,7 @@ function Base.show(io::IO, i::Named)
 end
 
 # Integer interface, for the named-integer case `NamedInteger`.
-Base.:-(i::NamedInteger) = setvalue(i, -unnamed(i))
+Base.:-(i::NamedInteger) = setunnamed(i, -unnamed(i))
 
 ## TODO: Support this, we need to define `NamedFloat`, `NamedReal`, `NamedNumber`, etc.
 ## This is used in `LinearAlgebra.norm`, for now we just overload that directly.
@@ -177,10 +177,10 @@ Base.:-(i::NamedInteger) = setvalue(i, -unnamed(i))
 ##   return named(unnamed(i1) * i2, name(i1))
 ## end
 
-Base.zero(i::NamedInteger) = setvalue(i, zero(unnamed(i)))
-Base.one(i::NamedInteger) = setvalue(i, one(unnamed(i)))
+Base.zero(i::NamedInteger) = setunnamed(i, zero(unnamed(i)))
+Base.one(i::NamedInteger) = setunnamed(i, one(unnamed(i)))
 Base.signbit(i::NamedInteger) = signbit(unnamed(i))
-Base.unsigned(i::NamedInteger) = setvalue(i, unsigned(unnamed(i)))
+Base.unsigned(i::NamedInteger) = setunnamed(i, unsigned(unnamed(i)))
 
 # Used in bounds checking when indexing with named dimensions.
 function Base.:<(i1::NamedInteger, i2::NamedInteger)
