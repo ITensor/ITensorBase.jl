@@ -4,6 +4,7 @@ using ITensorBase: @names, AbstractNamedTensor, Name, NameMismatch, NamedDimsCar
     dimnametype, dims, inds, isnamed, mapinds, name, named, nameddims, namedoneto, product,
     replacedimnames, replaceinds, setdimnames, unname, unnamed, unnamedtype
 using LinearAlgebra: LinearAlgebra
+using Random: default_rng
 using TensorAlgebra: datatype
 using Test: @test, @test_throws, @testset
 using VectorInterface: scalartype
@@ -287,6 +288,12 @@ end
         @test unnamed(nab) isa Matrix{elt}
         @test dimnames(nab) == [name(ci), name(cj)]
         @test unnamed(zeros(elt, (ci,), (cj,))) == zeros(elt, 3, 4)
+        # The rng-first forms (mirroring `Base.randn(rng, dims...)`, default eltype) accept flat
+        # axes as varargs or a tuple, and the split codomain/domain.
+        rng = default_rng()
+        @test dimnames(randn(rng, ci, cj)) == [name(ci), name(cj)]
+        @test dimnames(randn(rng, (ci, cj))) == [name(ci), name(cj)]
+        @test dimnames(randn(rng, (ci,), (cj,))) == [name(ci), name(cj)]
         # An empty codomain lands every index in the domain, the mirror of an empty domain. A
         # dense backend ignores the split, so these match the flat forms.
         na′ = aligndims(na, (), (j, i))

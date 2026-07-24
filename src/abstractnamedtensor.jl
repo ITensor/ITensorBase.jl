@@ -1379,6 +1379,12 @@ for f in [:rand, :randn]
                 )
                 return $f(rng, elt, (dim1, dims...))
             end
+            Base.$f(rng::AbstractRNG, dims::Tuple{$dimtype, Vararg{$dimtype}}) = $f(
+                rng, default_eltype(), dims
+            )
+            Base.$f(rng::AbstractRNG, dim1::$dimtype, dims::Vararg{$dimtype}) = $f(
+                rng, (dim1, dims...)
+            )
             Base.$f(elt::Type{<:Number}, dims::Tuple{$dimtype, Vararg{$dimtype}}) = $f(
                 Random.default_rng(), elt, dims
             )
@@ -1390,21 +1396,17 @@ for f in [:rand, :randn]
         end
     end
 end
-# `zeros` routes through `TensorAlgebra.zeros_map` (all-codomain map, trivial domain), which
-# dispatches on the axis type to build a dense `Array`, a block-sparse array, or a TensorKit
-# `TensorMap`. `ones` has no map hook (an all-ones symmetric tensor is not well-defined), so it
-# stays on `Base.ones`, which already accepts axes.
-for f in [:zeros, :ones], dimtype in [:NamedInteger, :NamedUnitRange]
-    parent = if f === :zeros
-        :(TensorAlgebra.zeros_map(elt, unnamed.(ax), ()))
-    else
-        :(Base.ones(elt, unnamed.(ax)))
-    end
+# `zeros`/`ones` route through `TensorAlgebra.zeros_map`/`ones_map` (all-codomain map, trivial
+# domain), which dispatch on the axis type to build a dense `Array`, a block-sparse array, or a
+# TensorKit `TensorMap`.
+for (f, f_map) in [(:zeros, :zeros_map), (:ones, :ones_map)],
+        dimtype in [:NamedInteger, :NamedUnitRange]
+
     @eval begin
         function Base.$f(
                 elt::Type{<:Number}, ax::Tuple{$dimtype, Vararg{$dimtype}}
             )
-            a = $parent
+            a = TensorAlgebra.$f_map(elt, unnamed.(ax), ())
             return a[Name.(name.(ax))...]
         end
         function Base.$f(elt::Type{<:Number}, dim1::$dimtype, dims::Vararg{$dimtype})
@@ -1457,6 +1459,11 @@ for f in [:rand, :randn]
                 return TensorAlgebra.$f_map(rng, elt, codomain, domain)
             end
             function Base.$f(
+                    rng::AbstractRNG, codomain::$codomain_type, domain::$domain_type
+                )
+                return Base.$f(rng, default_eltype(), codomain, domain)
+            end
+            function Base.$f(
                     elt::Type{<:Number}, codomain::$codomain_type, domain::$domain_type
                 )
                 return Base.$f(Random.default_rng(), elt, codomain, domain)
@@ -1467,8 +1474,40 @@ for f in [:rand, :randn]
         end
     end
 end
-function zeros_nameddims(elt::Type{<:Number}, codomain, domain)
-    a = TensorAlgebra.zeros_map(elt, unnamed.(codomain), unnamed.(domain))
+for (f, f_map) in [(:zeros, :zeros_map), (:ones, :ones_map)]
+    f_nameddims = Symbol(f, :_nameddims)
+    @eval function $f_nameddims(elt::Type{<:Number}, codomain, domain)
+        a = TensorAlgebra.$f_map(elt, unnamed.(codomain), unnamed.(domain))
+        return a[Name.(name.((codomain..., domain...)))...]
+    end
+    for (codomain_type, domain_type) in [
+            (
+                :(Tuple{NamedUnitRange, Vararg{NamedUnitRange}}),
+                :(Tuple{Vararg{NamedUnitRange}}),
+            ),
+            (:(Tuple{}), :(Tuple{NamedUnitRange, Vararg{NamedUnitRange}})),
+        ]
+        @eval begin
+            function TensorAlgebra.$f_map(
+                    elt::Type{<:Number}, codomain::$codomain_type, domain::$domain_type
+                )
+                return $f_nameddims(elt, codomain, domain)
+            end
+            function Base.$f(
+                    elt::Type{<:Number}, codomain::$codomain_type, domain::$domain_type
+                )
+                return TensorAlgebra.$f_map(elt, codomain, domain)
+            end
+            function Base.$f(codomain::$codomain_type, domain::$domain_type)
+                return Base.$f(default_eltype(), codomain, domain)
+            end
+        end
+    end
+end
+# `fill` takes the fill value first, so it does not fit the eltype-leading forms above; it gets
+# the same map-shaped split via `fill_map`.
+function fill_nameddims(value, codomain, domain)
+    a = TensorAlgebra.fill_map(value, unnamed.(codomain), unnamed.(domain))
     return a[Name.(name.((codomain..., domain...)))...]
 end
 for (codomain_type, domain_type) in [
@@ -1476,18 +1515,15 @@ for (codomain_type, domain_type) in [
         (:(Tuple{}), :(Tuple{NamedUnitRange, Vararg{NamedUnitRange}})),
     ]
     @eval begin
-        function TensorAlgebra.zeros_map(
-                elt::Type{<:Number}, codomain::$codomain_type, domain::$domain_type
+        function TensorAlgebra.fill_map(
+                value,
+                codomain::$codomain_type,
+                domain::$domain_type
             )
-            return zeros_nameddims(elt, codomain, domain)
+            return fill_nameddims(value, codomain, domain)
         end
-        function Base.zeros(
-                elt::Type{<:Number}, codomain::$codomain_type, domain::$domain_type
-            )
-            return TensorAlgebra.zeros_map(elt, codomain, domain)
-        end
-        function Base.zeros(codomain::$codomain_type, domain::$domain_type)
-            return Base.zeros(default_eltype(), codomain, domain)
+        function Base.fill(value, codomain::$codomain_type, domain::$domain_type)
+            return TensorAlgebra.fill_map(value, codomain, domain)
         end
     end
 end
