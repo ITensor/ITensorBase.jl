@@ -271,17 +271,6 @@ end
 
 # Conversion
 
-# Copied from `Base` (defined in abstractarray.jl).
-@noinline function _checkaxs(axd, axs)
-    axd == axs || throw(DimensionMismatch("axes must agree, got $axd and $axs"))
-    return nothing
-end
-function copyto_axcheck!(dest, src)
-    _checkaxs(axes(dest), axes(src))
-    copyto!(dest, src)
-    return dest
-end
-
 # These are defined since the Base versions assume the eltype and ndims are known
 # at compile time, which isn't true for ITensors.
 # Workaround: `Array(::TensorKit.AbstractTensorMap)` is not defined yet (it should be), so a
@@ -295,12 +284,8 @@ function Base.Array(a::AbstractNamedTensor)
 end
 Base.Array{T}(a::AbstractNamedTensor) where {T} = Array{T}(unnamed(a))
 Base.Array{T, N}(a::AbstractNamedTensor) where {T, N} = Array{T, N}(unnamed(a))
-Base.AbstractArray{T}(a::AbstractNamedTensor) where {T} = AbstractArray{T, ndims(a)}(a)
-function Base.AbstractArray{T, N}(a::AbstractNamedTensor) where {T, N}
-    dest = similar(a, T)
-    copyto_axcheck!(unnamed(dest), unnamed(a))
-    return dest
-end
+# Catches the bare `Matrix`/`Vector` (`Array{T, N} where T`, ndims fixed), defaulting the eltype.
+Base.Array{<:Any, N}(a::AbstractNamedTensor) where {N} = Array{eltype(a), N}(a)
 
 # Read the parent's axes through TensorAlgebra's interface (not `Base.axes`) so a non-array
 # backend like a TensorMap, whose axes are its native spaces, is supported.

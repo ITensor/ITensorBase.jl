@@ -89,6 +89,15 @@ end
         @test eltype(a′) ≡ elt
         @test a′ isa Matrix{elt}
         @test a′ == a
+        # `Matrix`/`Vector` densify when the rank matches the leg count.
+        m = Matrix(na)
+        @test m isa Matrix{elt}
+        @test m == a
+        @test_throws Exception Vector(na)                 # two legs, not a vector
+        v = nameddims(randn(elt, 4), ("i",))
+        @test Vector(v) isa Vector{elt}
+        @test Vector(v) == unnamed(v)
+        @test_throws Exception Matrix(v)                  # one leg, not a matrix
 
         if elt <: Real
             a = randn(elt, 3, 4)
