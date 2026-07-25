@@ -808,16 +808,36 @@ an empty domain). The index axes select the backend: dense ranges give an
 `TensorMap`. `a` is indexed positionally in the order
 `(codomain_inds..., domain_inds...)`.
 
+When `a` has more axes than `codomain_inds` and `domain_inds` account for, each
+surplus trailing axis is an auxiliary leg that the backend derived to make the
+result symmetry-allowed (for example a flux-canceling charge leg for a
+charge-shifting operator). Such axes are returned as named dimensions with
+freshly generated names, which the caller can read off the result.
+
 `TensorAlgebra.tryproject` returns `nothing` instead of throwing, and
 `TensorAlgebra.unchecked_project` skips the verification.
 """
 TA.project
 
-# Strip to `a`'s axes, lower to the TensorAlgebra verb, and reattach the names (passing
-# through a `nothing` from `tryproject`). Two split entries per verb read the index type from
-# whichever side is non-empty (an empty codomain is the all-domain case, the mirror of the
-# empty-domain state), so neither an empty codomain nor an empty domain falls through to the
-# unnamed-axis generic; the flat (state) form forwards to the split form.
+# Attach `input_names` to the leading axes of the `projected` array and mint a fresh unique name for
+# each surplus axis. A surplus axis is an auxiliary leg the backend derived so the result is
+# symmetry-allowed (for example a flux-canceling charge leg for a charge-shifting operator), and
+# naming it returns it as a dimension the caller can read off the result. A `nothing` (from
+# `tryproject`) passes straight through.
+function project_nameddims(projected, input_names)
+    isnothing(projected) && return nothing
+    aux_names = ntuple(
+        _ -> uniquename(first(input_names)),
+        TA.ndims(projected) - length(input_names)
+    )
+    return nameddims(projected, (input_names..., aux_names...))
+end
+
+# Strip to `a`'s axes, lower to the TensorAlgebra verb, and reattach the names. Two split entries
+# per verb read the index type from whichever side is non-empty (an empty codomain is the
+# all-domain case, the mirror of the empty-domain state), so neither an empty codomain nor an empty
+# domain falls through to the unnamed-axis generic; the flat (state) form forwards to the split
+# form.
 for f in (:project, :tryproject, :unchecked_project)
     @eval begin
         function TA.$f(
@@ -825,18 +845,19 @@ for f in (:project, :tryproject, :unchecked_project)
                 codomain_inds::Tuple{NamedUnitRange, Vararg{NamedUnitRange}},
                 domain_inds::Tuple{Vararg{NamedUnitRange}}; kwargs...
             )
-            raw = TA.$f(a, unnamed.(codomain_inds), unnamed.(domain_inds); kwargs...)
-            isnothing(raw) && return nothing
-            return nameddims(raw, (name.(codomain_inds)..., name.(domain_inds)...))
+            projected = TA.$f(a, unnamed.(codomain_inds), unnamed.(domain_inds); kwargs...)
+            return project_nameddims(
+                projected,
+                (name.(codomain_inds)..., name.(domain_inds)...)
+            )
         end
         function TA.$f(
                 a::AbstractArray,
                 codomain_inds::Tuple{},
                 domain_inds::Tuple{NamedUnitRange, Vararg{NamedUnitRange}}; kwargs...
             )
-            raw = TA.$f(a, (), unnamed.(domain_inds); kwargs...)
-            isnothing(raw) && return nothing
-            return nameddims(raw, name.(domain_inds))
+            projected = TA.$f(a, (), unnamed.(domain_inds); kwargs...)
+            return project_nameddims(projected, name.(domain_inds))
         end
         function TA.$f(
                 a::AbstractArray, inds::Tuple{NamedUnitRange, Vararg{NamedUnitRange}};

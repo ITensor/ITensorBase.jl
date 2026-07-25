@@ -3,8 +3,7 @@ using LinearAlgebra: norm
 using MatrixAlgebraKit: qr_compact, svd_compact
 using StableRNGs: StableRNG
 using TensorAlgebra: TensorAlgebra, project, unchecked_project
-using TensorKit: TensorKit, @tensor, AbstractTensorMap, SU2Irrep, U1Irrep, Vect, dim, dual,
-    scalar, space, ←, ⊗
+using TensorKit: TensorKit as TK, @tensor, AbstractTensorMap, SU2Irrep, U1Irrep, Vect, ←, ⊗
 using Test: @test, @test_throws, @testset
 
 # A native TensorKit space flows into `Index`, so an `ITensor` wraps a `TensorMap` directly.
@@ -33,13 +32,13 @@ using Test: @test, @test_throws, @testset
 
         # `conj(index)` round-trips to an `Index` carrying the dual space, same name.
         @test conj(i) isa Index
-        @test unnamed(conj(i)) == dual(Vi)
+        @test unnamed(conj(i)) == TK.dual(Vi)
         @test name(conj(i)) == name(i)
 
         # `isdual`/`dual` forward to the underlying space.
         @test TensorAlgebra.isdual(i) == false
         @test TensorAlgebra.isdual(conj(i)) == true
-        @test unnamed(TensorAlgebra.dual(i)) == dual(Vi)
+        @test unnamed(TensorAlgebra.dual(i)) == TK.dual(Vi)
         @test name(TensorAlgebra.dual(i)) == name(i)
 
         # Equality is dual-insensitive: an index equals its dual (same name, same ungraded
@@ -54,7 +53,7 @@ using Test: @test, @test_throws, @testset
         # Cold-start construction wraps a `TensorMap`; size/eltype report dense values.
         a = randn(rng, elt, i, j)
         @test unnamed(a) isa AbstractTensorMap
-        @test size(a) == (dim(Vi), dim(Vj))
+        @test size(a) == (TK.dim(Vi), TK.dim(Vj))
         @test eltype(a) == elt
         @test norm(unnamed(zeros(elt, i, j))) == 0
 
@@ -64,7 +63,7 @@ using Test: @test, @test_throws, @testset
         @test Set(dimnames(c)) == Set(name.((i, k)))
         ta, tb, gc = unnamed(a), unnamed(b), unnamed(c)
         @tensor ref[vi; vk] := ta[vi, vj] * tb[vj, vk]
-        @test space(ref) == space(gc)
+        @test TK.space(ref) == TK.space(gc)
         @test ref ≈ gc
 
         # Linear-combination broadcast lowers to `bipermutedimsopadd!`; element-wise errors.
@@ -78,7 +77,7 @@ using Test: @test, @test_throws, @testset
         # Checked by full contraction to a scalar, which is bipartition-independent.
         a3 = randn(rng, elt, i, j, k)
         w = randn(rng, elt, conj(i), conj(j), conj(k))
-        sca(x) = scalar(unnamed(x))
+        sca(x) = TK.scalar(unnamed(x))
         u, s, v = svd_compact(a3, (i,), (j, k))
         @test sca((u * s * v) * w) ≈ sca(a3 * w)
         q, r = qr_compact(a3, (i,), (j, k))
@@ -104,22 +103,22 @@ using Test: @test, @test_throws, @testset
         # view, the same as a flat graded array would have axes `(Vi, dual(Vj))`.
         m = randn(rng, elt, (i,), (j,))
         @test unnamed(m) isa AbstractTensorMap
-        @test space(unnamed(m)) == (Vi ← Vj)
-        @test space(unnamed(m), 1) == Vi
-        @test space(unnamed(m), 2) == dual(Vj)
+        @test TK.space(unnamed(m)) == (Vi ← Vj)
+        @test TK.space(unnamed(m), 1) == Vi
+        @test TK.space(unnamed(m), 2) == TK.dual(Vj)
         @test unnamed(rand(rng, elt, (i,), (j,))) isa AbstractTensorMap
         @test norm(unnamed(zeros(elt, (i,), (j,)))) == 0
         # The friendly forms agree with the underlying `TensorAlgebra` map hooks.
-        @test space(unnamed(TensorAlgebra.randn_map(elt, (i, j), (k,)))) ==
-            space(unnamed(randn(elt, (i, j), (k,))))
+        @test TK.space(unnamed(TensorAlgebra.randn_map(elt, (i, j), (k,)))) ==
+            TK.space(unnamed(randn(elt, (i, j), (k,))))
         # An empty codomain builds an all-domain `TensorMap`, the mirror of an empty domain. The
         # space type is read from the domain, since the empty codomain carries none. An all-empty
         # split has no map meaning and errors rather than recursing.
         cd = randn(rng, elt, (), (j,))
         @test unnamed(cd) isa AbstractTensorMap
-        @test space(unnamed(cd)) == (one(Vj) ← Vj)
+        @test TK.space(unnamed(cd)) == (one(Vj) ← Vj)
         @test dimnames(cd) == [name(j)]
-        @test space(unnamed(zeros(elt, (), (j,)))) == (one(Vj) ← Vj)
+        @test TK.space(unnamed(zeros(elt, (), (j,)))) == (one(Vj) ← Vj)
         @test_throws MethodError randn(rng, elt, (), ())
 
         # `aligndims` reorders a `TensorMap`-backed tensor. The flat form gives an all-codomain
@@ -127,19 +126,19 @@ using Test: @test, @test_throws, @testset
         # carrying each index with its arrow to the new position.
         mf = aligndims(m, (j, i))
         @test dimnames(mf) == [name(j), name(i)]
-        @test space(unnamed(mf), 1) == dual(Vj)
-        @test space(unnamed(mf), 2) == Vi
+        @test TK.space(unnamed(mf), 1) == TK.dual(Vj)
+        @test TK.space(unnamed(mf), 2) == Vi
         md = aligndims(m, (j,), (i,))
         @test dimnames(md) == [name(j), name(i)]
-        @test space(unnamed(md)) == (dual(Vj) ← dual(Vi))
-        @test space(unnamed(md), 1) == dual(Vj)
-        @test space(unnamed(md), 2) == Vi
+        @test TK.space(unnamed(md)) == (TK.dual(Vj) ← TK.dual(Vi))
+        @test TK.space(unnamed(md), 1) == TK.dual(Vj)
+        @test TK.space(unnamed(md), 2) == Vi
         # An empty codomain moves both indices into the domain, preserving the outward axes.
         me = aligndims(m, (), (i, j))
         @test dimnames(me) == [name(i), name(j)]
-        @test space(unnamed(me)) == (one(Vi) ← (dual(Vi) ⊗ Vj))
-        @test space(unnamed(me), 1) == Vi
-        @test space(unnamed(me), 2) == dual(Vj)
+        @test TK.space(unnamed(me)) == (one(Vi) ← (TK.dual(Vi) ⊗ Vj))
+        @test TK.space(unnamed(me), 1) == Vi
+        @test TK.space(unnamed(me), 2) == TK.dual(Vj)
     end
 
     # `project` builds a `TensorMap`-backed operator/state from a dense basis matrix: the index
@@ -153,7 +152,7 @@ using Test: @test, @test_throws, @testset
 
         top = project(Sz, (prime(w),), (w,))
         @test unnamed(top) isa AbstractTensorMap
-        @test space(unnamed(top)) == (W ← W)
+        @test TK.space(unnamed(top)) == (W ← W)
         @test Set(dimnames(top)) == Set(name.((prime(w), w)))
 
         # a charge-breaking operator is projected to zero by `unchecked_project`; the checked
@@ -171,7 +170,7 @@ using Test: @test, @test_throws, @testset
         # the empty-codomain form builds an all-domain `TensorMap` (the mirror case)
         cobra = project(elt[1, 0], (), (w,))
         @test unnamed(cobra) isa AbstractTensorMap
-        @test space(unnamed(cobra)) == (one(W) ← W)
+        @test TK.space(unnamed(cobra)) == (one(W) ← W)
         @test Set(dimnames(cobra)) == Set((name(w),))
     end
 end
