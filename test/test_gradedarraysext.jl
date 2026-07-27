@@ -62,6 +62,17 @@ using Test: @test, @testset
     fl = fill(elt(2), U1(1), (i,), (j,))
     @test length(inds(fl)) == 3
     @test eltype(fl) == elt
+
+    # Empty codomain: every physical leg lives in the (dualized) domain, alongside the aux leg.
+    e = randn(rng, elt, U1(1), (), (i, j))
+    @test length(inds(e)) == 3
+    auxe = only(setdiff(collect(inds(e)), [i, j]))
+    @test isdual(auxe) && length(auxe) == 1 && only(sectors(space(auxe))) == U1(1)
+    @test eltype(e) == elt
+    @test length(inds(randn(rng, U1(1), (), (i, j)))) == 3
+    @test length(inds(zeros(U1(1), (), (i, j)))) == 3
+    @test length(inds(ones(elt, U1(1), (), (i,)))) == 2
+    @test length(inds(fill(elt(2), U1(1), (), (j,)))) == 2
 end
 
 # `project` and its siblings derive the same kind of auxiliary leg: a trailing surplus axis on the
