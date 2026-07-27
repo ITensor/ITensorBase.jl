@@ -825,7 +825,7 @@ TA.project
 # example a flux-canceling charge leg for a charge-shifting operator), and naming it returns it as a
 # dimension the caller can read off the result. A `nothing` (from `tryproject`) passes straight
 # through.
-function project_nameddims(projected, input_names)
+function name_projected(projected, input_names)
     isnothing(projected) && return nothing
     aux_names = ntuple(
         _ -> uniquename(first(input_names)),
@@ -834,37 +834,50 @@ function project_nameddims(projected, input_names)
     return nameddims(projected, (input_names..., aux_names...))
 end
 
-# Strip to `a`'s axes, lower to the TensorAlgebra verb, and reattach the names. Two split entries
-# per verb read the index type from whichever side is non-empty (an empty codomain is the
-# all-domain case, the mirror of the empty-domain state), so neither an empty codomain nor an empty
-# domain falls through to the unnamed-axis generic; the flat (state) form forwards to the split
-# form.
+# Each `<verb>_nameddims` runs the named-index layer of a `TensorAlgebra` verb: strip the axes to
+# their unnamed ranges, lower to the dense verb, and reattach the names, minting a name for the aux
+# leg the backend may append (see `name_projected`). The one body also covers an empty codomain,
+# since `unnamed.(())` and `name.(())` are both `()`, so the all-domain (co-state) case needs no
+# separate path.
+function project_nameddims(a, codomain_inds, domain_inds; kwargs...)
+    projected = TA.project(a, unnamed.(codomain_inds), unnamed.(domain_inds); kwargs...)
+    return name_projected(projected, (name.(codomain_inds)..., name.(domain_inds)...))
+end
+function tryproject_nameddims(a, codomain_inds, domain_inds; kwargs...)
+    projected = TA.tryproject(a, unnamed.(codomain_inds), unnamed.(domain_inds); kwargs...)
+    return name_projected(projected, (name.(codomain_inds)..., name.(domain_inds)...))
+end
+function unchecked_project_nameddims(a, codomain_inds, domain_inds; kwargs...)
+    projected =
+        TA.unchecked_project(a, unnamed.(codomain_inds), unnamed.(domain_inds); kwargs...)
+    return name_projected(projected, (name.(codomain_inds)..., name.(domain_inds)...))
+end
+
+# Forward each named-index signature to its worker. Two split entries per verb so an empty codomain
+# or an empty domain still selects this overload instead of the unnamed-axis generic; the flat
+# (state) form forwards with an empty domain.
 for f in (:project, :tryproject, :unchecked_project)
+    fnamed = Symbol(f, :_nameddims)
     @eval begin
         function TA.$f(
                 a::AbstractArray,
                 codomain_inds::Tuple{NamedUnitRange, Vararg{NamedUnitRange}},
                 domain_inds::Tuple{Vararg{NamedUnitRange}}; kwargs...
             )
-            projected = TA.$f(a, unnamed.(codomain_inds), unnamed.(domain_inds); kwargs...)
-            return project_nameddims(
-                projected,
-                (name.(codomain_inds)..., name.(domain_inds)...)
-            )
+            return $fnamed(a, codomain_inds, domain_inds; kwargs...)
         end
         function TA.$f(
                 a::AbstractArray,
                 codomain_inds::Tuple{},
                 domain_inds::Tuple{NamedUnitRange, Vararg{NamedUnitRange}}; kwargs...
             )
-            projected = TA.$f(a, (), unnamed.(domain_inds); kwargs...)
-            return project_nameddims(projected, name.(domain_inds))
+            return $fnamed(a, codomain_inds, domain_inds; kwargs...)
         end
         function TA.$f(
                 a::AbstractArray, inds::Tuple{NamedUnitRange, Vararg{NamedUnitRange}};
                 kwargs...
             )
-            return TA.$f(a, inds, (); kwargs...)
+            return $fnamed(a, inds, (); kwargs...)
         end
     end
 end
