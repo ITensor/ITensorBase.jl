@@ -828,7 +828,7 @@ TA.project
 function name_projected(projected, input_names)
     isnothing(projected) && return nothing
     aux_names = ntuple(
-        _ -> uniquename(first(input_names)),
+        _ -> uniquename(eltype(input_names)),
         TA.ndims(projected) - length(input_names)
     )
     return nameddims(projected, (input_names..., aux_names...))
