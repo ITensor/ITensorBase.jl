@@ -793,56 +793,116 @@ end
 # Projection into a symmetry-restricted named tensor.
 #
 
+# Attach `input_names` to the leading axes of the `projected` array and mint a fresh unique name for
+# a trailing surplus axis if the backend derived one (it appends at most one, as the last domain
+# axis). A surplus axis is an auxiliary leg the backend adds so the result is symmetry-allowed (for
+# example a flux-canceling charge leg for a charge-shifting operator), and naming it returns it as a
+# dimension the caller can read off the result. A `nothing` (from `tryproject`) passes straight
+# through.
+function name_projected(projected, input_names)
+    isnothing(projected) && return nothing
+    aux_names = ntuple(
+        _ -> uniquename(eltype(input_names)),
+        TA.ndims(projected) - length(input_names)
+    )
+    return nameddims(projected, (input_names..., aux_names...))
+end
+
+# Each `<verb>_nameddims` runs the named-index layer of a `TensorAlgebra` verb: strip the axes to
+# their unnamed ranges, lower to the dense verb, and reattach the names, minting a name for the aux
+# leg the backend may append (see `name_projected`). The one body also covers an empty codomain,
+# since `unnamed.(())` and `name.(())` are both `()`, so the all-domain (co-state) case needs no
+# separate path.
+function project_nameddims(a, codomain_inds, domain_inds; kwargs...)
+    projected = TA.project(a, unnamed.(codomain_inds), unnamed.(domain_inds); kwargs...)
+    return name_projected(projected, (name.(codomain_inds)..., name.(domain_inds)...))
+end
+function tryproject_nameddims(a, codomain_inds, domain_inds; kwargs...)
+    projected = TA.tryproject(a, unnamed.(codomain_inds), unnamed.(domain_inds); kwargs...)
+    return name_projected(projected, (name.(codomain_inds)..., name.(domain_inds)...))
+end
+function unchecked_project_nameddims(a, codomain_inds, domain_inds; kwargs...)
+    projected =
+        TA.unchecked_project(a, unnamed.(codomain_inds), unnamed.(domain_inds); kwargs...)
+    return name_projected(projected, (name.(codomain_inds)..., name.(domain_inds)...))
+end
+
+# Shared body for the named-index `project` family docstrings. Each function's summary states its
+# own verification behavior; this describes what all three have in common.
+const _project_named_body = """
+The three-argument form takes an explicit codomain/domain split (an operator), and the
+two-argument form a flat list of indices (a state, i.e. an empty domain). The index axes select
+the backend: dense ranges give an `Array`, graded ranges a block-sparse array, and TensorKit
+spaces a `TensorMap`. `a` is indexed positionally in the order `(codomain_inds..., domain_inds...)`.
+
+When `a` carries one more axis than `codomain_inds` and `domain_inds` account for, that trailing
+surplus axis is an auxiliary leg the backend derived to make the result symmetry-allowed (for
+example a flux-canceling charge leg for a charge-shifting operator). It is returned as a named
+dimension with a freshly generated name the caller can read off the result.
 """
+
+const _project_named_docstring = """
     TensorAlgebra.project(a::AbstractArray, codomain_inds, domain_inds; kwargs...) -> t
     TensorAlgebra.project(a::AbstractArray, inds; kwargs...) -> t
 
-Build a named tensor from the dense array `a` by projecting it into the
-symmetry-restricted space described by the indices, verifying that only a
-negligible component of `a` is discarded and throwing an `InexactError`
-otherwise (keyword arguments are forwarded to the `isapprox` tolerance
-check). The three-argument form takes an explicit codomain/domain split (an
-operator); the two-argument form takes a flat list of indices (a state, i.e.
-an empty domain). The index axes select the backend: dense ranges give an
-`Array`, graded ranges a block-sparse array, and TensorKit spaces a
-`TensorMap`. `a` is indexed positionally in the order
-`(codomain_inds..., domain_inds...)`.
+Build a named tensor by projecting the dense array `a` into the symmetry-restricted space
+described by the indices, verifying that only a negligible component of `a` is discarded and
+throwing an `InexactError` otherwise (keyword arguments are forwarded to the `isapprox` tolerance
+check).
 
-`TensorAlgebra.tryproject` returns `nothing` instead of throwing, and
-`TensorAlgebra.unchecked_project` skips the verification.
+$(_project_named_body)
+See also `TensorAlgebra.tryproject` and `TensorAlgebra.unchecked_project`.
 """
-TA.project
 
-# Strip to `a`'s axes, lower to the TensorAlgebra verb, and reattach the names (passing
-# through a `nothing` from `tryproject`). Two split entries per verb read the index type from
-# whichever side is non-empty (an empty codomain is the all-domain case, the mirror of the
-# empty-domain state), so neither an empty codomain nor an empty domain falls through to the
-# unnamed-axis generic; the flat (state) form forwards to the split form.
+const _tryproject_named_docstring = """
+    TensorAlgebra.tryproject(a::AbstractArray, codomain_inds, domain_inds; kwargs...) -> Union{t, Nothing}
+    TensorAlgebra.tryproject(a::AbstractArray, inds; kwargs...) -> Union{t, Nothing}
+
+Like `TensorAlgebra.project`, but return `nothing` instead of throwing when a non-negligible
+component of `a` would be discarded (keyword arguments are forwarded to the `isapprox` tolerance
+check).
+
+$(_project_named_body)
+See also `TensorAlgebra.project` and `TensorAlgebra.unchecked_project`.
+"""
+
+const _unchecked_project_named_docstring = """
+    TensorAlgebra.unchecked_project(a::AbstractArray, codomain_inds, domain_inds; kwargs...) -> t
+    TensorAlgebra.unchecked_project(a::AbstractArray, inds; kwargs...) -> t
+
+Like `TensorAlgebra.project`, but skip the verification: components of `a` outside the
+symmetry-allowed structure are dropped without inspection.
+
+$(_project_named_body)
+See also `TensorAlgebra.project` and `TensorAlgebra.tryproject`.
+"""
+
+# Forward each named-index signature to its worker, attaching the family docstring to the split
+# form. Two split entries per verb so an empty codomain or an empty domain still selects this
+# overload instead of the unnamed-axis generic. The flat (state) form forwards with an empty domain.
 for f in (:project, :tryproject, :unchecked_project)
+    fnamed = Symbol(f, :_nameddims)
+    doc = Symbol("_", f, "_named_docstring")
     @eval begin
-        function TA.$f(
+        @doc $doc function TA.$f(
                 a::AbstractArray,
                 codomain_inds::Tuple{NamedUnitRange, Vararg{NamedUnitRange}},
                 domain_inds::Tuple{Vararg{NamedUnitRange}}; kwargs...
             )
-            raw = TA.$f(a, unnamed.(codomain_inds), unnamed.(domain_inds); kwargs...)
-            isnothing(raw) && return nothing
-            return nameddims(raw, (name.(codomain_inds)..., name.(domain_inds)...))
+            return $fnamed(a, codomain_inds, domain_inds; kwargs...)
         end
         function TA.$f(
                 a::AbstractArray,
                 codomain_inds::Tuple{},
                 domain_inds::Tuple{NamedUnitRange, Vararg{NamedUnitRange}}; kwargs...
             )
-            raw = TA.$f(a, (), unnamed.(domain_inds); kwargs...)
-            isnothing(raw) && return nothing
-            return nameddims(raw, name.(domain_inds))
+            return $fnamed(a, codomain_inds, domain_inds; kwargs...)
         end
         function TA.$f(
                 a::AbstractArray, inds::Tuple{NamedUnitRange, Vararg{NamedUnitRange}};
                 kwargs...
             )
-            return TA.$f(a, inds, (); kwargs...)
+            return $fnamed(a, inds, (); kwargs...)
         end
     end
 end
