@@ -808,11 +808,11 @@ an empty domain). The index axes select the backend: dense ranges give an
 `TensorMap`. `a` is indexed positionally in the order
 `(codomain_inds..., domain_inds...)`.
 
-When `a` has more axes than `codomain_inds` and `domain_inds` account for, each
-surplus trailing axis is an auxiliary leg that the backend derived to make the
-result symmetry-allowed (for example a flux-canceling charge leg for a
-charge-shifting operator). Such axes are returned as named dimensions with
-freshly generated names, which the caller can read off the result.
+When `a` carries one more axis than `codomain_inds` and `domain_inds` account
+for, that trailing surplus axis is an auxiliary leg the backend derived to make
+the result symmetry-allowed (for example a flux-canceling charge leg for a
+charge-shifting operator). It is returned as a named dimension with a freshly
+generated name the caller can read off the result.
 
 `TensorAlgebra.tryproject` returns `nothing` instead of throwing, and
 `TensorAlgebra.unchecked_project` skips the verification.
@@ -820,10 +820,11 @@ freshly generated names, which the caller can read off the result.
 TA.project
 
 # Attach `input_names` to the leading axes of the `projected` array and mint a fresh unique name for
-# each surplus axis. A surplus axis is an auxiliary leg the backend derived so the result is
-# symmetry-allowed (for example a flux-canceling charge leg for a charge-shifting operator), and
-# naming it returns it as a dimension the caller can read off the result. A `nothing` (from
-# `tryproject`) passes straight through.
+# a trailing surplus axis if the backend derived one (it appends at most one, as the last domain
+# axis). A surplus axis is an auxiliary leg the backend adds so the result is symmetry-allowed (for
+# example a flux-canceling charge leg for a charge-shifting operator), and naming it returns it as a
+# dimension the caller can read off the result. A `nothing` (from `tryproject`) passes straight
+# through.
 function project_nameddims(projected, input_names)
     isnothing(projected) && return nothing
     aux_names = ntuple(
