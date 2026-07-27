@@ -1,7 +1,7 @@
 using GradedArrays: U1, sectors
 using ITensorBase: ITensorBase, Index, inds, prime, space
 using StableRNGs: StableRNG
-using TensorAlgebra: TensorAlgebra, isdual, project, unchecked_project
+using TensorAlgebra: TensorAlgebra, isdual, project, tryproject, unchecked_project
 using TensorKitSectors: FermionNumber
 using Test: @test, @testset
 
@@ -64,9 +64,9 @@ using Test: @test, @testset
     @test eltype(fl) == elt
 end
 
-# `project` derives the same kind of auxiliary leg: a trailing surplus axis on the dense array
-# becomes a named aux dimension carrying the operator's flux, so a charge-shifting operator stays
-# symmetry-allowed instead of being projected away.
+# `project` and its siblings derive the same kind of auxiliary leg: a trailing surplus axis on the
+# dense array becomes a named aux dimension carrying the operator's flux, so a charge-shifting
+# operator stays symmetry-allowed instead of being projected away.
 @testset "project derives a named auxiliary leg (eltype = $elt)" for elt in
     (
         Float64,
@@ -78,13 +78,15 @@ end
     # without a surplus axis the charge-shifting operator has nothing to carry its flux
     @test iszero(unchecked_project(cdag, (prime(s),), (s,)))
 
-    # reshaping to a trailing length-1 axis lets `project` mint the flux-canceling aux leg
-    op = project(reshape(cdag, (2, 2, 1)), (prime(s),), (s,))
-    @test length(inds(op)) == 3
-    @test !iszero(op)
-    @test eltype(op) == elt
-    aux = only(setdiff(collect(inds(op)), [prime(s), s]))
-    @test length(aux) == 1
-    @test isdual(aux)                          # dualized, in the domain
-    @test only(sectors(space(aux))) == U1(1)   # carries the operator's flux
+    # reshaping to a trailing length-1 axis lets each verb mint the flux-canceling aux leg
+    @testset "$f" for f in (project, tryproject, unchecked_project)
+        op = f(reshape(cdag, (2, 2, 1)), (prime(s),), (s,))
+        @test length(inds(op)) == 3
+        @test !iszero(op)
+        @test eltype(op) == elt
+        aux = only(setdiff(collect(inds(op)), [prime(s), s]))
+        @test length(aux) == 1
+        @test isdual(aux)                          # dualized, in the domain
+        @test only(sectors(space(aux))) == U1(1)   # carries the operator's flux
+    end
 end
