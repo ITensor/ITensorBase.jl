@@ -343,14 +343,48 @@ end
     @test isempty(outputnames(oo))
     @test isempty(inputnames(oo))
 
-    # Operator combined with a non-operator tensor is rejected.
+    # Operator combined with a non-operator tensor: the tensor is a trivial
+    # (empty-pairing) operator, so the result stays an operator with `o`'s pairing.
     plain = NamedTensor(randn(2, 2), ("i'", "i"))
-    @test_throws ArgumentError o .+ plain
+    op = o .+ plain
+    @test op isa NamedTensorOperator
+    @test issetequal(outputnames(op), ("i'",))
+    @test issetequal(inputnames(op), ("i",))
+    @test unname(state(op), nms) ≈ unname(s, nms) .+ unname(plain, nms)
 
-    # Two operators whose name sets match but whose output/input split differs
-    # are rejected (the split would otherwise be ambiguous).
+    # Two operators that pair a shared name two different ways (here `i'` and `i` swap
+    # output/input roles) are an error, not a guess.
     o_swapped = operator(randn(2, 2), ("i",), ("i'",))
     @test_throws ArgumentError o .+ o_swapped
+end
+
+@testset "operator/state linear algebra" begin
+    # A plain tensor is a trivial (empty-pairing) operator, so combining it with an
+    # operator keeps the operator's pairing (the motivating `o - t` case).
+    o = operator(randn(2, 2), ("i",), ("j",))
+    t = NamedTensor(randn(2, 2), ("i", "j"))
+    for r in (o - t, t - o, o + t)
+        @test r isa NamedTensorOperator
+        @test issetequal(outputnames(r), ("i",))
+        @test issetequal(inputnames(r), ("j",))
+    end
+    @test unname(state(o - t), ("i", "j")) ≈
+        unname(state(o), ("i", "j")) - unname(t, ("i", "j"))
+    @test unname(state(t - o), ("i", "j")) ≈
+        unname(t, ("i", "j")) - unname(state(o), ("i", "j"))
+
+    # Two operators must pair their shared names consistently. `A` pairs i'->i and j'->j;
+    # `B` pairs i'->i (agreed) but j->j', so j' and j are paired two different ways and the
+    # whole combination errors, even though i'->i agrees.
+    A = operator(randn(2, 2, 2, 2), ("i'", "j'"), ("i", "j"))
+    B = operator(randn(2, 2, 2, 2), ("i'", "j"), ("i", "j'"))
+    @test_throws ArgumentError A + B
+
+    # Operators that agree on every shared pairing do combine, keeping the pairing.
+    C = operator(randn(2, 2), ("i'",), ("i",))
+    D = operator(randn(2, 2), ("i'",), ("i",))
+    @test issetequal(outputnames(C + D), ("i'",))
+    @test issetequal(inputnames(C + D), ("i",))
 end
 
 @testset "operator-preserving contraction" begin

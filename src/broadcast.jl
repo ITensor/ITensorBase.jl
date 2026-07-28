@@ -135,7 +135,8 @@ end
 # rules below enforce the input rules declaratively:
 #   - operator ⊗ operator → operator (preserved),
 #   - operator ⊗ scalar → operator (`2 .* op` stays an operator),
-#   - operator ⊗ non-operator tensor → error.
+#   - operator ⊗ non-operator tensor → operator (the tensor is a trivial, empty-pairing
+#     operator, so the result inherits the operator operand's pairing).
 # The `BroadcastStyle(::Type{<:NamedTensorOperator})` mapping and the operator-specific
 # `copy` (which unwraps, delegates to `NamedTensorStyle`, then rewraps) live in
 # `itensoroperator.jl`, where `NamedTensorOperator` is defined. `*` (contraction) is
@@ -158,15 +159,12 @@ function BC.BroadcastStyle(
     )
     return style
 end
-# operator ⊗ non-operator named tensor is type-nonsense and is rejected.
-function BC.BroadcastStyle(::NamedTensorOperatorStyle, ::NamedTensorStyle)
-    return throw(
-        ArgumentError(
-            "Cannot broadcast an `NamedTensorOperator` together with a non-operator " *
-                "tensor. Wrap the tensor as an operator first, or unwrap the " *
-                "operator with `state`."
-        )
-    )
+# operator ⊗ non-operator named tensor stays an operator: a plain tensor is a trivial
+# operator with no pairing, so `o - t` (etc.) combines the states elementwise and the
+# result inherits `o`'s output/input split (the split logic lives in
+# `broadcast_operator_output_input`).
+function BC.BroadcastStyle(style::NamedTensorOperatorStyle, ::NamedTensorStyle)
+    return style
 end
 
 # Reinterpret an operator-style `Broadcasted` under `NamedTensorStyle`, the broadcast

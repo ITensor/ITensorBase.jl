@@ -444,8 +444,8 @@ function BC.BroadcastStyle(arraytype::Type{<:NamedTensorOperator})
     return NamedTensorOperatorStyle{ndims(arraytype)}()
 end
 
-# Recover the output/input split shared by all operator operands of `bc`,
-# erroring if any two operators disagree.
+# Collect the operator operands of `bc`, skipping non-operator operands (plain tensors
+# and scalars), which contribute no pairing.
 operator_operands(bc::Broadcasted) = operator_operands(bc.args...)
 function operator_operands(arg::NamedTensorOperator, args...)
     return (arg, operator_operands(args...)...)
@@ -456,22 +456,30 @@ end
 operator_operands(arg, args...) = operator_operands(args...)
 operator_operands() = ()
 
+# The output/input split the broadcast result inherits from its operator operands. Each
+# operator contributes its (output, input) pairs; a non-operator operand contributes none
+# (a plain tensor is the trivial, empty-pairing operator), so combining an operator with a
+# plain tensor just inherits the operator's split. Combining operators requires them to
+# pair their shared names consistently: a name that appears in more than one distinct pair
+# (as an output or an input) is paired two different ways across the operands, which is an
+# error rather than a guess. An operand can be unwrapped with `state` to combine as a plain
+# tensor instead.
 function broadcast_operator_output_input(bc::Broadcasted)
     ops = operator_operands(bc)
-    op1 = first(ops)
-    out1 = outputnames(op1)
-    inp1 = inputnames(op1)
-    for op in Base.tail(ops)
-        (issetequal(outputnames(op), out1) && issetequal(inputnames(op), inp1)) ||
-            throw(
-            ArgumentError(
-                "Operator operands disagree on their output/input split: " *
-                    "$((out1, inp1)) vs $((outputnames(op), inputnames(op))). " *
-                    "Broadcasting operators requires a matching split."
-            )
-        )
+    DimName = eltype(outputnames(first(ops)))
+    pairs = Tuple{DimName, DimName}[]
+    for op in ops, pair in zip(outputnames(op), inputnames(op))
+        pair in pairs || push!(pairs, pair)
     end
-    return out1, inp1
+    outnames, innames = first.(pairs), last.(pairs)
+    allunique(outnames) && allunique(innames) && isdisjoint(outnames, innames) || throw(
+        ArgumentError(
+            "Operator operands pair a shared name two different ways; broadcasting " *
+                "operators requires each shared name to be paired the same way. Unwrap " *
+                "an operand with `state` to combine them as plain tensors instead."
+        )
+    )
+    return outnames, innames
 end
 
 function Base.copy(bc::Broadcasted{<:NamedTensorOperatorStyle})
