@@ -1,9 +1,11 @@
-using ITensorBase: ITensorBase as NDA, NamedTensor, NamedTensorOperator, apply, dimnames,
-    id, inputname, inputnames, nameddims, namedoneto, operator, outputname, outputnames,
-    product, replacedimnames, similar_operator, state, unname, unnamed
+using GradedArrays: U1, gradedrange, isdual
+using ITensorBase: ITensorBase as NDA, Index, NamedTensor, NamedTensorOperator, apply,
+    dimnames, id, inds, inputaxes, inputinds, inputname, inputnames, nameddims, namedoneto,
+    operator, outputaxes, outputinds, outputname, outputnames, product, replacedimnames,
+    similar_operator, state, unname, unnamed
 using LinearAlgebra: I, norm
 using MatrixAlgebraKit: project_hermitian
-using Random: Random
+using Random: Random, randn
 using StableRNGs: StableRNG
 using TensorAlgebra.MatrixAlgebra:
     gram_eigh_full, gram_eigh_full_with_pinv, invsqrth_safe, sqrth_invsqrth_safe, sqrth_safe
@@ -59,6 +61,45 @@ end
     @test_throws ArgumentError outputname(o, "z")
     # A plain tensor has no pairing, so every two-argument lookup throws.
     @test_throws ArgumentError inputname(NamedTensor(randn(2), ("i",)), "i")
+end
+
+@testset "output/input indices" begin
+    o = operator(randn(2, 3, 2, 3), ("i'", "j'"), ("i", "j"))
+    # The index versions carry the paired names, in name order. Output indices are the
+    # codomain legs as-is; input indices are the domain, conjugated off the fused `inds`.
+    @test NDA.name.(outputinds(o)) == outputnames(o)
+    @test NDA.name.(inputinds(o)) == inputnames(o)
+    @test outputinds(o) == inds(o)[1:2]
+    @test inputinds(o) == conj.(inds(o)[3:4])
+    # The `axes` forms are the tuple versions of the `inds` forms.
+    @test outputaxes(o) == Tuple(outputinds(o))
+    @test inputaxes(o) == Tuple(inputinds(o))
+    # A plain tensor is a trivial operator with no pairing, so all are empty.
+    v = NamedTensor(randn(2, 3), ("i", "j"))
+    @test isempty(outputinds(v))
+    @test isempty(inputinds(v))
+    @test outputaxes(v) == ()
+    @test inputaxes(v) == ()
+end
+
+@testset "input indices carry the operator's domain space" begin
+    # `id` needs matching codomain/domain structure, so `i` and `j` share a graded range.
+    i = Index(gradedrange([U1(0) => 1, U1(1) => 1]))
+    j = Index(gradedrange([U1(0) => 1, U1(1) => 1]))
+    o = operator(id(Float64, (i,), (j,)), (i,), (j,))
+    # `inds(o)` is the fused view: the domain (input) leg carries the dual.
+    @test isdual(inds(o)[2])
+    # `outputinds`/`inputinds` are the codomain/domain spaces, both non-dual (the
+    # spaces states occupy), matching TensorKit's `codomain`/`domain`.
+    @test !isdual(only(outputinds(o)))
+    @test !isdual(only(inputinds(o)))
+    # The `axes` forms are the tuple versions, feeding constructors that take index tuples.
+    @test outputaxes(o) == Tuple(outputinds(o))
+    @test inputaxes(o) == Tuple(inputinds(o))
+    # A state built over the input space contracts, landing in the output space.
+    @test only(inds(o * randn(inputaxes(o)))) == only(outputinds(o))
+    # `outputaxes`/`inputaxes` reconstruct an operator of the same shape.
+    @test isdual.(inds(id(Float64, outputaxes(o), inputaxes(o)))) == isdual.(inds(o))
 end
 
 @testset "apply composition" begin
