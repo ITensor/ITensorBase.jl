@@ -2,8 +2,11 @@ module ITensorBase
 
 export AbstractNamedTensor, NamedTensor, AbstractITensor, ITensor, Index,
     NamedUnitRange, aligndims, aligneddims, apply, commonind, commoninds,
-    dimnames, dimnametype, hascommoninds, id, inds, inputnames, mapinds, named, nameddims,
-    noncommonind, noncommoninds, noprime, operator, outputnames, prime, replaceinds, sim,
+    dimnames, dimnametype, hascommoninds, id, inds, inputaxes, inputinds, inputnames,
+    mapinds,
+    named, nameddims, noncommonind, noncommoninds, noprime, operator, outputaxes,
+    outputinds,
+    outputnames, prime, replaceinds, sim,
     similar_operator, state,
     trycommonind, trynoncommonind, tryuniqueind, uniqueind, uniqueinds, unioninds,
     uniquename

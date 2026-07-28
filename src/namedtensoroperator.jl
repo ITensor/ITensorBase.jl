@@ -74,6 +74,79 @@ See also [`outputnames`](@ref), [`operator`](@ref), [`apply`](@ref).
 """
 inputnames(a::AbstractNamedTensor{DimName}) where {DimName} = DimName[]
 
+"""
+    outputinds(a)
+
+The output (codomain) indices of an operator `a` — the space it maps onto — in the same
+order as [`outputnames`](@ref). Together with [`inputinds`](@ref) these are the codomain
+and domain of `a` viewed as a map, so `id(eltype(a), outputinds(a), inputinds(a))` rebuilds
+an operator of the same shape. Compare with `outputnames`, which returns just the names.
+A plain tensor is a trivial operator with no pairing, so its output indices are empty.
+
+# Examples
+
+```jldoctest
+julia> op = operator(zeros(2, 2), ("i",), ("j",));
+
+julia> outputinds(op)
+1-element Vector{NamedUnitRange{String, Int64, Base.OneTo{Int64}}}:
+ named(Base.OneTo(2), "i")
+```
+
+See also [`outputnames`](@ref), [`inputinds`](@ref), [`outputaxes`](@ref), [`operator`](@ref).
+"""
+outputinds(a::AbstractNamedTensor) = inds(a)[dims(a, outputnames(a))]
+
+"""
+    outputaxes(a)
+
+The output (codomain) indices of an operator `a` as a `Tuple`, the tuple form of
+[`outputinds`](@ref) (mirroring how `axes` relates to [`inds`](@ref)). The `Tuple` feeds
+directly into constructors that take a `(codomain, domain)` pair of index tuples, such as
+[`id`](@ref): `id(eltype(a), outputaxes(a), inputaxes(a))` rebuilds an operator of `a`'s
+shape.
+
+See also [`outputinds`](@ref), [`inputaxes`](@ref), [`operator`](@ref).
+"""
+outputaxes(a::AbstractNamedTensor) = map(Base.Fix1(inds, a), Tuple(dims(a, outputnames(a))))
+
+"""
+    inputinds(a)
+
+The input (domain) indices of an operator `a` — the space of states it acts on — in the
+same order as [`inputnames`](@ref). This is the domain in the sense of TensorKit's `domain`:
+the non-dual space a state occupies, so `a * randn(Tuple(inputinds(a)))` contracts. It is the
+conjugate of the operator's input legs as they appear fused in [`inds`](@ref), which carry
+the dual. Compare with `inputnames`, which returns just the names. A plain tensor is a
+trivial operator with no pairing, so its input indices are empty.
+
+# Examples
+
+```jldoctest
+julia> op = operator(zeros(2, 2), ("i",), ("j",));
+
+julia> inputinds(op)
+1-element Vector{NamedUnitRange{String, Int64, Base.OneTo{Int64}}}:
+ named(Base.OneTo(2), "j")
+```
+
+See also [`inputnames`](@ref), [`outputinds`](@ref), [`inputaxes`](@ref), [`operator`](@ref).
+"""
+inputinds(a::AbstractNamedTensor) = conj.(inds(a)[dims(a, inputnames(a))])
+
+"""
+    inputaxes(a)
+
+The input (domain) indices of an operator `a` as a `Tuple`, the tuple form of
+[`inputinds`](@ref) (mirroring how `axes` relates to [`inds`](@ref)). Like `inputinds` it is
+the non-dual domain space, so `a * randn(inputaxes(a))` contracts.
+
+See also [`inputinds`](@ref), [`outputaxes`](@ref), [`operator`](@ref).
+"""
+function inputaxes(a::AbstractNamedTensor)
+    return map(conj ∘ Base.Fix1(inds, a), Tuple(dims(a, inputnames(a))))
+end
+
 # `outputname(a, i, default)` returns the output name paired with input name `i`, and
 # `inputname(a, i, default)` returns the input name paired with output name `i`, each
 # returning `default` when `i` is not one of the operator's paired names (mirroring
