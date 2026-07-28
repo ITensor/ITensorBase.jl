@@ -473,3 +473,28 @@ end
     @test Pmat * Pmat' ≈ A
     @test Pmat * unnamed(state(Pinv)) ≈ I(n)
 end
+
+@testset "operator/state promotion" begin
+    t = NamedTensor(randn(2, 2), ("i", "j"))
+    o = operator(randn(2, 2), ("i",), ("j",))
+    O = typeof(o)
+
+    # A plain tensor promotes to the operator type (either argument order); the operator is
+    # the common type, so `promote` returns two operators.
+    @test promote_type(typeof(t), O) == O
+    @test promote_type(O, typeof(t)) == O
+    @test typeof.(promote(t, o)) == (O, O)
+
+    # `convert` wraps a plain tensor as a trivial empty-pairing operator, losslessly, and is a
+    # no-op on an operator.
+    to = convert(O, t)
+    @test to isa NamedTensorOperator
+    @test isempty(outputnames(to)) && isempty(inputnames(to))
+    @test state(to) === t
+    @test convert(O, o) === o
+
+    # A heterogeneous collection therefore homogenizes to the operator type.
+    v = [t, o]
+    @test eltype(v) == O
+    @test all(x -> x isa NamedTensorOperator, v)
+end
