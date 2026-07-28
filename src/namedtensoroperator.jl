@@ -471,21 +471,15 @@ function broadcast_operator_output_input(bc::Broadcasted)
     for op in ops, pair in zip(outputnames(op), inputnames(op))
         pair in pairs || push!(pairs, pair)
     end
-    appearances = Dict{DimName, Int}()
-    for (out, inp) in pairs
-        appearances[out] = get(appearances, out, 0) + 1
-        appearances[inp] = get(appearances, inp, 0) + 1
-    end
-    for (out, inp) in pairs, nm in (out, inp)
-        appearances[nm] == 1 || throw(
-            ArgumentError(
-                "Operator operands pair the name `$(nm)` two different ways; broadcasting " *
-                    "operators requires each shared name to be paired the same way. Unwrap " *
-                    "an operand with `state` to combine them as plain tensors instead."
-            )
+    outnames, innames = first.(pairs), last.(pairs)
+    allunique(outnames) && allunique(innames) && isdisjoint(outnames, innames) || throw(
+        ArgumentError(
+            "Operator operands pair a shared name two different ways; broadcasting " *
+                "operators requires each shared name to be paired the same way. Unwrap " *
+                "an operand with `state` to combine them as plain tensors instead."
         )
-    end
-    return first.(pairs), last.(pairs)
+    )
+    return outnames, innames
 end
 
 function Base.copy(bc::Broadcasted{<:NamedTensorOperatorStyle})
