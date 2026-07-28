@@ -390,6 +390,20 @@ function operator(a::AbstractNamedTensor, output, input)
     return NamedTensorOperator(a, name.(output), name.(input))
 end
 
+# A plain tensor is a trivial (empty-pairing) operator, so an operator is the promotion of a
+# non-operator tensor. `convert` wraps a plain tensor as a trivial operator and `promote_rule`
+# makes the operator the common type, so `promote(state, operator)` returns two operators and a
+# mixed collection such as `[state, operator]` builds a homogeneous `Vector{<:NamedTensorOperator}`
+# instead of falling back to the abstract `typejoin`.
+function Base.convert(::Type{O}, a::NamedTensor) where {O <: NamedTensorOperator}
+    return operator(a, (), ())::O
+end
+function Base.promote_rule(
+        ::Type{<:NamedTensor{D}}, ::Type{O}
+    ) where {D, O <: NamedTensorOperator{D}}
+    return O
+end
+
 # Operator-preserving contraction. Contracting two named arrays sums over their
 # shared names, so the result keeps each operand's surviving output/input
 # structure. A non-operator tensor contributes no pairs (all its names are
