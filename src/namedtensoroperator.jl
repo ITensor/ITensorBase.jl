@@ -389,6 +389,11 @@ end
 function operator(a::AbstractNamedTensor, output, input)
     return NamedTensorOperator(a, name.(output), name.(input))
 end
+# An operator's output/input pairing is a view over its state, so `operator` on an existing operator
+# reassigns the pairing rather than nesting another operator around it.
+function operator(a::NamedTensorOperator, output, input)
+    return operator(state(a), output, input)
+end
 
 # A plain tensor is a trivial (empty-pairing) operator, so an operator is the promotion of a
 # non-operator tensor. `convert` wraps a plain tensor as a trivial operator and `promote_rule`

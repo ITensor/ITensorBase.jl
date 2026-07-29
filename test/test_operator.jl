@@ -498,3 +498,14 @@ end
     @test eltype(v) == O
     @test all(x -> x isa NamedTensorOperator, v)
 end
+
+@testset "operator re-partition" begin
+    o = operator(randn(2, 2), ("i",), ("j",))
+    # `operator` on an existing operator reassigns the pairing over the same state rather than
+    # nesting another operator around it.
+    o2 = operator(o, ("j",), ("i",))
+    @test o2 isa NamedTensorOperator
+    @test state(o2) === state(o)
+    @test outputnames(o2) == ["j"]
+    @test inputnames(o2) == ["i"]
+end
