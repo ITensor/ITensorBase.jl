@@ -1,8 +1,8 @@
 using AbstractTrees: AbstractTrees, print_tree, printnode
 using Base.Broadcast: materialize
-using ITensorBase: @names, Greedy, LazyNamedTensor, Mul, NamedTensor, SymbolicNamedTensor,
-    dimnames, inds, ismul, lazy, nameddims, namedoneto, optimize_evaluation_order,
-    substitute, symnameddims
+using ITensorBase: @names, Greedy, LazyNamedTensor, Mul, NamedTensor, NamedTensorOperator,
+    SymbolicNamedTensor, dimnames, inds, inputnames, ismul, lazy, nameddims, namedoneto,
+    operator, optimize_evaluation_order, outputnames, state, substitute, symnameddims
 using OMEinsumContractionOrders: ExhaustiveSearch, GreedyMethod, TreeSA
 using TermInterface: arguments, arity, children, head, iscall, isexpr, maketerm, operation,
     sorted_arguments, sorted_children
@@ -135,4 +135,33 @@ using WrappedUnions: unwrap
         @test arity(ordered) == 2
         @test issetequal(dimnames(ordered), dimnames(flat))
     end
+end
+
+@testset "lazy operator promotion" begin
+    i, j = namedoneto.(2, (:i, :j))
+    p = randn(i, j)                          # eager plain
+    o = operator(randn(i, j), (i,), (j,))    # eager operator
+    lp = lazy(p)                             # lazy plain
+    lo = lazy(o)                             # lazy operator
+    P, O, LP, LO = typeof(p), typeof(o), typeof(lp), typeof(lo)
+
+    # A lazy tensor promotes with a lazy or an eager tensor by promoting the leaf type, so any mix
+    # containing a lazy operand or an operator climbs to the lazy operator `LO`, while an all-plain
+    # network stays eager.
+    @test promote_type(P, O) == O
+    @test promote_type(P, LP) == LP
+    @test promote_type(P, LO) == LO
+    @test promote_type(O, LP) == LO
+    @test promote_type(O, LO) == LO
+    @test promote_type(LP, LO) == LO
+    @test promote_type(P, P) == P
+
+    # `convert` wraps an eager tensor as lazy (converting the leaf), and rebuilds a lazy product with
+    # each leaf converted to the target leaf type.
+    @test convert(LP, p) isa LP
+    @test convert(LO, o) isa LO
+    clo = convert(LO, lp)
+    @test clo isa LO
+    @test materialize(clo) isa NamedTensorOperator
+    @test isempty(outputnames(materialize(clo))) && isempty(inputnames(materialize(clo)))
 end

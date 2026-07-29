@@ -22,6 +22,34 @@ lazy(a::LazyNamedTensor) = a
 lazy(a::AbstractNamedTensor) = LazyNamedTensor(a)
 lazy(a::Mul{<:LazyNamedTensor}) = LazyNamedTensor(a)
 
+# Promotion of lazy tensors, by promoting the wrapped (leaf) parent type. A lazy tensor promotes
+# with another lazy tensor, or with an eager tensor, to the lazy tensor whose leaf type is the
+# promotion of the leaves. So a lazy plain tensor and an operator promote to a lazy operator,
+# reusing the eager `NamedTensor` / `NamedTensorOperator` promotion at the leaves. This lets
+# `contract_network` homogenize a network that mixes lazy and eager, plain and operator operands
+# (a norm-network vertex is a lazy `ket * conj(bra)` product) without materializing anything.
+function Base.promote_rule(
+        ::Type{LazyNamedTensor{D, A1}}, ::Type{LazyNamedTensor{D, A2}}
+    ) where {D, A1, A2}
+    return LazyNamedTensor{D, promote_type(A1, A2)}
+end
+function Base.promote_rule(
+        ::Type{LazyNamedTensor{D, A}}, ::Type{T}
+    ) where {D, A, T <: AbstractNamedTensor{D}}
+    return LazyNamedTensor{D, promote_type(A, T)}
+end
+# `convert` mirrors the promotion: wrap an eager tensor as lazy (converting it to the target leaf
+# type first), or rebuild a lazy product with each leaf converted to the target leaf type.
+function Base.convert(::Type{LazyNamedTensor{D, A}}, a::AbstractNamedTensor{D}) where {D, A}
+    return lazy(convert(A, a))
+end
+function Base.convert(
+        ::Type{LazyNamedTensor{D, A2}}, a::LazyNamedTensor{D, A1}
+    ) where {D, A1, A2}
+    iscall(a) || return lazy(convert(A2, unwrap(a)))
+    return lazy(Mul(map(arg -> convert(LazyNamedTensor{D, A2}, arg), arguments(a))))
+end
+
 dimnames(a::LazyNamedTensor) = dimnames_lazy(a)
 inds(a::LazyNamedTensor) = inds_lazy(a)
 # `axes` is computed from `inds_lazy` rather than the generic `unnamed`-based fallback
