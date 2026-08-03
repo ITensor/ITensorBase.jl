@@ -793,12 +793,11 @@ end
 # Projection into a symmetry-restricted named tensor.
 #
 
-# Attach `input_names` to the leading axes of the `projected` array and mint a fresh unique name for
-# a trailing surplus axis if the backend derived one (it appends at most one, as the last domain
-# axis). A surplus axis is an auxiliary leg the backend adds so the result is symmetry-allowed (for
-# example a flux-canceling charge leg for a charge-shifting operator), and naming it returns it as a
-# dimension the caller can read off the result. A `nothing` (from `tryproject`) passes straight
-# through.
+# Attach `input_names` to the projected array's axes, minting a fresh unique name for each trailing
+# axis beyond them. The strict `project` verbs add none, so this just reattaches the given names;
+# the `*_aux` verbs append one derived auxiliary leg (as the last domain axis) carrying the flux of
+# a charge-shifting operator or non-invariant state, and naming it returns it as a dimension the
+# caller can read off the result. A `nothing` (from the nullable verbs) passes straight through.
 function name_projected(projected, input_names)
     isnothing(projected) && return nothing
     aux_names = ntuple(
@@ -809,8 +808,8 @@ function name_projected(projected, input_names)
 end
 
 # Each `<verb>_nameddims` runs the named-index layer of a `TensorAlgebra` verb: strip the axes to
-# their unnamed ranges, lower to the dense verb, and reattach the names, minting a name for the aux
-# leg the backend may append (see `name_projected`). The one body also covers an empty codomain,
+# their unnamed ranges, lower to the unnamed verb, and reattach the names (the `*_aux` verbs also
+# name the derived auxiliary leg, see `name_projected`). The one body also covers an empty codomain,
 # since `unnamed.(())` and `name.(())` are both `()`, so the all-domain (co-state) case needs no
 # separate path.
 function project_nameddims(a, codomain_inds, domain_inds; kwargs...)
@@ -827,18 +826,45 @@ function unchecked_project_nameddims(a, codomain_inds, domain_inds; kwargs...)
     return name_projected(projected, (name.(codomain_inds)..., name.(domain_inds)...))
 end
 
-# Shared body for the named-index `project` family docstrings. Each function's summary states its
-# own verification behavior; this describes what all three have in common.
+# The `*_aux` workers derive and append the flux-carrying auxiliary leg, which `name_projected`
+# names. Same named-index layer as the strict workers above, lowered to the `*_aux` unnamed verbs.
+function project_aux_nameddims(a, codomain_inds, domain_inds; kwargs...)
+    projected = TA.project_aux(a, unnamed.(codomain_inds), unnamed.(domain_inds); kwargs...)
+    return name_projected(projected, (name.(codomain_inds)..., name.(domain_inds)...))
+end
+function tryproject_aux_nameddims(a, codomain_inds, domain_inds; kwargs...)
+    projected =
+        TA.tryproject_aux(a, unnamed.(codomain_inds), unnamed.(domain_inds); kwargs...)
+    return name_projected(projected, (name.(codomain_inds)..., name.(domain_inds)...))
+end
+function unchecked_project_aux_nameddims(a, codomain_inds, domain_inds; kwargs...)
+    projected =
+        TA.unchecked_project_aux(
+        a,
+        unnamed.(codomain_inds),
+        unnamed.(domain_inds);
+        kwargs...
+    )
+    return name_projected(projected, (name.(codomain_inds)..., name.(domain_inds)...))
+end
+
+# Shared body for the named-index `project` and `project_aux` family docstrings. Each function's
+# summary states its own verification behavior; this describes the forms and backend selection they
+# all share.
 const _project_named_body = """
 The three-argument form takes an explicit codomain/domain split (an operator), and the
 two-argument form a flat list of indices (a state, i.e. an empty domain). The index axes select
 the backend: dense ranges give an `Array`, graded ranges a block-sparse array, and TensorKit
 spaces a `TensorMap`. `a` is indexed positionally in the order `(codomain_inds..., domain_inds...)`.
+"""
 
-When `a` carries one more axis than `codomain_inds` and `domain_inds` account for, that trailing
-surplus axis is an auxiliary leg the backend derived to make the result symmetry-allowed (for
-example a flux-canceling charge leg for a charge-shifting operator). It is returned as a named
-dimension with a freshly generated name the caller can read off the result.
+# Extra paragraph for the `*_aux` docstrings: unlike `project`, which projects into exactly the given
+# indices, these derive and append the flux-carrying leg.
+const _project_aux_named_body = """
+`a` may carry the physical rank the indices account for, or one trailing slice axis. `project_aux`
+derives an auxiliary domain index to make the result symmetry-allowed (for example a flux-canceling
+charge leg for a charge-shifting operator) and returns it as a named dimension with a freshly
+generated name the caller can read off the result.
 """
 
 const _project_named_docstring = """
@@ -851,6 +877,9 @@ throwing an `InexactError` otherwise (keyword arguments are forwarded to the `is
 check).
 
 $(_project_named_body)
+`project` projects into exactly the given indices. To append a derived flux-carrying leg for a
+charge-shifting operator or non-invariant state, use `TensorAlgebra.project_aux`.
+
 See also `TensorAlgebra.tryproject` and `TensorAlgebra.unchecked_project`.
 """
 
@@ -863,7 +892,7 @@ component of `a` would be discarded (keyword arguments are forwarded to the `isa
 check).
 
 $(_project_named_body)
-See also `TensorAlgebra.project` and `TensorAlgebra.unchecked_project`.
+See also `TensorAlgebra.project`, `TensorAlgebra.unchecked_project`, and `TensorAlgebra.tryproject_aux`.
 """
 
 const _unchecked_project_named_docstring = """
@@ -874,13 +903,54 @@ Like `TensorAlgebra.project`, but skip the verification: components of `a` outsi
 symmetry-allowed structure are dropped without inspection.
 
 $(_project_named_body)
-See also `TensorAlgebra.project` and `TensorAlgebra.tryproject`.
+See also `TensorAlgebra.project`, `TensorAlgebra.tryproject`, and `TensorAlgebra.unchecked_project_aux`.
+"""
+
+const _project_aux_named_docstring = """
+    TensorAlgebra.project_aux(a::AbstractArray, codomain_inds, domain_inds; kwargs...) -> t
+    TensorAlgebra.project_aux(a::AbstractArray, inds; kwargs...) -> t
+
+Build a named tensor by projecting `a` and appending a derived auxiliary domain index carrying its
+flux, verifying that only a negligible component of `a` is discarded and throwing an `InexactError`
+otherwise (keyword arguments are forwarded to the `isapprox` tolerance check).
+
+$(_project_named_body)
+$(_project_aux_named_body)
+See also `TensorAlgebra.tryproject_aux` and `TensorAlgebra.unchecked_project_aux`.
+"""
+
+const _tryproject_aux_named_docstring = """
+    TensorAlgebra.tryproject_aux(a::AbstractArray, codomain_inds, domain_inds; kwargs...) -> Union{t, Nothing}
+    TensorAlgebra.tryproject_aux(a::AbstractArray, inds; kwargs...) -> Union{t, Nothing}
+
+Like `TensorAlgebra.project_aux`, but return `nothing` instead of throwing when a non-negligible
+component of `a` would be discarded (keyword arguments are forwarded to the `isapprox` tolerance
+check).
+
+$(_project_named_body)
+$(_project_aux_named_body)
+See also `TensorAlgebra.project_aux` and `TensorAlgebra.unchecked_project_aux`.
+"""
+
+const _unchecked_project_aux_named_docstring = """
+    TensorAlgebra.unchecked_project_aux(a::AbstractArray, codomain_inds, domain_inds; kwargs...) -> t
+    TensorAlgebra.unchecked_project_aux(a::AbstractArray, inds; kwargs...) -> t
+
+Like `TensorAlgebra.project_aux`, but skip the verification: components of `a` outside the
+symmetry-allowed structure are dropped without inspection.
+
+$(_project_named_body)
+$(_project_aux_named_body)
+See also `TensorAlgebra.project_aux` and `TensorAlgebra.tryproject_aux`.
 """
 
 # Forward each named-index signature to its worker, attaching the family docstring to the split
 # form. Two split entries per verb so an empty codomain or an empty domain still selects this
 # overload instead of the unnamed-axis generic. The flat (state) form forwards with an empty domain.
-for f in (:project, :tryproject, :unchecked_project)
+for f in (
+        :project, :tryproject, :unchecked_project,
+        :project_aux, :tryproject_aux, :unchecked_project_aux,
+    )
     fnamed = Symbol(f, :_nameddims)
     doc = Symbol("_", f, "_named_docstring")
     @eval begin

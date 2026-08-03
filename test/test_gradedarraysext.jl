@@ -1,9 +1,10 @@
 using GradedArrays: U1, sectors
 using ITensorBase: ITensorBase, Index, inds, prime, space
 using StableRNGs: StableRNG
-using TensorAlgebra: TensorAlgebra, isdual, project, tryproject, unchecked_project
+using TensorAlgebra: TensorAlgebra, isdual, project, project_aux, tryproject,
+    tryproject_aux, unchecked_project, unchecked_project_aux
 using TensorKitSectors: FermionNumber
-using Test: @test, @testset
+using Test: @test, @test_throws, @testset
 
 # The flux-canceling constructor mints an auxiliary `Index` carrying the requested charge and
 # appends it to the domain, so an `ITensor` over graded (block-sparse) indices can be built
@@ -75,10 +76,10 @@ using Test: @test, @testset
     @test length(inds(fill(elt(2), U1(1), (), (j,)))) == 2
 end
 
-# `project` and its siblings derive the same kind of auxiliary leg: a trailing surplus axis on the
-# dense array becomes a named aux dimension carrying the operator's flux, so a charge-shifting
-# operator stays symmetry-allowed instead of being projected away.
-@testset "project derives a named auxiliary leg (eltype = $elt)" for elt in
+# `project_aux` and its siblings derive a named auxiliary leg carrying the operator's flux, so a
+# charge-shifting operator stays symmetry-allowed instead of being projected away. Strict `project`
+# instead projects into exactly the given indices and rejects a surplus axis.
+@testset "project_aux derives a named auxiliary leg (eltype = $elt)" for elt in
     (
         Float64,
         ComplexF64,
@@ -86,18 +87,24 @@ end
     s = Index([U1(0) => 1, U1(1) => 1]; tags = "s")
     cdag = elt[0 0; 1 0]   # raising operator, flux +1
 
-    # without a surplus axis the charge-shifting operator has nothing to carry its flux
+    # without an auxiliary leg the charge-shifting operator has nothing to carry its flux
     @test iszero(unchecked_project(cdag, (prime(s),), (s,)))
 
-    # reshaping to a trailing length-1 axis lets each verb mint the flux-canceling aux leg
-    @testset "$f" for f in (project, tryproject, unchecked_project)
-        op = f(reshape(cdag, (2, 2, 1)), (prime(s),), (s,))
-        @test length(inds(op)) == 3
-        @test !iszero(op)
-        @test eltype(op) == elt
-        aux = only(setdiff(collect(inds(op)), [prime(s), s]))
-        @test length(aux) == 1
-        @test isdual(aux)                          # dualized, in the domain
-        @test only(sectors(space(aux))) == U1(1)   # carries the operator's flux
+    # strict `project` projects into exactly the given indices, so a surplus axis is an error
+    @test_throws ArgumentError project(reshape(cdag, (2, 2, 1)), (prime(s),), (s,))
+
+    # each `*_aux` verb derives the flux-canceling aux leg, whether given the physical rank or a
+    # trailing length-1 slice axis
+    @testset "$f" for f in (project_aux, tryproject_aux, unchecked_project_aux)
+        for a in (cdag, reshape(cdag, (2, 2, 1)))
+            op = f(a, (prime(s),), (s,))
+            @test length(inds(op)) == 3
+            @test !iszero(op)
+            @test eltype(op) == elt
+            aux = only(setdiff(collect(inds(op)), [prime(s), s]))
+            @test length(aux) == 1
+            @test isdual(aux)                          # dualized, in the domain
+            @test only(sectors(space(aux))) == U1(1)   # carries the operator's flux
+        end
     end
 end

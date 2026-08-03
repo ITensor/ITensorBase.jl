@@ -36,8 +36,20 @@ using Test: @test, @testset
             is_primitive
         )
         Mooncake.TestUtils.test_rule(rng, name, i; mode, is_primitive)
-        Mooncake.TestUtils.test_rule(rng, uniquename, i; mode, is_primitive)
-        Mooncake.TestUtils.test_rule(rng, uniquename, rng, i; mode, is_primitive)
+        # `uniquename` mints a fresh name on every call, so its primal is not
+        # reproducible across the reruns Mooncake's value checks rely on. Only its
+        # AD interface (zero derivatives) is meaningful here.
+        Mooncake.TestUtils.test_rule(
+            rng,
+            uniquename,
+            i;
+            mode,
+            is_primitive,
+            interface_only = true
+        )
+        Mooncake.TestUtils.test_rule(
+            rng, uniquename, rng, i; mode, is_primitive, interface_only = true
+        )
         Mooncake.TestUtils.test_rule(rng, to_inds, a1, (i, j); mode, is_primitive)
     end
     @testset "contract" begin
