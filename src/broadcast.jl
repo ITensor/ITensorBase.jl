@@ -45,14 +45,6 @@ function broadcasted_unnamed(bc::Broadcasted, names)
     return broadcasted(bc.f, Base.Fix2(broadcasted_unnamed, names).(bc.args)...)
 end
 
-# A bare (unnamed) array operand, used as an allocation prototype so a broadcast
-# result inherits the operands' backend (e.g. graded) rather than a lazy permuted
-# wrapper's `similar` (which can drop the backend).
-unnamed_prototype(bc::Broadcasted) = unnamed_prototype(bc.args...)
-unnamed_prototype(arg::AbstractNamedTensor, args...) = unnamed(arg)
-unnamed_prototype(arg::Broadcasted, args...) = unnamed_prototype(arg.args..., args...)
-unnamed_prototype(arg, args...) = unnamed_prototype(args...)
-
 # Skip Base's shape-combination step: named broadcasts don't need the `NamedUnitRange` axis
 # machinery. Name compatibility is handled by the per-operand alignment in `broadcasted_unnamed`
 # (via `getperm`), and unnamed-shape compatibility by TensorAlgebra.
@@ -65,38 +57,24 @@ _dimnames(bc::Broadcasted, args...) = _dimnames(bc.args..., args...)
 _dimnames(_, args...) = _dimnames(args...)
 dimnames(bc::Broadcasted) = _dimnames(bc.args...)
 
-# The result element type of a linear combination, from the concrete unnamed leaves at runtime.
-# `eltype(::LinearBroadcasted)` uses `Base.promote_op`, which runs a live inference call here
-# because the leaves wrap a named tensor's (non-inferrable) backing array, so promote the
-# concrete `eltype`s instead.
-_lineareltype(a::AbstractArray) = eltype(a)
-function _lineareltype(s::TA.ScaledBroadcasted)
-    return promote_type(typeof(TA.coeff(s)), _lineareltype(TA.unscaled(s)))
-end
-_lineareltype(s::TA.AddBroadcasted) = promote_type(map(_lineareltype, TA.addends(s))...)
-
 function Base.copy(bc::Broadcasted{<:AbstractNamedTensorStyle})
     nms = dimnames(bc)
-    dest_unnamed = _copy_unnamed(broadcasted_unnamed(bc, nms), unnamed_prototype(bc))
-    return nameddims(dest_unnamed, nms)
+    return nameddims(_copy_unnamed(broadcasted_unnamed(bc, nms)), nms)
 end
 
-# Function barrier: `broadcasted_unnamed` and `unnamed_prototype` produce concretely-typed
-# values whose *inferred* types are abstract (the named backing array is abstract), so this
-# call re-specializes on the concrete runtime types and everything below is type-stable
-# (`eltype(lb)` is now inferrable, no runtime `promote_op`). Inlining the body into `copy`
-# instead costs one extra allocation per call.
+# Function barrier: `broadcasted_unnamed` builds a concretely-valued but abstractly-typed
+# `Broadcasted` (a named tensor's backing array is abstractly typed), so re-dispatching on the
+# concrete runtime type here keeps the materialize below type-stable.
 #
-# Allocate from `axes(lb)`, the flattened expression's axes, rather than the prototype's own:
-# an axis-changing operand (a `conj` leaf dualizes its axes) makes them differ, and the
-# destination must match the expression. All axes go in the codomain (empty domain), the
-# all-codomain output convention `@tensor` uses for an unbipartitioned left-hand side; on a
-# non-bipartitioned backend (a dense array) `similar_map` with an empty domain is a plain
-# `similar` over `axes(lb)`.
-function _copy_unnamed(bc_unnamed, prototype)
+# A linear combination folds to a `LinearBroadcasted` and materializes through `copy(lb)`, whose
+# allocation (`similar(lb)`) is the unnamed backend's own broadcast-style `similar` — so the result
+# inherits the backend (dense, graded, ...) with no prototype bookkeeping here. A non-linear
+# expression falls to Base's generic broadcast; that path's design (which reorderings it should
+# support, whether to route strided operands through Strided.jl) is deliberately unresolved.
+function _copy_unnamed(bc_unnamed)
     lb = TA.tryflattenlinear(bc_unnamed)
     isnothing(lb) && return copy(bc_unnamed)
-    return copyto!(TA.similar_map(prototype, eltype(lb), axes(lb), ()), lb)
+    return copy(lb)
 end
 
 # `Base.Broadcast.materialize!` otherwise reconstructs the broadcast over `axes(dest)` and
@@ -119,9 +97,10 @@ function Base.copyto!(
     return dest
 end
 
-# Function barrier mirroring `_copy_unnamed`: `unnamed(dest)` and `broadcasted_unnamed`
-# have abstract inferred types (the named backing array is abstract), so this call
-# re-specializes on the concrete runtime types and the flatten/lower below is type-stable.
+# Function barrier mirroring `_copy_unnamed`: `unnamed(dest)` and `broadcasted_unnamed` have
+# abstract inferred types (the named backing array is abstract), so re-dispatching on the concrete
+# runtime type here keeps the `copyto!` below type-stable. Linear folds to a `LinearBroadcasted`;
+# non-linear falls to Base's generic in-place broadcast.
 function _copyto_unnamed!(dest_unnamed, bc_unnamed)
     lb = TA.tryflattenlinear(bc_unnamed)
     isnothing(lb) && return copyto!(dest_unnamed, bc_unnamed)
