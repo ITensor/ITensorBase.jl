@@ -21,33 +21,31 @@ end
 # `AbstractArray`); without this the default `broadcastable` wraps it in a `Ref`.
 BC.broadcastable(a::AbstractNamedTensor) = a
 
-# Unname a flattened named `LinearBroadcasted` preserving the operand's codomain/domain split. Valid
-# only for a single-operand expression (`2 .* a`, `conj.(a)`): the sole leaf defines the output names,
-# so it unnames to its bare backing. A sum has no single split, so its addends are aligned instead.
-# (Flattening distributes scaling/conjugation over `+`, so a `Scaled`/`Conj` node never wraps an `Add`.)
-function unnamed_split(a::TA.ScaledBroadcasted, names)
-    return TA.linearbroadcasted(*, TA.coeff(a), unnamed_split(TA.unscaled(a), names))
-end
-function unnamed_split(a::TA.ConjBroadcasted, names)
-    return TA.linearbroadcasted(conj, unnamed_split(parent(a), names))
-end
-unnamed_split(a::TA.AddBroadcasted, names) = unnamed_aligned(a, names)
-unnamed_split(a::AbstractNamedTensor, names) = unnamed(a)
+# Unname a flattened named `LinearBroadcasted`. A single scaled/conjugated operand is already aligned to
+# the output names, so no permutation is needed and its codomain/domain split is kept; only a sum needs
+# its addends aligned. (Flattening distributes scaling/conjugation over `+`, so a `Scaled`/`Conj` node
+# never wraps an `Add`, and the no-permutation recursion below never reaches one.)
+unnamed_linear(a::TA.LinearBroadcasted, names) = unnamed_linear(a)
+unnamed_linear(a::TA.AddBroadcasted, names) = unnamed_linear_aligned(a, names)
 
-# Unname aligning every leaf to `names` through the `PermutedDims` wrapper (all-codomain output). Used
-# for a sum's addends and for every in-place `copyto!` (aligned to the destination).
-function unnamed_aligned(a::TA.ScaledBroadcasted, names)
-    return TA.linearbroadcasted(*, TA.coeff(a), unnamed_aligned(TA.unscaled(a), names))
+# No permutation: strip names down the expression tree via the `operation`/`arguments` term interface.
+function unnamed_linear(a::TA.LinearBroadcasted)
+    return TA.linearbroadcasted(TA.operation(a), map(unnamed_linear, TA.arguments(a))...)
 end
-function unnamed_aligned(a::TA.ConjBroadcasted, names)
-    return TA.linearbroadcasted(conj, unnamed_aligned(parent(a), names))
+unnamed_linear(a::AbstractNamedTensor) = unnamed(a)
+unnamed_linear(a::Number) = a
+
+# Align every leaf to `names` through the `PermutedDims` wrapper (all-codomain output). Used for a sum's
+# addends and for every in-place `copyto!` (aligned to the destination).
+function unnamed_linear_aligned(a::TA.LinearBroadcasted, names)
+    return TA.linearbroadcasted(
+        TA.operation(a), map(x -> unnamed_linear_aligned(x, names), TA.arguments(a))...
+    )
 end
-function unnamed_aligned(a::TA.AddBroadcasted, names)
-    return TA.linearbroadcasted(+, map(x -> unnamed_aligned(x, names), TA.addends(a))...)
-end
-function unnamed_aligned(a::AbstractNamedTensor, names)
+function unnamed_linear_aligned(a::AbstractNamedTensor, names)
     return _broadcast_permuteddims(unnamed(a), getperm(dimnames(a), names))
 end
+unnamed_linear_aligned(a::Number, names) = a
 # Broadcasting-only alignment: unlike the public `unnamed(a, names)` (which returns a
 # `Base.PermutedDimsArray`, a full array), this wraps in `TensorAlgebra.PermutedDims`, which stores
 # the permutation in a field rather than a type parameter, so it builds cheaply and type-stably
@@ -61,7 +59,7 @@ end
     return TA.PermutedDims(array, ntuple(i -> perm[i], Val(TA.ndims(array))))
 end
 # Skip Base's shape-combination step: named broadcasts don't need the `NamedUnitRange` axis
-# machinery. Name compatibility is handled by the per-operand alignment in `unnamed_aligned`
+# machinery. Name compatibility is handled by the per-operand alignment in `unnamed_linear_aligned`
 # (via `getperm`), and unnamed-shape compatibility by TensorAlgebra.
 BC.instantiate(bc::Broadcasted{<:AbstractNamedTensorStyle}) = bc
 
@@ -80,9 +78,9 @@ end
 # Function barrier: `bc`'s named leaves are abstractly typed, so re-dispatching on the concrete `bc`
 # here keeps the flatten/unname/materialize below type-stable. `copy(lb)` allocates through the unnamed
 # backend's own broadcast-style `similar`, so the result inherits the backend (dense, graded, ...);
-# `unnamed_split` keeps a single scaled/conjugated operand's codomain/domain split.
+# `unnamed_linear` keeps a single scaled/conjugated operand's codomain/domain split.
 @noinline function _copy_unnamed(bc, nms)
-    return copy(unnamed_split(TA.flattenlinear(bc), nms))
+    return copy(unnamed_linear(TA.flattenlinear(bc), nms))
 end
 
 # `Base.Broadcast.materialize!` otherwise reconstructs the broadcast over `axes(dest)` and
@@ -107,7 +105,7 @@ end
 
 # Function barrier mirroring `_copy_unnamed`. In place, so every operand aligns to `dest`.
 @noinline function _copyto_unnamed!(dest_unnamed, bc, nms)
-    return copyto!(dest_unnamed, unnamed_aligned(TA.flattenlinear(bc), nms))
+    return copyto!(dest_unnamed, unnamed_linear_aligned(TA.flattenlinear(bc), nms))
 end
 
 # Operator-preserving broadcasting.
@@ -151,7 +149,7 @@ end
 
 # Reinterpret an operator-style `Broadcasted` under `NamedTensorStyle`, the broadcast
 # over the operators' states, so the shared `NamedTensorStyle` implementation runs (its
-# `unnamed_split`/`unnamed_aligned` peel each operator operand to its `state` via `unnamed`).
+# `unnamed_linear`/`unnamed_linear_aligned` peel each operator operand to its `state` via `unnamed`).
 function statebroadcasted(bc::Broadcasted{<:NamedTensorOperatorStyle})
     return Broadcasted{NamedTensorStyle{Any}}(bc.f, bc.args, bc.axes)
 end
