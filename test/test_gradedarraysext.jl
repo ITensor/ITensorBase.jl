@@ -1,5 +1,5 @@
 using GradedArrays: U1, sectors
-using ITensorBase: ITensorBase, Index, inds, prime, space
+using ITensorBase: ITensorBase, Index, aligndims, inds, prime, space, unnamed
 using StableRNGs: StableRNG
 using TensorAlgebra: TensorAlgebra, isdual, project, project_aux, tryproject,
     tryproject_aux, unchecked_project, unchecked_project_aux
@@ -74,6 +74,34 @@ using Test: @test, @test_throws, @testset
     @test length(inds(zeros(U1(1), (), (i, j)))) == 3
     @test length(inds(ones(elt, U1(1), (), (i,)))) == 2
     @test length(inds(fill(elt(2), U1(1), (), (j,)))) == 2
+end
+
+# Broadcasting over graded (GradedArrays.jl) indices routes the named expression through the
+# `GradedArray` / matricized `FusedGradedMatrix` backend. Linear combinations add block-wise; a sum
+# flattens all-codomain, so a within-split reorder is compared at a common split via `aligndims`.
+@testset "GradedArraysExt broadcasting (eltype = $elt)" for elt in (Float64, ComplexF64)
+    rng = StableRNG(1234)
+    i = Index([U1(0) => 2, U1(1) => 3]; tags = "i")
+    j = Index([U1(0) => 1, U1(1) => 2]; tags = "j")
+    k = Index([U1(-1) => 1, U1(0) => 2]; tags = "k")
+
+    # Flat form (all-codomain, `GradedArray`-backed).
+    a = randn(rng, elt, i, j)
+    b = randn(rng, elt, i, j)
+    @test unnamed(a .+ b) ≈ unnamed(a) + unnamed(b)
+    @test unnamed(2 .* a) ≈ 2 * unnamed(a)
+    @test unnamed(a .- 3 .* b) ≈ unnamed(a) - 3 * unnamed(b)
+
+    # Map form (codomain/domain split, matricized `FusedGradedMatrix` storage).
+    m = randn(rng, elt, (i,), (j,))
+    n = randn(rng, elt, (i,), (j,))
+    @test unnamed(m .+ n) ≈ unnamed(m) + unnamed(n)
+
+    # Within-split reorder still adds correctly (the sum is all-codomain, compared via `aligndims`).
+    mr1 = randn(rng, elt, (i, j), (k,))
+    mr2 = randn(rng, elt, (j, i), (k,))
+    @test unnamed(aligndims(mr1 .+ mr2, (i, j), (k,))) ≈
+        unnamed(mr1) + unnamed(aligndims(mr2, (i, j), (k,)))
 end
 
 # `project_aux` and its siblings derive a named auxiliary leg carrying the operator's flux, so a
