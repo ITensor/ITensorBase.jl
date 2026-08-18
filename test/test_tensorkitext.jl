@@ -66,12 +66,12 @@ using Test: @test, @test_throws, @testset
         @test TK.space(ref) == TK.space(gc)
         @test ref ≈ gc
 
-        # Linear-combination broadcast lowers to `bipermutedimsopadd!`; element-wise errors.
+        # Named broadcasting is linear-only; a non-linear element-wise `f.(a)` errors.
         b2 = randn(rng, elt, i, j)
         @test unnamed(a + b2) ≈ unnamed(a) + unnamed(b2)
         @test unnamed(2 * a) ≈ 2 * unnamed(a)
         @test unnamed(a .- 3 .* b2) ≈ unnamed(a) - 3 * unnamed(b2)
-        @test_throws ErrorException sin.(a)
+        @test_throws ArgumentError sin.(a)
 
         # Factorizations reconstruct the tensor (lowered through matricize / MatrixAlgebraKit).
         # Checked by full contraction to a scalar, which is bipartition-independent.
