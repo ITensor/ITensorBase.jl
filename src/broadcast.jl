@@ -46,6 +46,18 @@ function unnamed_linear_aligned(a::AbstractNamedTensor, names)
     return _broadcast_permuteddims(unnamed(a), getperm(dimnames(a), names))
 end
 unnamed_linear_aligned(a::Number, names) = a
+
+# Non-linear fallback: unname a general `Broadcasted` by aligning each operand to `names`, so Base's
+# generic broadcast can run (all-codomain output). Only the linear path preserves the split.
+unnamed_broadcasted(x::Number, names) = x
+function unnamed_broadcasted(a::AbstractNamedTensor, names)
+    # An operand already aligned to `names` needs no permutation, skipping the identity wrapper.
+    dimnames(a) == names && return unnamed(a)
+    return _broadcast_permuteddims(unnamed(a), getperm(dimnames(a), names))
+end
+function unnamed_broadcasted(bc::Broadcasted, names)
+    return broadcasted(bc.f, Base.Fix2(unnamed_broadcasted, names).(bc.args)...)
+end
 # Broadcasting-only alignment: unlike the public `unnamed(a, names)` (which returns a
 # `Base.PermutedDimsArray`, a full array), this wraps in `TensorAlgebra.PermutedDims`, which stores
 # the permutation in a field rather than a type parameter, so it builds cheaply and type-stably
@@ -76,11 +88,15 @@ function Base.copy(bc::Broadcasted{<:AbstractNamedTensorStyle})
 end
 
 # Function barrier: `bc`'s named leaves are abstractly typed, so re-dispatching on the concrete `bc`
-# here keeps the flatten/unname/materialize below type-stable. `copy(lb)` allocates through the unnamed
-# backend's own broadcast-style `similar`, so the result inherits the backend (dense, graded, ...);
-# `unnamed_linear` keeps a single scaled/conjugated operand's codomain/domain split.
+# here keeps the flatten/unname/materialize below type-stable. A linear expression folds to a
+# `LinearBroadcasted` and materializes through `copy(lb)`, whose allocation (`similar(lb)`) is the
+# unnamed backend's own broadcast-style `similar`, so the result inherits the backend (dense, graded,
+# ...) and `unnamed_linear` keeps a single scaled/conjugated operand's codomain/domain split. A
+# non-linear expression falls back to unnaming the raw `Broadcasted` and Base's generic broadcast.
 @noinline function _copy_unnamed(bc, nms)
-    return copy(unnamed_linear(TA.flattenlinear(bc), nms))
+    lb = TA.tryflattenlinear(bc)
+    isnothing(lb) && return copy(unnamed_broadcasted(bc, nms))
+    return copy(unnamed_linear(lb, nms))
 end
 
 # `Base.Broadcast.materialize!` otherwise reconstructs the broadcast over `axes(dest)` and
@@ -103,9 +119,12 @@ function Base.copyto!(
     return dest
 end
 
-# Function barrier mirroring `_copy_unnamed`. In place, so every operand aligns to `dest`.
+# Function barrier mirroring `_copy_unnamed`. In place, so every operand aligns to `dest`; non-linear
+# falls back to Base's generic in-place broadcast.
 @noinline function _copyto_unnamed!(dest_unnamed, bc, nms)
-    return copyto!(dest_unnamed, unnamed_linear_aligned(TA.flattenlinear(bc), nms))
+    lb = TA.tryflattenlinear(bc)
+    isnothing(lb) && return copyto!(dest_unnamed, unnamed_broadcasted(bc, nms))
+    return copyto!(dest_unnamed, unnamed_linear_aligned(lb, nms))
 end
 
 # Operator-preserving broadcasting.
