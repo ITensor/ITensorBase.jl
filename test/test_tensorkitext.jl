@@ -66,12 +66,25 @@ using Test: @test, @test_throws, @testset
         @test TK.space(ref) == TK.space(gc)
         @test ref ≈ gc
 
-        # Linear-combination broadcast lowers to `bipermutedimsopadd!`; element-wise errors.
+        # Linear-combination broadcast lowers to `bipermutedimsopadd!`; a non-linear element-wise
+        # `f.(a)` on a graded tensor errors (graded broadcasting is linear-only).
         b2 = randn(rng, elt, i, j)
         @test unnamed(a + b2) ≈ unnamed(a) + unnamed(b2)
         @test unnamed(2 * a) ≈ 2 * unnamed(a)
         @test unnamed(a .- 3 .* b2) ≈ unnamed(a) - 3 * unnamed(b2)
         @test_throws ErrorException sin.(a)
+
+        # Named broadcasting aligns operands by name within their codomain/domain split, so a within-split
+        # reorder of a multi-leg operand still adds correctly (compared at a common split via `aligndims`).
+        mr1 = randn(rng, elt, (i, j), (k,))
+        mr2 = randn(rng, elt, (j, i), (k,))
+        @test unnamed(aligndims(mr1 .+ mr2, (i, j), (k,))) ≈
+            unnamed(mr1) + unnamed(aligndims(mr2, (i, j), (k,)))
+        # Adding across an incompatible split (a shared leg in the codomain of one operand and the domain
+        # of the other) has mismatched axes and errors.
+        cs1 = randn(rng, elt, (i,), (j,))
+        cs2 = randn(rng, elt, (j,), (i,))
+        @test_throws DimensionMismatch cs1 .+ cs2
 
         # Factorizations reconstruct the tensor (lowered through matricize / MatrixAlgebraKit).
         # Checked by full contraction to a scalar, which is bipartition-independent.

@@ -49,7 +49,7 @@ using Test: @test, @test_broken, @testset
         @test Array(matricize(na, [k, i], [j, l])) == Array(na_pos)
     end
     @testset "unmatricize" begin
-        a, b = namedoneto.((6, 20), ("a", "b"))
+        a, b = namedoneto.((8, 15), ("a", "b"))
         i, j, k, l = namedoneto.((2, 3, 4, 5), ("i", "j", "k", "l"))
         na = randn(elt, a, b)
         # Split all dimensions.
