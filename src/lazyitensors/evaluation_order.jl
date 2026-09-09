@@ -95,13 +95,18 @@ using Combinatorics: combinations
 function optimize_contraction_order(alg::Greedy, a)
     @assert ismul(a)
     arity(a) in (1, 2) && return a
-    a1, a2 = argmin(combinations(arguments(a), 2)) do (a1, a2)
+    args = arguments(a)
+    # Choose and remove the contracted pair by position. Removing it by value would also
+    # drop any other argument equal to it, silently losing a tensor from a product with
+    # repeated arguments.
+    i1, i2 = argmin(combinations(eachindex(args), 2)) do (i1, i2)
         # Penalize outer product contractions.
         # TODO: Still order the outer products by time complexity,
         # say by checking if there are only outer products left.
-        isdisjoint(dimnames(a1), dimnames(a2)) && return typemax(Int)
-        return time_complexity(*, a1, a2)
+        isdisjoint(dimnames(args[i1]), dimnames(args[i2])) && return typemax(Int)
+        return time_complexity(*, args[i1], args[i2])
     end
-    contracted_arguments = [filter(∉((a1, a2)), arguments(a)); [a1 * a2]]
+    rest = [arg for (i, arg) in pairs(args) if i ∉ (i1, i2)]
+    contracted_arguments = [rest; [args[i1] * args[i2]]]
     return optimize_contraction_order(alg, lazy(Mul(contracted_arguments)))
 end
