@@ -120,6 +120,20 @@ using WrappedUnions: unwrap
         @test issetequal(dimnames(ordered), dimnames(flat))
     end
 
+    @testset "optimize_evaluation_order with repeated arguments ($alg)" for alg in
+        (Greedy(),)
+        i, j = namedoneto.((2, 3), (:i, :j))
+        a = randn(i, j)
+        # Three equal arguments: the optimizer must contract them pairwise rather than
+        # treating the repeats as one argument.
+        flat = lazy(Mul([lazy(a), lazy(a), lazy(a)]))
+        ordered = optimize_evaluation_order(flat; alg)
+        @test ismul(ordered)
+        @test arity(ordered) == 2
+        @test issetequal(dimnames(ordered), dimnames(flat))
+        @test materialize(ordered) ≈ (a * a) * a
+    end
+
     @testset "optimize_evaluation_order (OMEinsumContractionOrders $alg)" for alg in
         (
             ExhaustiveSearch(),
