@@ -117,7 +117,7 @@ function isequal_lazy(a1, a2)
     end
 end
 function hash_lazy(a, h::UInt64)
-    h = hash(Symbol(Base.typename(typeof(a)).wrapper), h)
+    h = hash(nameof(typeof(a)), h)
     # Use `_hash`, which defines a custom hash for NamedTensor.
     return _hash(unwrap(a), h)
 end
