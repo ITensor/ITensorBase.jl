@@ -517,90 +517,9 @@ for f in MATRIX_FUNCTIONS
     end
 end
 
-# Operator entries for the gram factorizations defined in `tensoralgebra.jl`.
+# Operator entries for the Hermitian factorizations defined in `tensoralgebra.jl`.
 # Placed here because `NamedTensorOperator` is defined in this file, which comes
 # after `tensoralgebra.jl` in the include order.
-#
-# Per-method docstrings are factored out into `const` strings and attached
-# inside the `@eval` loop via `@doc`. This keeps the loop body uniform when
-# methods need distinct user-facing docs (including jldoctest examples) that
-# don't share enough structure to warrant `$($f)`-interpolation.
-
-const _gram_eigh_full_operator_docstring = """
-    TensorAlgebra.MatrixAlgebra.gram_eigh_full(a::NamedTensorOperator; kwargs...) -> x
-
-Gram factorization of a Hermitian positive semi-definite named operator
-`a`, returning `x` such that `x * x_cod ≈ state(a)`, where `x_cod` is
-`conj(x)` with its input dimension names replaced by the corresponding
-output names of `a`. `x` carries `a`'s input dimension names and a
-fresh trailing rank name. The output and input partition is taken from
-`outputnames(a)` and `inputnames(a)`.
-
-`kwargs` are forwarded to `TensorAlgebra.MatrixAlgebra.gram_eigh_full` on the
-underlying named array (e.g. `atol`, `rtol`).
-
-# Examples
-
-```jldoctest
-julia> using ITensorBase: namedoneto, operator, replacedimnames, state
-
-julia> using TensorAlgebra.MatrixAlgebra: gram_eigh_full
-
-julia> i, j, k, l, aux = namedoneto.((2, 2, 2, 2, 8), ("i", "j", "k", "l", "aux"));
-
-julia> b = randn(aux, i, k);
-
-julia> a = operator(conj(b) * replacedimnames(b, "i" => "j", "k" => "l"), ("i", "k"), ("j", "l"));
-
-julia> x = gram_eigh_full(a);
-
-julia> replacedimnames(x, "j" => "i", "l" => "k") * conj(x) ≈ state(a)
-true
-```
-"""
-
-const _gram_eigh_full_with_pinv_operator_docstring = """
-    TensorAlgebra.MatrixAlgebra.gram_eigh_full_with_pinv(a::NamedTensorOperator; kwargs...) -> x, y
-
-Like `TensorAlgebra.MatrixAlgebra.gram_eigh_full`, but additionally returns a
-named array `y` that is a left inverse of `x`: `y * x ≈ I` on the
-rank subspace (equal to the identity when `a` is full rank). The
-output and input partition is taken from `outputnames(a)` and
-`inputnames(a)`.
-
-# Examples
-
-```jldoctest
-julia> using LinearAlgebra: I
-
-julia> using ITensorBase: unname, dimnames, namedoneto, operator, replacedimnames
-
-julia> using TensorAlgebra.MatrixAlgebra: gram_eigh_full_with_pinv
-
-julia> i, j, k, l, aux = namedoneto.((2, 2, 2, 2, 8), ("i", "j", "k", "l", "aux"));
-
-julia> b = randn(aux, i, k);
-
-julia> a = operator(conj(b) * replacedimnames(b, "i" => "j", "k" => "l"), ("i", "k"), ("j", "l"));
-
-julia> x, y = gram_eigh_full_with_pinv(a);
-
-julia> rname = only(setdiff(dimnames(x), ("j", "l")));
-
-julia> reshape(unname(y, (rname, "j", "l")), :, 4) *
-       reshape(unname(x, ("j", "l", rname)), 4, :) ≈ I
-true
-```
-"""
-
-for f in (:gram_eigh_full, :gram_eigh_full_with_pinv)
-    doc_sym = Symbol("_", f, "_operator_docstring")
-    @eval begin
-        @doc $doc_sym function MA.$f(a::NamedTensorOperator; kwargs...)
-            return MA.$f(state(a), outputnames(a), inputnames(a); kwargs...)
-        end
-    end
-end
 
 function MAK.project_hermitian(a::NamedTensorOperator; kwargs...)
     h = MAK.project_hermitian(state(a), outputnames(a), inputnames(a); kwargs...)
@@ -612,12 +531,6 @@ for f in (:sqrth_safe, :invsqrth_safe)
         return operator(x, outputnames(a), inputnames(a))
     end
 end
-function MA.sqrth_invsqrth_safe(a::NamedTensorOperator; kwargs...)
-    x, y = MA.sqrth_invsqrth_safe(state(a), outputnames(a), inputnames(a); kwargs...)
-    return operator(x, outputnames(a), inputnames(a)),
-        operator(y, outputnames(a), inputnames(a))
-end
-
 """
     Base.one(op::NamedTensorOperator) -> Id
 

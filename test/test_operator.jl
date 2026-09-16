@@ -7,8 +7,7 @@ using LinearAlgebra: I, norm
 using MatrixAlgebraKit: project_hermitian
 using Random: Random, randn
 using StableRNGs: StableRNG
-using TensorAlgebra.MatrixAlgebra:
-    gram_eigh_full, gram_eigh_full_with_pinv, invsqrth_safe, sqrth_invsqrth_safe, sqrth_safe
+using TensorAlgebra.MatrixAlgebra: invsqrth_safe, sqrth_safe
 using TensorAlgebra: matricize
 using Test: @test, @test_throws, @testset
 
@@ -420,27 +419,6 @@ end
     @test issetequal(dimnames(Av), ("a'",))
 end
 
-@testset "gram_eigh_full on NamedTensorOperator" begin
-    n = 5
-    B = randn(n, n)
-    A = B * B'  # Hermitian PSD
-    M_op = operator(A, ["ket"], ["bra"])
-
-    X_op = gram_eigh_full(M_op)
-    X_arr = gram_eigh_full(nameddims(A, ("ket", "bra")), ("ket",), ("bra",))
-    # Operator entry forwards to the named-array entry: same data, same shape.
-    @test size(parent(X_op)) == size(parent(X_arr))
-
-    Xp = parent(X_op)
-    @test Xp * Xp' ≈ A
-
-    X2, Y2 = gram_eigh_full_with_pinv(M_op)
-    Xp2 = parent(X2)
-    Yp2 = parent(Y2)
-    @test Xp2 * Xp2' ≈ A
-    @test Yp2 * Xp2 ≈ I(n)
-end
-
 @testset "Hermitian square roots on NamedTensorOperator" begin
     n = 5
     B = randn(n, n)
@@ -458,7 +436,7 @@ end
         operator((B + B') / 2, ["ket"], ["bra"])
 
     # The roots are again bond operators, with the same codomain/domain as the input.
-    for X in (sqrth_safe(M_op), invsqrth_safe(M_op), sqrth_invsqrth_safe(M_op)...)
+    for X in (sqrth_safe(M_op), invsqrth_safe(M_op))
         @test X isa NamedTensorOperator
         @test outputnames(X) == outputnames(M_op)
         @test inputnames(X) == inputnames(M_op)
@@ -467,11 +445,6 @@ end
     P = unnamed(state(sqrth_safe(M_op)))
     @test P * P' ≈ A
     @test unnamed(state(invsqrth_safe(M_op))) * P ≈ I(n)
-
-    Psqrt, Pinv = sqrth_invsqrth_safe(M_op)
-    Pmat = unnamed(state(Psqrt))
-    @test Pmat * Pmat' ≈ A
-    @test Pmat * unnamed(state(Pinv)) ≈ I(n)
 end
 
 @testset "operator/state promotion" begin
