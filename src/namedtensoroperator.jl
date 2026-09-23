@@ -518,6 +518,7 @@ for f in MATRIX_FUNCTIONS
 end
 
 # Operator entries for the Hermitian factorizations defined in `tensoralgebra.jl`.
+# `sqrth_invsqrth_safe` is spelled out rather than generated because it returns a pair.
 # Placed here because `NamedTensorOperator` is defined in this file, which comes
 # after `tensoralgebra.jl` in the include order.
 
@@ -531,6 +532,12 @@ for f in (:sqrth_safe, :invsqrth_safe)
         return operator(x, outputnames(a), inputnames(a))
     end
 end
+function MA.sqrth_invsqrth_safe(a::NamedTensorOperator; kwargs...)
+    x, y = MA.sqrth_invsqrth_safe(state(a), outputnames(a), inputnames(a); kwargs...)
+    return operator(x, outputnames(a), inputnames(a)),
+        operator(y, outputnames(a), inputnames(a))
+end
+
 """
     Base.one(op::NamedTensorOperator) -> Id
 

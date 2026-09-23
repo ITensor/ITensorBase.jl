@@ -480,7 +480,8 @@ numerical noise.
 `kwargs` are forwarded to `TensorAlgebra.sqrth_safe` on the underlying
 unnamed array (e.g. `atol`, `rtol`).
 
-See also [`TensorAlgebra.MatrixAlgebra.invsqrth_safe`](@ref).
+See also [`TensorAlgebra.MatrixAlgebra.invsqrth_safe`](@ref) and
+[`TensorAlgebra.MatrixAlgebra.sqrth_invsqrth_safe`](@ref).
 """
 MA.sqrth_safe
 
@@ -498,9 +499,23 @@ numerical noise.
 `kwargs` are forwarded to `TensorAlgebra.invsqrth_safe` on the underlying
 unnamed array (e.g. `atol`, `rtol`).
 
-See also [`TensorAlgebra.MatrixAlgebra.sqrth_safe`](@ref).
+See also [`TensorAlgebra.MatrixAlgebra.sqrth_safe`](@ref) and
+[`TensorAlgebra.MatrixAlgebra.sqrth_invsqrth_safe`](@ref).
 """
 MA.invsqrth_safe
+
+"""
+    TensorAlgebra.MatrixAlgebra.sqrth_invsqrth_safe(a::AbstractNamedTensor, dimnames_codomain, dimnames_domain; kwargs...) -> p, pinv
+
+Square root and pseudo-inverse square root of a named array `a` (see
+`TensorAlgebra.MatrixAlgebra.sqrth_safe` and
+`TensorAlgebra.MatrixAlgebra.invsqrth_safe`), from a single
+eigendecomposition. Both results carry the same dimension names as `a`.
+
+`kwargs` are forwarded to `TensorAlgebra.sqrth_invsqrth_safe` on the underlying
+unnamed array (e.g. `atol`, `rtol`).
+"""
+MA.sqrth_invsqrth_safe
 
 """
     MatrixAlgebraKit.project_hermitian(a::AbstractNamedTensor, dimnames_codomain, dimnames_domain; kwargs...) -> h
@@ -512,7 +527,8 @@ carries the same dimension names as `a`.
 MAK.project_hermitian
 
 # The named forms above: lower to the corresponding tensor-level TensorAlgebra function on
-# the unnamed array and reattach the names, codomain first.
+# the unnamed array and reattach the names, codomain first. `sqrth_invsqrth_safe` differs
+# only in fanning the names out over its result pair.
 for (M, f) in ((MA, :sqrth_safe), (MA, :invsqrth_safe), (MAK, :project_hermitian))
     @eval function $M.$f(
             a::AbstractNamedTensor, dimnames_codomain, dimnames_domain; kwargs...
@@ -523,6 +539,18 @@ for (M, f) in ((MA, :sqrth_safe), (MA, :invsqrth_safe), (MAK, :project_hermitian
         return nameddims(p_unnamed, (codomain..., domain...))
     end
 end
+function MA.sqrth_invsqrth_safe(
+        a::AbstractNamedTensor, dimnames_codomain, dimnames_domain; kwargs...
+    )
+    codomain = name.(dimnames_codomain)
+    domain = name.(dimnames_domain)
+    p_unnamed, pinv_unnamed = TA.sqrth_invsqrth_safe(
+        unnamed(a), dimnames(a), codomain, domain; kwargs...
+    )
+    dimnames_p = (codomain..., domain...)
+    return nameddims(p_unnamed, dimnames_p), nameddims(pinv_unnamed, dimnames_p)
+end
+
 """
     Base.one(a::AbstractNamedTensor, dimnames_codomain, dimnames_domain) -> Id
 
