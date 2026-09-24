@@ -31,10 +31,6 @@ OMEinsumContractionOrders = "6f22d1fd-8eed-4bb7-9776-e7d684900715"
 TensorKit = "07d1fe3e-3e46-537d-9eac-e9e13d0d4cec"
 TensorKitSectors = "13a9c161-d5da-41f0-bcbd-e1a08ae0647f"
 
-[sources.TensorAlgebra]
-rev = "develop"
-url = "https://github.com/ITensor/TensorAlgebra.jl"
-
 [extensions]
 ITensorBaseAdaptExt = "Adapt"
 ITensorBaseGradedArraysExt = ["GradedArrays", "TensorKitSectors"]
@@ -49,7 +45,7 @@ Adapt = "4.1.1"
 ArrayLayouts = "1.11"
 Combinatorics = "1"
 ConstructionBase = "1.6"
-GradedArrays = "0.16"
+GradedArrays = "0.16.4"
 LinearAlgebra = "1.10"
 MatrixAlgebraKit = "0.2, 0.3, 0.4, 0.5, 0.6"
 Mooncake = "0.4.202, 0.5"
