@@ -518,7 +518,6 @@ for f in MATRIX_FUNCTIONS
 end
 
 # Operator entries for the Hermitian factorizations defined in `tensoralgebra.jl`.
-# `sqrth_invsqrth_safe` is spelled out rather than generated because it returns a pair.
 # Placed here because `NamedTensorOperator` is defined in this file, which comes
 # after `tensoralgebra.jl` in the include order.
 
