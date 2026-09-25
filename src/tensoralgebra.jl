@@ -120,7 +120,7 @@ end
 function matricize_nameddims(na::AbstractNamedTensor, fusions::Vararg{Pair, 2})
     group1, group2 = first.(fusions)
     perm_codomain, perm_domain = nameperm(na, group1, group2)
-    a_fused = TA.matricizeperm(unnamed(na), perm_codomain, perm_domain)
+    a_fused = TA.matricize(unnamed(na), perm_codomain, perm_domain)
     return nameddims(a_fused, last.(fusions))
 end
 
@@ -465,111 +465,6 @@ function right_null_nameddims(a::AbstractNamedTensor, dimnames_codomain; kwargs.
     codomain = name.(dimnames_codomain)
     domain = dimnames_setdiff(dimnames(a), codomain)
     return MAK.right_null(a, codomain, domain; kwargs...)
-end
-
-"""
-    TensorAlgebra.MatrixAlgebra.gram_eigh_full(a::AbstractNamedTensor, dimnames_codomain, dimnames_domain; kwargs...) -> x
-
-Gram factorization of a Hermitian positive semi-definite named array `a`,
-returning `x` such that `a ≈ x * x_cod`, where `x_cod` is `conj(x)` with
-its domain dimension names replaced by the corresponding codomain names.
-`x` carries the domain dimension names of `a` (matching the convention
-that the stored factor labels a vector in `a`'s input space) and a fresh
-trailing rank name.
-
-`kwargs` are forwarded to `TensorAlgebra.gram_eigh_full` on the underlying
-unnamed array (e.g. `atol`, `rtol`).
-
-# Examples
-
-```jldoctest
-julia> using ITensorBase: dimnames, namedoneto, replacedimnames
-
-julia> using TensorAlgebra.MatrixAlgebra: gram_eigh_full
-
-julia> i, j, k, l, aux = namedoneto.((2, 2, 2, 2, 8), ("i", "j", "k", "l", "aux"));
-
-julia> b = randn(aux, i, k);
-
-julia> a = conj(b) * replacedimnames(b, "i" => "j", "k" => "l");
-
-julia> x = gram_eigh_full(a, (i, k), (j, l));
-
-julia> replacedimnames(x, "j" => "i", "l" => "k") * conj(x) ≈ a
-true
-```
-"""
-function MA.gram_eigh_full(
-        a::AbstractNamedTensor, dimnames_codomain, dimnames_domain; kwargs...
-    )
-    return gram_eigh_full_nameddims(a, dimnames_codomain, dimnames_domain; kwargs...)
-end
-function gram_eigh_full_nameddims(
-        a::AbstractNamedTensor, dimnames_codomain, dimnames_domain; kwargs...
-    )
-    codomain = name.(dimnames_codomain)
-    domain = name.(dimnames_domain)
-    x_unnamed = TA.gram_eigh_full(unnamed(a), dimnames(a), codomain, domain; kwargs...)
-    name_x = uniquename(dimnametype(a))
-    dimnames_x = (domain..., name_x)
-    return nameddims(x_unnamed, dimnames_x)
-end
-
-"""
-    TensorAlgebra.MatrixAlgebra.gram_eigh_full_with_pinv(a::AbstractNamedTensor, dimnames_codomain, dimnames_domain; kwargs...) -> x, y
-
-Like `TensorAlgebra.MatrixAlgebra.gram_eigh_full`, but additionally returns a
-named array `y` that is a left inverse of `x`: `y * x ≈ I` on the rank
-subspace (equal to the identity when `a` is full rank). `x` has the
-rank-name last, `y` has it first, both sharing the domain dimension
-names of `a`.
-
-# Examples
-
-```jldoctest
-julia> using LinearAlgebra: I
-
-julia> using ITensorBase: unname, dimnames, namedoneto, replacedimnames
-
-julia> using TensorAlgebra.MatrixAlgebra: gram_eigh_full_with_pinv
-
-julia> i, j, k, l, aux = namedoneto.((2, 2, 2, 2, 8), ("i", "j", "k", "l", "aux"));
-
-julia> b = randn(aux, i, k);
-
-julia> a = conj(b) * replacedimnames(b, "i" => "j", "k" => "l");
-
-julia> x, y = gram_eigh_full_with_pinv(a, (i, k), (j, l));
-
-julia> replacedimnames(x, "j" => "i", "l" => "k") * conj(x) ≈ a
-true
-
-julia> rname = only(setdiff(dimnames(x), ("j", "l")));
-
-julia> reshape(unname(y, (rname, "j", "l")), :, 4) *
-       reshape(unname(x, ("j", "l", rname)), 4, :) ≈ I
-true
-```
-"""
-function MA.gram_eigh_full_with_pinv(
-        a::AbstractNamedTensor, dimnames_codomain, dimnames_domain; kwargs...
-    )
-    return gram_eigh_full_with_pinv_nameddims(
-        a, dimnames_codomain, dimnames_domain; kwargs...
-    )
-end
-function gram_eigh_full_with_pinv_nameddims(
-        a::AbstractNamedTensor, dimnames_codomain, dimnames_domain; kwargs...
-    )
-    codomain = name.(dimnames_codomain)
-    domain = name.(dimnames_domain)
-    x_unnamed, y_unnamed = TA.gram_eigh_full_with_pinv(
-        unnamed(a), dimnames(a), codomain, domain; kwargs...
-    )
-    name_xy = uniquename(dimnametype(a))
-    dimnames_x = (domain..., name_xy)
-    dimnames_y = (name_xy, domain...)
-    return nameddims(x_unnamed, dimnames_x), nameddims(y_unnamed, dimnames_y)
 end
 
 """

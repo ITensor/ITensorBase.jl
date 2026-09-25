@@ -7,8 +7,7 @@ using LinearAlgebra: I, norm
 using MatrixAlgebraKit: project_hermitian
 using Random: Random, randn
 using StableRNGs: StableRNG
-using TensorAlgebra.MatrixAlgebra:
-    gram_eigh_full, gram_eigh_full_with_pinv, invsqrth_safe, sqrth_invsqrth_safe, sqrth_safe
+using TensorAlgebra.MatrixAlgebra: invsqrth_safe, sqrth_invsqrth_safe, sqrth_safe
 using TensorAlgebra: matricize
 using Test: @test, @test_throws, @testset
 
@@ -418,27 +417,6 @@ end
     @test isempty(outputnames(Av))
     @test isempty(inputnames(Av))
     @test issetequal(dimnames(Av), ("a'",))
-end
-
-@testset "gram_eigh_full on NamedTensorOperator" begin
-    n = 5
-    B = randn(n, n)
-    A = B * B'  # Hermitian PSD
-    M_op = operator(A, ["ket"], ["bra"])
-
-    X_op = gram_eigh_full(M_op)
-    X_arr = gram_eigh_full(nameddims(A, ("ket", "bra")), ("ket",), ("bra",))
-    # Operator entry forwards to the named-array entry: same data, same shape.
-    @test size(parent(X_op)) == size(parent(X_arr))
-
-    Xp = parent(X_op)
-    @test Xp * Xp' ≈ A
-
-    X2, Y2 = gram_eigh_full_with_pinv(M_op)
-    Xp2 = parent(X2)
-    Yp2 = parent(Y2)
-    @test Xp2 * Xp2' ≈ A
-    @test Yp2 * Xp2 ≈ I(n)
 end
 
 @testset "Hermitian square roots on NamedTensorOperator" begin

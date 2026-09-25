@@ -1,10 +1,9 @@
 using ITensorBase: ITensorBase, Index, dimnames, id, inds, name, namedoneto, operator,
-    prime, replacedimnames, uniquename, unname, unnamed
-using LinearAlgebra: LinearAlgebra, norm, tr
+    prime, replacedimnames, unname, unnamed
+using LinearAlgebra: norm, tr
 using MatrixAlgebraKit: left_null, left_orth, left_polar, lq_compact, lq_full, qr_compact,
     qr_full, right_null, right_orth, right_polar, svd_compact, svd_trunc, svd_vals
 using StableRNGs: StableRNG
-using TensorAlgebra.MatrixAlgebra: gram_eigh_full, gram_eigh_full_with_pinv
 using TensorAlgebra: TensorAlgebra, contract, directsum, matricize, project, trivialrange,
     unchecked_project, unmatricize
 using Test: @test, @test_broken, @testset
@@ -170,36 +169,6 @@ using Test: @test, @test_broken, @testset
         for n in (right_null(a, (i, k), (j, l)), right_null(a, (i, k)))
             @test (j, l) ⊆ inds(n)
             @test norm(n * a) ≈ 0
-        end
-    end
-    @testset "gram_eigh_full" begin
-        # Build a Hermitian PSD a ≈ conj(b) * b over an aux dim, with codomain
-        # (i, k) and domain (j, l) sharing the same axis lengths.
-        i, j, k, l, aux = namedoneto.((2, 2, 2, 2, 5), ("i", "j", "k", "l", "aux"))
-        b = randn(elt, aux, i, k)
-        # conj(b) * b with the non-conjugated copy's (i, k) relabeled to
-        # (j, l) to form the operator-shaped Hermitian a ≈ X * X'.
-        b_dom = replacedimnames(b, "i" => "j", "k" => "l")
-        a = conj(b) * b_dom
-
-        let X = gram_eigh_full(a, (i, k), (j, l))
-            X_cod = replacedimnames(X, "j" => "i", "l" => "k")
-            @test (j, l) ⊆ inds(X)
-            @test X_cod * conj(X) ≈ a
-        end
-
-        let (X, Y) = gram_eigh_full_with_pinv(a, (i, k), (j, l))
-            rank_name = only(setdiff(dimnames(X), ("j", "l")))
-            @test rank_name == only(setdiff(dimnames(Y), ("j", "l")))
-            X_cod = replacedimnames(X, "j" => "i", "l" => "k")
-            @test X_cod * conj(X) ≈ a
-            # Rename one rank dimension so `Y * X` contracts only on
-            # the shared domain names `(j, l)` and leaves a
-            # (rank × rank) named identity.
-            fresh_rank = uniquename(rank_name)
-            X_fresh = replacedimnames(X, rank_name => fresh_rank)
-            YXmat = unname(Y * X_fresh, (rank_name, fresh_rank))
-            @test YXmat ≈ LinearAlgebra.I(size(YXmat, 1))
         end
     end
     @testset "tr" begin
