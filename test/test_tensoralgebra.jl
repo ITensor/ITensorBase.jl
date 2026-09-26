@@ -1,5 +1,5 @@
-using ITensorBase:
-    ITensorBase, Index, NamedOneTo, id, inds, name, operator, prime, rename, unname, unnamed
+using ITensorBase: ITensorBase, Index, NamedOneTo, id, inds, name, names, operator, prime,
+    rename, unname, unnamed
 using LinearAlgebra: norm, tr
 using MatrixAlgebraKit: left_null, left_orth, left_polar, lq_compact, lq_full, qr_compact,
     qr_full, right_null, right_orth, right_polar, svd_compact, svd_trunc, svd_vals

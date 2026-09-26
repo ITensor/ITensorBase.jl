@@ -1,8 +1,8 @@
 using AbstractTrees: AbstractTrees, print_tree, printnode
 using Base.Broadcast: materialize
 using ITensorBase: @names, Greedy, LazyNamedTensor, Mul, NamedOneTo, NamedTensor,
-    NamedTensorOperator, SymbolicNamedTensor, inds, inputnames, ismul, lazy, operator,
-    optimize_evaluation_order, outputnames, state, substitute, symnameddims
+    NamedTensorOperator, SymbolicNamedTensor, inds, inputnames, ismul, lazy, names,
+    operator, optimize_evaluation_order, outputnames, state, substitute, symnameddims
 using OMEinsumContractionOrders: ExhaustiveSearch, GreedyMethod, TreeSA
 using TermInterface: arguments, arity, children, head, iscall, isexpr, maketerm, operation,
     sorted_arguments, sorted_children

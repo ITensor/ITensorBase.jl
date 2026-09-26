@@ -11,7 +11,7 @@ export AbstractNamedTensor, NamedTensor, AbstractITensor, ITensor, Index,
 if VERSION >= v"1.11.0-DEV.469"
     eval(
         Meta.parse(
-            "public @names, IndexName, name, rename, setname, space, unnamed, unnamedtype, decoration, emptytags, gettag, gettags, hastag, plev, settags, tags, unsettags"
+            "public @names, IndexName, name, names, rename, setname, space, unnamed, unnamedtype, decoration, emptytags, gettag, gettags, hastag, plev, settags, tags, unsettags"
         )
     )
 end

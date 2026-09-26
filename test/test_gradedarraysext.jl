@@ -1,5 +1,5 @@
 using GradedArrays: U1, sectors
-using ITensorBase: ITensorBase, ITensor, Index, align, inds, prime, space, unnamed
+using ITensorBase: ITensorBase, ITensor, Index, align, inds, names, prime, space, unnamed
 using StableRNGs: StableRNG
 using TensorAlgebra: TensorAlgebra, dual, isdual, matricize, project, project_aux,
     tryproject, tryproject_aux, unchecked_project, unchecked_project_aux, unmatricize

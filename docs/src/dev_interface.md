@@ -31,7 +31,7 @@ NamedUnitRange
 
 Construct named objects with the [`NamedTensor`](@ref) and [`NamedUnitRange`](@ref)
 constructors, recover their parts with [`name`](@ref), [`unnamed`](@ref), and
-[`Base.names`](@ref), and query their types with [`nametype`](@ref) and
+[`names`](@ref), and query their types with [`nametype`](@ref) and
 [`unnamedtype`](@ref). [`setname`](@ref) and
 [`rename`](@ref) change names, and [`align`](@ref) and [`aligned`](@ref) reorder a
 tensor's dimensions by name (a copy and a view, respectively).
@@ -39,7 +39,7 @@ tensor's dimensions by name (a copy and a view, respectively).
 ```@docs; canonical=false
 name
 unnamed
-Base.names
+names
 nametype
 unnamedtype
 setname

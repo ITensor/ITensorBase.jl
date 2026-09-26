@@ -1,5 +1,5 @@
 using ITensorBase: ITensorBase, AbstractNamedTensor, ITensor, Index, IndexName, NamedTensor,
-    commonind, commoninds, gettag, hascommoninds, hastag, id, inds, name, nametype,
+    commonind, commoninds, gettag, hascommoninds, hastag, id, inds, name, names, nametype,
     noncommonind, noncommoninds, noprime, operator, plev, prime, rename, setplev, settag,
     sim, tags, trycommonind, trynoncommonind, tryuniqueind, unioninds, uniqueind,
     uniqueinds, uniquename, unname, unnamed, unsettag, uuid

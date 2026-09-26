@@ -1,5 +1,5 @@
 import LinearAlgebra as LA
-using ITensorBase: Named, unname, unnamed
+using ITensorBase: Named, names, unname, unnamed
 using Test: @test, @testset
 
 @testset "LinearAlgebra (eltype=$(elt))" for elt in

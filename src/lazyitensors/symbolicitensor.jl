@@ -19,7 +19,7 @@ end
 
 symname(a::SymbolicNamedTensor) = getfield(a, :name)
 
-Base.names(a::SymbolicNamedTensor) = getfield(a, :names)
+names(a::SymbolicNamedTensor) = getfield(a, :names)
 function Base.axes(a::SymbolicNamedTensor)
     return NamedUnitRange.(
         Tuple(Base.OneTo.(getfield(a, :size))),

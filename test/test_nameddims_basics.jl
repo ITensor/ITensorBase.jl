@@ -1,7 +1,7 @@
 using Combinatorics: Combinatorics
 using ITensorBase: @names, AbstractNamedTensor, Name, NameMismatch, Named,
     NamedDimsCartesianIndex, NamedDimsCartesianIndices, NamedOneTo, NamedTensor,
-    NamedUnitRange, align, aligned, apply, dim, dims, inds, isnamed, name, nametype,
+    NamedUnitRange, align, aligned, apply, dim, dims, inds, isnamed, name, names, nametype,
     product, rename, setnames, unname, unnamed, unnamedtype
 using LinearAlgebra: LinearAlgebra
 using Random: default_rng
@@ -44,6 +44,9 @@ end
         @test names(na) == ["i", "j"]
         @test names(na, 1) == "i"
         @test names(na, 2) == "j"
+        # `Base.names` is an alternative spelling that forwards to `ITensorBase.names`.
+        @test Base.names(na) == names(na)
+        @test Base.names(na, 1) == names(na, 1)
         @test dim(na, "i") == 1
         @test dim(na, "j") == 2
         @test dims(na, ("j", "i")) == (2, 1)

@@ -50,7 +50,7 @@ function Base.convert(
     return lazy(Mul(map(arg -> convert(LazyNamedTensor{D, A2}, arg), arguments(a))))
 end
 
-Base.names(a::LazyNamedTensor) = names_lazy(a)
+names(a::LazyNamedTensor) = names_lazy(a)
 inds(a::LazyNamedTensor) = inds_lazy(a)
 # `axes` is computed from `inds_lazy` rather than the generic `unnamed`-based fallback
 # because a `Mul` expression has no materialized `unnamed` array to take axes of.

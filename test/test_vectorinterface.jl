@@ -1,5 +1,5 @@
 import VectorInterface as VI
-using ITensorBase: Named, unnamed
+using ITensorBase: Named, names, unnamed
 using Test: @test, @testset
 
 # These name-aware methods are what let an NamedTensor be used directly as a vector in

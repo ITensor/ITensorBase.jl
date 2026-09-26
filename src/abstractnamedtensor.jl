@@ -17,7 +17,7 @@ by name under contraction, addition, and indexing. Unlike an `AbstractArray`, th
 and element type live in the data rather than the type, so `ndims` and `eltype` are not
 fixed at the type level.
 
-See also [`NamedTensor`](@ref), [`Base.names`](@ref), [`inds`](@ref).
+See also [`NamedTensor`](@ref), [`names`](@ref), [`inds`](@ref).
 """
 abstract type AbstractNamedTensor{DimName} end
 
@@ -32,7 +32,8 @@ Base.ndims(::Type{<:AbstractNamedTensor}) = Any
     names(a::AbstractNamedTensor, dim::Int)
 
 The dimension names of `a`, as a collection in dimension order. The second form returns
-the name of dimension `dim`.
+the name of dimension `dim`. `Base.names` is an equivalent spelling that forwards here,
+so either can be called; a new tensor type overloads `ITensorBase.names`.
 
 # Examples
 
@@ -50,10 +51,15 @@ julia> names(a, 2)
 
 See also [`inds`](@ref), [`NamedTensor`](@ref).
 """
-Base.names(a::AbstractNamedTensor) = throw(MethodError(names, a))
-function Base.names(a::AbstractNamedTensor, dim::Int)
+function names end
+
+names(a::AbstractNamedTensor) = throw(MethodError(names, a))
+function names(a::AbstractNamedTensor, dim::Int)
     return names(a)[dim]
 end
+
+Base.names(a::AbstractNamedTensor) = names(a)
+Base.names(a::AbstractNamedTensor, dim::Int) = names(a, dim)
 
 # `nametype` (documented with the named-array methods in `named.jl`) reports the type of an
 # individual dimension name. `AbstractNamedTensor` is a separate hierarchy from
@@ -86,7 +92,7 @@ unname(a::AbstractNamedTensor, inds) = unnamed(align(a, inds))
 
 The named axes (indices) of `a`, as a `Vector` with one entry per dimension. Each entry
 pairs a dimension's axis with its name. The second form returns the index of dimension
-`dim`. Compare with [`Base.names`](@ref), which returns just the names without the axes. The
+`dim`. Compare with [`names`](@ref), which returns just the names without the axes. The
 `axes` function returns the same indices as a `Tuple`, which the `AbstractArray` interface
 relies on; `inds` returns a `Vector` because the indices are most often manipulated as a
 collection (`filter`, `setdiff`, `union`).
@@ -449,7 +455,7 @@ julia> names(rename(a, :i => :k))
  :j
 ```
 
-See also [`Base.names`](@ref).
+See also [`names`](@ref).
 """
 function rename end
 # `name` strips an `Index`/`NamedUnitRange` to its dimension name and passes a bare name

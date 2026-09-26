@@ -306,7 +306,7 @@ state(a::AbstractNamedTensor) = a
 state(a::NamedTensorOperator) = a.parent
 Base.parent(a::NamedTensorOperator) = state(a)
 unnamed(a::NamedTensorOperator) = unnamed(state(a))
-Base.names(a::NamedTensorOperator) = names(state(a))
+names(a::NamedTensorOperator) = names(state(a))
 
 parenttype(type::Type{<:NamedTensorOperator}) = fieldtype(type, :parent)
 statetype(type::Type{<:NamedTensorOperator}) = parenttype(type)

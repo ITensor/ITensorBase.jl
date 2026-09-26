@@ -1,8 +1,8 @@
 using GradedArrays: U1, gradedrange, isdual
 using ITensorBase: ITensorBase as NDA, Index, NamedOneTo, NamedTensor, NamedTensorOperator,
-    apply, id, inds, inputaxes, inputinds, inputname, inputnames, operator, outputaxes,
-    outputinds, outputname, outputnames, product, rename, similar_operator, state, unname,
-    unnamed
+    apply, id, inds, inputaxes, inputinds, inputname, inputnames, names, operator,
+    outputaxes, outputinds, outputname, outputnames, product, rename, similar_operator,
+    state, unname, unnamed
 using LinearAlgebra: I, norm
 using MatrixAlgebraKit: project_hermitian
 using Random: Random, randn

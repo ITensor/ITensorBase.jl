@@ -168,7 +168,7 @@ NamedTensor(a::AbstractNamedTensor, inds) = throw(ArgumentError("Already named."
 NamedTensor(a::AbstractNamedTensor) = NamedTensor(unnamed(a), names(a))
 
 # Minimal interface. The names are stored as (and returned as) a `Vector`.
-Base.names(a::NamedTensor) = a.names
+names(a::NamedTensor) = a.names
 unnamed(a::NamedTensor) = a.unnamed
 Base.parent(a::NamedTensor) = unnamed(a)
 

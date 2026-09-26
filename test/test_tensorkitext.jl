@@ -1,4 +1,4 @@
-using ITensorBase: ITensorBase, ITensor, Index, align, name, prime, unnamed
+using ITensorBase: ITensorBase, ITensor, Index, align, name, names, prime, unnamed
 using LinearAlgebra: norm
 using MatrixAlgebraKit: qr_compact, svd_compact
 using StableRNGs: StableRNG

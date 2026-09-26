@@ -1,7 +1,7 @@
 module ITensorBaseMooncakeExt
 
-using ITensorBase: AbstractNamedTensor, NamedUnitRange, inds, name, nameperm, names_setdiff,
-    to_inds, uniquename
+using ITensorBase: AbstractNamedTensor, NamedUnitRange, inds, name, nameperm, names,
+    names_setdiff, to_inds, uniquename
 using Mooncake: Mooncake, @zero_derivative, DefaultCtx
 
 Mooncake.tangent_type(::Type{<:NamedUnitRange}) = Mooncake.NoTangent
