@@ -9,12 +9,12 @@ using Test: @test, @testset
         :inds, :inputaxes, :inputinds, :inputnames,
         :nametype, :noncommonind, :noncommoninds,
         :noprime, :operator, :outputaxes, :outputinds, :outputnames,
-        :prime,
+        :prime, :rename,
         :sim, :similar_operator, :state, :trycommonind, :trynoncommonind,
         :tryuniqueind, :uniqueind, :uniqueinds, :unioninds, :uniquename,
     ]
     publics = [
-        :IndexName, :name, :names, :rename, :setname, :space, :unnamed,
+        :IndexName, :name, :names, :setname, :space, :unnamed,
         :unnamedtype,
         :decoration, :emptytags, :gettag, :gettags, :hastag, :plev, :settags, :tags,
         :unsettags,

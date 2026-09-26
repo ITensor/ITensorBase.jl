@@ -145,14 +145,14 @@ function to_inds(a::AbstractNamedTensor, dims)
 end
 
 #=
-    nameddimsof(a::AbstractNamedTensor, b)
+    namedtensorof(a::AbstractNamedTensor, b)
 
-Construct a named dimensions array with the dimension names of `a`
+Construct a named tensor with the dimension names of `a`
 and with the data from `b`. The parent `b` is usually an `AbstractArray` but may be any
 object a `NamedTensor` can wrap (e.g. a TensorKit `TensorMap`), so `copy`/`zero` of a
 named tensor round-trip through whatever backend `unnamed(a)` uses.
 =#
-function nameddimsof(a::AbstractNamedTensor, b)
+function namedtensorof(a::AbstractNamedTensor, b)
     return NamedTensor(b, names(a))
 end
 
@@ -176,8 +176,8 @@ function checked_indexin(x::AbstractUnitRange, y::AbstractUnitRange)
     return findfirst(==(first(x)), y):findfirst(==(last(x)), y)
 end
 
-Base.copy(a::AbstractNamedTensor) = nameddimsof(a, copy(unnamed(a)))
-Base.zero(a::AbstractNamedTensor) = nameddimsof(a, zero(unnamed(a)))
+Base.copy(a::AbstractNamedTensor) = namedtensorof(a, copy(unnamed(a)))
+Base.zero(a::AbstractNamedTensor) = namedtensorof(a, zero(unnamed(a)))
 
 # `CartesianIndices` of a named tensor is the parent's, via the named axes (as the
 # `AbstractArray` fallback did through `axes`).
@@ -354,13 +354,13 @@ Base.size(a::AbstractNamedTensor, dimname::Name) = size(a, dim(a, dimname))
 # Lowered through `TensorAlgebra.similar_map` (all-codomain, so identical to
 # `similar(parent, elt, axes)` for dense) so non-`AbstractArray` backends whose `similar`
 # wants a map-shaped space (e.g. a `TensorMap`) allocate through their own overload.
-function similar_nameddims(a::AbstractNamedTensor, elt::Type, ax)
+function similar_namedtensor(a::AbstractNamedTensor, elt::Type, ax)
     return NamedTensor(
         TensorAlgebra.similar_map(unnamed(a), elt, unnamed.(Tuple(ax)), ()),
         name.(ax)
     )
 end
-function similar_nameddims(a::AbstractArray, elt::Type, ax)
+function similar_namedtensor(a::AbstractArray, elt::Type, ax)
     return NamedTensor(
         TensorAlgebra.similar_map(a, elt, unnamed.(Tuple(ax)), ()),
         name.(ax)
@@ -370,10 +370,10 @@ end
 # Base.similar gets the eltype at compile time.
 Base.similar(a::AbstractNamedTensor) = similar(a, eltype(a))
 function Base.similar(a::AbstractNamedTensor, elt::Type)
-    return similar_nameddims(a, elt)
+    return similar_namedtensor(a, elt)
 end
-function similar_nameddims(a::AbstractNamedTensor, elt::Type)
-    return nameddimsof(a, similar(unnamed(a), elt))
+function similar_namedtensor(a::AbstractNamedTensor, elt::Type)
+    return namedtensorof(a, similar(unnamed(a), elt))
 end
 
 # This is defined explicitly since the Base version expects the eltype
@@ -388,7 +388,7 @@ function Base.similar(
         a::AbstractArray, elt::Type,
         inds::Tuple{NamedUnitRange, Vararg{NamedUnitRange}}
     )
-    return similar_nameddims(a, elt, inds)
+    return similar_namedtensor(a, elt, inds)
 end
 
 # Same entry points with a named-tensor prototype. An `AbstractNamedTensor` is no longer
@@ -404,7 +404,7 @@ function Base.similar(
         a::AbstractNamedTensor, elt::Type,
         inds::Tuple{NamedUnitRange, Vararg{NamedUnitRange}}
     )
-    return similar_nameddims(a, elt, inds)
+    return similar_namedtensor(a, elt, inds)
 end
 
 # Rank-0 (empty named axes): a scalar tensor on `a`'s backend, e.g. a backend-matched unit
@@ -412,7 +412,7 @@ end
 # least one `NamedUnitRange`.
 Base.similar(a::AbstractNamedTensor, inds::Tuple{}) = similar(a, eltype(a), inds)
 function Base.similar(a::AbstractNamedTensor, elt::Type, inds::Tuple{})
-    return similar_nameddims(a, elt, inds)
+    return similar_namedtensor(a, elt, inds)
 end
 
 # Map-shaped allocator: a shell over the `codomain`/`domain` named axes following `a`'s
@@ -445,8 +445,6 @@ unchanged. The second form replaces each name with `f(name)`.
 # Examples
 
 ```jldoctest
-julia> using ITensorBase: rename
-
 julia> a = NamedTensor(zeros(2, 3), (:i, :j));
 
 julia> names(rename(a, :i => :k))
@@ -787,27 +785,27 @@ Base.IndexStyle(s1::IndexStyle, s2::NamedIndexCartesian) = NamedIndexCartesian()
 Base.IndexStyle(s1::NamedIndexCartesian, s2::IndexStyle) = NamedIndexCartesian()
 
 # Like CartesianIndex but with named dimensions.
-struct NamedDimsCartesianIndex{N, Index <: Tuple{Vararg{NamedInteger, N}}} <:
+struct NamedTensorCartesianIndex{N, Index <: Tuple{Vararg{NamedInteger, N}}} <:
     Base.AbstractCartesianIndex{N}
     I::Index
 end
-NamedDimsCartesianIndex(I::NamedInteger...) = NamedDimsCartesianIndex(I)
-Base.Tuple(I::NamedDimsCartesianIndex) = I.I
-function Base.show(io::IO, I::NamedDimsCartesianIndex)
-    print(io, "NamedDimsCartesianIndex")
+NamedTensorCartesianIndex(I::NamedInteger...) = NamedTensorCartesianIndex(I)
+Base.Tuple(I::NamedTensorCartesianIndex) = I.I
+function Base.show(io::IO, I::NamedTensorCartesianIndex)
+    print(io, "NamedTensorCartesianIndex")
     show(io, Tuple(I))
     return nothing
 end
 
 # Like CartesianIndices but with named dimensions.
-struct NamedDimsCartesianIndices{
+struct NamedTensorCartesianIndices{
         N,
         DimName,
         Indices <: Tuple{Vararg{NamedUnitRange, N}},
         Index <: Tuple{Vararg{NamedInteger, N}},
     } <: AbstractNamedTensor{DimName}
     indices::Indices
-    function NamedDimsCartesianIndices(indices::Tuple{Vararg{NamedUnitRange}})
+    function NamedTensorCartesianIndices(indices::Tuple{Vararg{NamedUnitRange}})
         dimname = eltype(name.(indices))
         return new{length(indices), dimname, typeof(indices), Tuple{eltype.(indices)...}}(
             indices
@@ -817,29 +815,29 @@ end
 # The element type is no longer carried by the (rank-erased) supertype, so recover
 # it from the stored index-tuple parameter.
 function Base.eltype(
-        ::Type{<:NamedDimsCartesianIndices{N, <:Any, <:Any, Index}}
+        ::Type{<:NamedTensorCartesianIndices{N, <:Any, <:Any, Index}}
     ) where {N, Index}
-    return NamedDimsCartesianIndex{N, Index}
+    return NamedTensorCartesianIndex{N, Index}
 end
-Base.eltype(I::NamedDimsCartesianIndices) = eltype(typeof(I))
-Base.axes(I::NamedDimsCartesianIndices) = (only ∘ axes).(I.indices)
-Base.size(I::NamedDimsCartesianIndices) = length.(I.indices)
+Base.eltype(I::NamedTensorCartesianIndices) = eltype(typeof(I))
+Base.axes(I::NamedTensorCartesianIndices) = (only ∘ axes).(I.indices)
+Base.size(I::NamedTensorCartesianIndices) = length.(I.indices)
 
-function Base.getindex(a::NamedDimsCartesianIndices{N}, I::Vararg{Int, N}) where {N}
+function Base.getindex(a::NamedTensorCartesianIndices{N}, I::Vararg{Int, N}) where {N}
     index = map(a.indices, I) do r, i
         return r[i]
     end
-    return NamedDimsCartesianIndex(index)
+    return NamedTensorCartesianIndex(index)
 end
 
-function unnamed(I::NamedDimsCartesianIndices)
+function unnamed(I::NamedTensorCartesianIndices)
     return CartesianIndices(unnamed.(I.indices))
 end
 
-# Iterating yields `NamedDimsCartesianIndex`es. The generic `AbstractNamedTensor`
+# Iterating yields `NamedTensorCartesianIndex`es. The generic `AbstractNamedTensor`
 # iteration forwards to `unnamed`, which here is a plain `CartesianIndices`, so
 # convert each parent index back through `getindex`.
-function Base.iterate(I::NamedDimsCartesianIndices, state...)
+function Base.iterate(I::NamedTensorCartesianIndices, state...)
     y = iterate(unnamed(I), state...)
     isnothing(y) && return nothing
     cartesian, next_state = y
@@ -854,7 +852,7 @@ function Base.eachindex(
     all(a -> issetequal(names(a1), names(a)), a_rest) ||
         throw(NameMismatch("Dimension name mismatch $(names.((a1, a_rest...)))."))
     # TODO: Check the shapes match.
-    return NamedDimsCartesianIndices(axes(a1))
+    return NamedTensorCartesianIndices(axes(a1))
 end
 
 # `unname` (eager), not `unnamed` (lazy view): reducing over a lazy permuted view
@@ -949,7 +947,7 @@ function Base.to_indices(a::AbstractNamedTensor, I::Tuple{Pair, Vararg{Pair}})
     return map((i, name) -> name[i], last.(I), inds)
 end
 
-function Base.to_indices(a::AbstractNamedTensor, I::Tuple{NamedDimsCartesianIndex})
+function Base.to_indices(a::AbstractNamedTensor, I::Tuple{NamedTensorCartesianIndex})
     return to_indices(a, Tuple(only(I)))
 end
 
@@ -991,7 +989,7 @@ function Base.setindex!(
     setindex!(a, value, to_indices(a, (I1, Irest...))...)
     return a
 end
-function Base.setindex!(a::AbstractNamedTensor, value, I::NamedDimsCartesianIndex)
+function Base.setindex!(a::AbstractNamedTensor, value, I::NamedTensorCartesianIndex)
     setindex!(a, value, to_indices(a, (I,))...)
     return a
 end
@@ -1100,7 +1098,7 @@ function Base.view(a::AbstractNamedTensor, I1::NamedViewIndex, Irest::NamedViewI
         )
     )
     Ip = map(p -> unnamed(I[p]), perm)
-    return view_nameddims(a, Ip...)
+    return view_namedtensor(a, Ip...)
 end
 
 # Repeated definition of `Base.ViewIndex`.
@@ -1115,22 +1113,22 @@ isscalarindex(I::Real) = true
 # Slicing with unnamed indices, such as:
 # a = NamedTensor(rand(3,4), (:x, :y))
 # b = view(a, 1:2, 2)
-function view_nameddims(a::AbstractNamedTensor, I...)
+function view_namedtensor(a::AbstractNamedTensor, I...)
     nonscalar_dims = filter(dim -> !isscalarindex(I[dim]), ntuple(identity, ndims(a)))
     nonscalar_names = map(dim -> names(a, dim), nonscalar_dims)
     return NamedTensor(view(unnamed(a), I...), nonscalar_names)
 end
 
 function Base.view(a::AbstractNamedTensor, I::ViewIndex...)
-    return view_nameddims(a, I...)
+    return view_namedtensor(a, I...)
 end
 
-function getindex_nameddims(a::AbstractNamedTensor, I...)
+function getindex_namedtensor(a::AbstractNamedTensor, I...)
     return copy(view(a, I...))
 end
 
 function Base.getindex(a::AbstractNamedTensor, I::ViewIndex...)
-    return getindex_nameddims(a, I...)
+    return getindex_namedtensor(a, I...)
 end
 
 function Base.setindex!(
@@ -1340,7 +1338,7 @@ end
 # and the result is named with the codomain names followed by the domain names. The
 # `rand`/`randn`/`zeros` two-tuple forms (`randn((i,), (j,))`) forward to these.
 #
-# Each constructor is a shared `*_nameddims` builder (strip the names, call the map hook on the
+# Each constructor is a shared `*_namedtensor` builder (strip the names, call the map hook on the
 # raw axes, reattach the names) plus two forwarding methods: one for a nonempty codomain and one
 # for an empty codomain with a nonempty domain. The two-way split (rather than a single
 # `Tuple{Vararg{NamedUnitRange}}` on both sides) reads the index type from whichever side is
@@ -1349,8 +1347,8 @@ end
 # error rather than recurse.
 for f in [:rand, :randn]
     f_map = Symbol(f, :_map)
-    f_nameddims = Symbol(f, :_nameddims)
-    @eval function $f_nameddims(rng::AbstractRNG, elt::Type{<:Number}, codomain, domain)
+    f_namedtensor = Symbol(f, :_namedtensor)
+    @eval function $f_namedtensor(rng::AbstractRNG, elt::Type{<:Number}, codomain, domain)
         a = TensorAlgebra.$f_map(rng, elt, unnamed.(codomain), unnamed.(domain))
         return a[Name.(name.((codomain..., domain...)))...]
     end
@@ -1366,7 +1364,7 @@ for f in [:rand, :randn]
                     rng::AbstractRNG, elt::Type{<:Number},
                     codomain::$codomain_type, domain::$domain_type
                 )
-                return $f_nameddims(rng, elt, codomain, domain)
+                return $f_namedtensor(rng, elt, codomain, domain)
             end
             function Base.$f(
                     rng::AbstractRNG, elt::Type{<:Number},
@@ -1391,8 +1389,8 @@ for f in [:rand, :randn]
     end
 end
 for (f, f_map) in [(:zeros, :zeros_map), (:ones, :ones_map)]
-    f_nameddims = Symbol(f, :_nameddims)
-    @eval function $f_nameddims(elt::Type{<:Number}, codomain, domain)
+    f_namedtensor = Symbol(f, :_namedtensor)
+    @eval function $f_namedtensor(elt::Type{<:Number}, codomain, domain)
         a = TensorAlgebra.$f_map(elt, unnamed.(codomain), unnamed.(domain))
         return a[Name.(name.((codomain..., domain...)))...]
     end
@@ -1407,7 +1405,7 @@ for (f, f_map) in [(:zeros, :zeros_map), (:ones, :ones_map)]
             function TensorAlgebra.$f_map(
                     elt::Type{<:Number}, codomain::$codomain_type, domain::$domain_type
                 )
-                return $f_nameddims(elt, codomain, domain)
+                return $f_namedtensor(elt, codomain, domain)
             end
             function Base.$f(
                     elt::Type{<:Number}, codomain::$codomain_type, domain::$domain_type
@@ -1422,7 +1420,7 @@ for (f, f_map) in [(:zeros, :zeros_map), (:ones, :ones_map)]
 end
 # `fill` takes the fill value first, so it does not fit the eltype-leading forms above; it gets
 # the same map-shaped split via `fill_map`.
-function fill_nameddims(value, codomain, domain)
+function fill_namedtensor(value, codomain, domain)
     a = TensorAlgebra.fill_map(value, unnamed.(codomain), unnamed.(domain))
     return a[Name.(name.((codomain..., domain...)))...]
 end
@@ -1436,7 +1434,7 @@ for (codomain_type, domain_type) in [
                 codomain::$codomain_type,
                 domain::$domain_type
             )
-            return fill_nameddims(value, codomain, domain)
+            return fill_namedtensor(value, codomain, domain)
         end
         function Base.fill(value, codomain::$codomain_type, domain::$domain_type)
             return TensorAlgebra.fill_map(value, codomain, domain)

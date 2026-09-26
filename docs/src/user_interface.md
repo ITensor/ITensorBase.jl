@@ -14,12 +14,15 @@ see the [Reference](@ref).
 An [`ITensor`](@ref) labels its dimensions by name, and an [`Index`](@ref) is a named
 dimension. Get a tensor's indices with [`inds`](@ref), make distinct copies of an index with
 [`prime`](@ref) and [`noprime`](@ref), and mint a fresh unique name with [`uniquename`](@ref).
+Relabel a tensor's indices with [`rename`](@ref), which takes either a set of replacements or a
+function to apply to every name, and leaves the data and the spaces untouched.
 
 ```@docs; canonical=false
 Index
 inds
 prime
 noprime
+rename
 uniquename
 ```
 

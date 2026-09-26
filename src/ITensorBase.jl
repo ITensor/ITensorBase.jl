@@ -4,14 +4,14 @@ export AbstractNamedTensor, NamedTensor, AbstractITensor, ITensor, Index,
     NamedUnitRange, align, aligned, apply, commonind, commoninds,
     hascommoninds, id, inds, inputaxes, inputinds, inputnames,
     nametype, noncommonind, noncommoninds, noprime, operator,
-    outputaxes, outputinds, outputnames, prime, sim,
+    outputaxes, outputinds, outputnames, prime, rename, sim,
     similar_operator, state,
     trycommonind, trynoncommonind, tryuniqueind, uniqueind, uniqueinds, unioninds,
     uniquename
 if VERSION >= v"1.11.0-DEV.469"
     eval(
         Meta.parse(
-            "public @names, IndexName, name, names, rename, setname, space, unnamed, unnamedtype, decoration, emptytags, gettag, gettags, hastag, plev, settags, tags, unsettags"
+            "public @names, IndexName, name, names, setname, space, unnamed, unnamedtype, decoration, emptytags, gettag, gettags, hastag, plev, settags, tags, unsettags"
         )
     )
 end

@@ -69,12 +69,12 @@ function AbstractTrees.printnode(io::IO, a::SymbolicNamedTensor)
     return nothing
 end
 
-function symnameddims(symname, dims)
+function symnamedtensor(symname, dims)
     return lazy(SymbolicNamedTensor(symname, dims))
 end
-symnameddims(name) = symnameddims(name, ())
+symnamedtensor(name) = symnamedtensor(name, ())
 
-function printnode_nameddims(io::IO, a::SymbolicNamedTensor)
+function printnode_namedtensor(io::IO, a::SymbolicNamedTensor)
     AbstractTrees.printnode(io, a)
     return nothing
 end

@@ -14,7 +14,7 @@ const NamedUnitRange = ITensorBase.NamedUnitRange
 
 # Name the delegated result: the physical-leg names followed by a fresh name for the dangling aux
 # leg, minted of the legs' name type (not hardcoded to `IndexName`).
-function nameddims_aux(a, codomain, domain)
+function namedtensor_aux(a, codomain, domain)
     names = name.((codomain..., domain...))
     aux_name = uniquename(eltype(names))
     return NamedTensor(a, (names..., aux_name))
@@ -33,7 +33,7 @@ for S in (Sector, SectorRange)
                     domain::Tuple{Vararg{NamedUnitRange}}
                 )
                 a = Base.$f(rng, elt, c, unnamed.(codomain), unnamed.(domain))
-                return nameddims_aux(a, codomain, domain)
+                return namedtensor_aux(a, codomain, domain)
             end
             function Base.$f(
                     rng::AbstractRNG, c::$S,
@@ -71,7 +71,7 @@ for S in (Sector, SectorRange)
                     domain::Tuple{Vararg{NamedUnitRange}}
                 )
                 a = Base.$f(elt, c, unnamed.(codomain), unnamed.(domain))
-                return nameddims_aux(a, codomain, domain)
+                return namedtensor_aux(a, codomain, domain)
             end
             function Base.$f(
                     c::$S, codomain::Tuple{NamedUnitRange, Vararg{NamedUnitRange}},
@@ -86,7 +86,7 @@ for S in (Sector, SectorRange)
             domain::Tuple{Vararg{NamedUnitRange}}
         )
         a = Base.fill(value, c, unnamed.(codomain), unnamed.(domain))
-        return nameddims_aux(a, codomain, domain)
+        return namedtensor_aux(a, codomain, domain)
     end
     # Codomain-only: the domain-omitted form, equivalent to an empty domain.
     for f in (:rand, :randn)
@@ -140,7 +140,7 @@ for S in (Sector, SectorRange)
                     codomain::Tuple{}, domain::Tuple{NamedUnitRange, Vararg{NamedUnitRange}}
                 )
                 a = Base.$f(rng, elt, c, unnamed.(codomain), unnamed.(domain))
-                return nameddims_aux(a, codomain, domain)
+                return namedtensor_aux(a, codomain, domain)
             end
             function Base.$f(
                     rng::AbstractRNG, c::$S,
@@ -175,7 +175,7 @@ for S in (Sector, SectorRange)
                     codomain::Tuple{}, domain::Tuple{NamedUnitRange, Vararg{NamedUnitRange}}
                 )
                 a = Base.$f(elt, c, unnamed.(codomain), unnamed.(domain))
-                return nameddims_aux(a, codomain, domain)
+                return namedtensor_aux(a, codomain, domain)
             end
             function Base.$f(
                     c::$S, codomain::Tuple{},
@@ -190,7 +190,7 @@ for S in (Sector, SectorRange)
             domain::Tuple{NamedUnitRange, Vararg{NamedUnitRange}}
         )
         a = Base.fill(value, c, unnamed.(codomain), unnamed.(domain))
-        return nameddims_aux(a, codomain, domain)
+        return namedtensor_aux(a, codomain, domain)
     end
 end
 

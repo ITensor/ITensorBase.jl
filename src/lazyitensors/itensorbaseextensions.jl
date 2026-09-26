@@ -26,4 +26,4 @@ end
 # avoid type piracy when overloading on `AbstractNamedTensor`.
 # Method specializations (`LazyNamedTensor`, `SymbolicNamedTensor`) live in
 # `lazyitensor.jl` and `symbolicitensor.jl`.
-printnode_nameddims(io::IO, x) = AbstractTrees.printnode(io, x)
+printnode_namedtensor(io::IO, x) = AbstractTrees.printnode(io, x)

@@ -6,8 +6,8 @@ using TensorAlgebra: TensorAlgebra as TA
 # This layer is used to define derivative rules (to skip differentiating `setdiff`).
 names_setdiff(s1, s2) = setdiff(s1, s2)
 
-Base.:*(a1::AbstractNamedTensor, a2::AbstractNamedTensor) = mul_nameddims(a1, a2)
-function mul_nameddims(a1::AbstractNamedTensor, a2::AbstractNamedTensor)
+Base.:*(a1::AbstractNamedTensor, a2::AbstractNamedTensor) = mul_namedtensor(a1, a2)
+function mul_namedtensor(a1::AbstractNamedTensor, a2::AbstractNamedTensor)
     a_dest, names_dest = TA.contract(
         unnamed(a1), names(a1), unnamed(a2), names(a2)
     )
@@ -25,9 +25,9 @@ function Base.:*(
         a1::AbstractNamedTensor, a2::AbstractNamedTensor,
         a3::AbstractNamedTensor, a_rest::AbstractNamedTensor...
     )
-    return mul_nameddims(a1, a2, a3, a_rest...)
+    return mul_namedtensor(a1, a2, a3, a_rest...)
 end
-function mul_nameddims(
+function mul_namedtensor(
         a1::AbstractNamedTensor, a2::AbstractNamedTensor,
         a3::AbstractNamedTensor, a_rest::AbstractNamedTensor...
     )
@@ -39,9 +39,9 @@ function LA.mul!(
         a1::AbstractNamedTensor, a2::AbstractNamedTensor,
         α::Number, β::Number
     )
-    return mul!_nameddims(a_dest, a1, a2, α, β)
+    return mul!_namedtensor(a_dest, a1, a2, α, β)
 end
-function mul!_nameddims(
+function mul!_namedtensor(
         a_dest::AbstractNamedTensor,
         a1::AbstractNamedTensor, a2::AbstractNamedTensor,
         α::Number, β::Number
@@ -59,9 +59,9 @@ function LA.mul!(
         a_dest::AbstractNamedTensor,
         a1::AbstractNamedTensor, a2::AbstractNamedTensor
     )
-    return mul!_nameddims(a_dest, a1, a2)
+    return mul!_namedtensor(a_dest, a1, a2)
 end
-function mul!_nameddims(
+function mul!_namedtensor(
         a_dest::AbstractNamedTensor,
         a1::AbstractNamedTensor, a2::AbstractNamedTensor
     )
@@ -114,23 +114,23 @@ function TA.unmatricize(
         codomain::Tuple{NamedUnitRange, Vararg{NamedUnitRange}},
         domain::Tuple{Vararg{NamedUnitRange}}
     )
-    return unmatricize_nameddims(m, codomain, domain)
+    return unmatricize_namedtensor(m, codomain, domain)
 end
 function TA.unmatricize(
         m,
         codomain::Tuple{Vararg{NamedUnitRange}},
         domain::Tuple{NamedUnitRange, Vararg{NamedUnitRange}}
     )
-    return unmatricize_nameddims(m, codomain, domain)
+    return unmatricize_namedtensor(m, codomain, domain)
 end
 function TA.unmatricize(
         m,
         codomain::Tuple{NamedUnitRange, Vararg{NamedUnitRange}},
         domain::Tuple{NamedUnitRange, Vararg{NamedUnitRange}}
     )
-    return unmatricize_nameddims(m, codomain, domain)
+    return unmatricize_namedtensor(m, codomain, domain)
 end
-function unmatricize_nameddims(m, codomain, domain)
+function unmatricize_namedtensor(m, codomain, domain)
     a = TA.unmatricize(m, space.(codomain), space.(domain))
     return NamedTensor(a, name.(codomain), name.(domain))
 end
@@ -201,14 +201,14 @@ for f in [
         :left_orth, :left_polar, :lq_compact, :lq_full, :qr_compact, :qr_full,
         :right_orth, :right_polar,
     ]
-    f_nameddims = Symbol(f, "_nameddims")
+    f_namedtensor = Symbol(f, "_namedtensor")
     @eval begin
         function MAK.$f(
                 a::AbstractNamedTensor, names_codomain, names_domain; kwargs...
             )
-            return $f_nameddims(a, names_codomain, names_domain; kwargs...)
+            return $f_namedtensor(a, names_codomain, names_domain; kwargs...)
         end
-        function $f_nameddims(
+        function $f_namedtensor(
                 a::AbstractNamedTensor, names_codomain, names_domain;
                 name = (;), kwargs...
             )
@@ -226,9 +226,9 @@ for f in [
             return x, y
         end
         function MAK.$f(a::AbstractNamedTensor, names_codomain; kwargs...)
-            return $f_nameddims(a, names_codomain; kwargs...)
+            return $f_namedtensor(a, names_codomain; kwargs...)
         end
-        function $f_nameddims(a::AbstractNamedTensor, names_codomain; kwargs...)
+        function $f_namedtensor(a::AbstractNamedTensor, names_codomain; kwargs...)
             codomain = name.(names_codomain)
             domain = names_setdiff(names(a), codomain)
             return MAK.$f(a, codomain, domain; kwargs...)
@@ -241,14 +241,14 @@ end
 #
 
 for f in [:svd_compact, :svd_full]
-    f_nameddims = Symbol(f, "_nameddims")
+    f_namedtensor = Symbol(f, "_namedtensor")
     @eval begin
         function MAK.$f(
                 a::AbstractNamedTensor, names_codomain, names_domain; kwargs...
             )
-            return $f_nameddims(a, names_codomain, names_domain; kwargs...)
+            return $f_namedtensor(a, names_codomain, names_domain; kwargs...)
         end
-        function $f_nameddims(
+        function $f_namedtensor(
                 a::AbstractNamedTensor, names_codomain, names_domain;
                 leftname = (;), rightname = (;), kwargs...
             )
@@ -268,9 +268,9 @@ for f in [:svd_compact, :svd_full]
             return u, s, v
         end
         function MAK.$f(a::AbstractNamedTensor, names_codomain; kwargs...)
-            return $f_nameddims(a, names_codomain; kwargs...)
+            return $f_namedtensor(a, names_codomain; kwargs...)
         end
-        function $f_nameddims(a::AbstractNamedTensor, names_codomain; kwargs...)
+        function $f_namedtensor(a::AbstractNamedTensor, names_codomain; kwargs...)
             return MAK.$f(
                 a,
                 names_codomain,
@@ -287,9 +287,9 @@ end
 function MAK.svd_trunc(
         a::AbstractNamedTensor, names_codomain, names_domain; kwargs...
     )
-    return svd_trunc_nameddims(a, names_codomain, names_domain; kwargs...)
+    return svd_trunc_namedtensor(a, names_codomain, names_domain; kwargs...)
 end
-function svd_trunc_nameddims(
+function svd_trunc_namedtensor(
         a::AbstractNamedTensor, names_codomain, names_domain; kwargs...
     )
     codomain = name.(names_codomain)
@@ -305,9 +305,9 @@ function svd_trunc_nameddims(
     return u, s, v, ϵ
 end
 function MAK.svd_trunc(a::AbstractNamedTensor, names_codomain; kwargs...)
-    return svd_trunc_nameddims(a, names_codomain; kwargs...)
+    return svd_trunc_namedtensor(a, names_codomain; kwargs...)
 end
-function svd_trunc_nameddims(a::AbstractNamedTensor, names_codomain; kwargs...)
+function svd_trunc_namedtensor(a::AbstractNamedTensor, names_codomain; kwargs...)
     return MAK.svd_trunc(
         a,
         names_codomain,
@@ -323,9 +323,9 @@ end
 function MAK.svd_vals(
         a::AbstractNamedTensor, names_codomain, names_domain; kwargs...
     )
-    return svd_vals_nameddims(a, names_codomain, names_domain; kwargs...)
+    return svd_vals_namedtensor(a, names_codomain, names_domain; kwargs...)
 end
-function svd_vals_nameddims(
+function svd_vals_namedtensor(
         a::AbstractNamedTensor, names_codomain, names_domain; kwargs...
     )
     return TA.svd_vals(
@@ -338,9 +338,9 @@ function svd_vals_nameddims(
 end
 
 function MAK.svd_vals(a::AbstractNamedTensor, names_codomain; kwargs...)
-    return svd_vals_nameddims(a, names_codomain; kwargs...)
+    return svd_vals_namedtensor(a, names_codomain; kwargs...)
 end
-function svd_vals_nameddims(a::AbstractNamedTensor, names_codomain; kwargs...)
+function svd_vals_namedtensor(a::AbstractNamedTensor, names_codomain; kwargs...)
     codomain = name.(names_codomain)
     domain = names_setdiff(names(a), codomain)
     return MAK.svd_vals(a, codomain, domain; kwargs...)
@@ -351,14 +351,14 @@ end
 #
 
 for f in [:eigh_full, :eig_full, :eigh_trunc, :eig_trunc]
-    f_nameddims = Symbol(f, "_nameddims")
+    f_namedtensor = Symbol(f, "_namedtensor")
     @eval begin
         function MAK.$f(
                 a::AbstractNamedTensor, names_codomain, names_domain; kwargs...
             )
-            return $f_nameddims(a, names_codomain, names_domain; kwargs...)
+            return $f_namedtensor(a, names_codomain, names_domain; kwargs...)
         end
-        function $f_nameddims(
+        function $f_namedtensor(
                 a::AbstractNamedTensor, names_codomain, names_domain;
                 leftname = (;), rightname = (;), kwargs...
             )
@@ -384,14 +384,14 @@ end
 #
 
 for f in [:eigh_vals, :eig_vals]
-    f_nameddims = Symbol(f, "_nameddims")
+    f_namedtensor = Symbol(f, "_namedtensor")
     @eval begin
         function MAK.$f(
                 a::AbstractNamedTensor, names_codomain, names_domain; kwargs...
             )
-            return $f_nameddims(a, names_codomain, names_domain; kwargs...)
+            return $f_namedtensor(a, names_codomain, names_domain; kwargs...)
         end
-        function $f_nameddims(
+        function $f_namedtensor(
                 a::AbstractNamedTensor, names_codomain, names_domain; kwargs...
             )
             codomain = name.(names_codomain)
@@ -404,9 +404,9 @@ end
 function MAK.left_null(
         a::AbstractNamedTensor, names_codomain, names_domain; kwargs...
     )
-    return left_null_nameddims(a, names_codomain, names_domain; kwargs...)
+    return left_null_namedtensor(a, names_codomain, names_domain; kwargs...)
 end
-function left_null_nameddims(
+function left_null_namedtensor(
         a::AbstractNamedTensor, names_codomain, names_domain; name = (;), kwargs...
     )
     # `name` is a keyword here, so reach the `name` function through the module.
@@ -419,9 +419,9 @@ function left_null_nameddims(
 end
 
 function MAK.left_null(a::AbstractNamedTensor, names_codomain; kwargs...)
-    return left_null_nameddims(a, names_codomain; kwargs...)
+    return left_null_namedtensor(a, names_codomain; kwargs...)
 end
-function left_null_nameddims(a::AbstractNamedTensor, names_codomain; kwargs...)
+function left_null_namedtensor(a::AbstractNamedTensor, names_codomain; kwargs...)
     codomain = name.(names_codomain)
     domain = names_setdiff(names(a), codomain)
     return MAK.left_null(a, codomain, domain; kwargs...)
@@ -430,9 +430,9 @@ end
 function MAK.right_null(
         a::AbstractNamedTensor, names_codomain, names_domain; kwargs...
     )
-    return right_null_nameddims(a, names_codomain, names_domain; kwargs...)
+    return right_null_namedtensor(a, names_codomain, names_domain; kwargs...)
 end
-function right_null_nameddims(
+function right_null_namedtensor(
         a::AbstractNamedTensor, names_codomain, names_domain; name = (;), kwargs...
     )
     # `name` is a keyword here, so reach the `name` function through the module.
@@ -445,9 +445,9 @@ function right_null_nameddims(
 end
 
 function MAK.right_null(a::AbstractNamedTensor, names_codomain; kwargs...)
-    return right_null_nameddims(a, names_codomain; kwargs...)
+    return right_null_namedtensor(a, names_codomain; kwargs...)
 end
-function right_null_nameddims(a::AbstractNamedTensor, names_codomain; kwargs...)
+function right_null_namedtensor(a::AbstractNamedTensor, names_codomain; kwargs...)
     codomain = name.(names_codomain)
     domain = names_setdiff(names(a), codomain)
     return MAK.right_null(a, codomain, domain; kwargs...)
@@ -569,9 +569,9 @@ julia> tr(one(a, (i, j), (k, l)), (i, j), (k, l))
 function Base.one(
         a::AbstractNamedTensor, names_codomain, names_domain
     )
-    return one_nameddims(a, names_codomain, names_domain)
+    return one_namedtensor(a, names_codomain, names_domain)
 end
-function one_nameddims(
+function one_namedtensor(
         a::AbstractNamedTensor, names_codomain, names_domain
     )
     codomain = name.(names_codomain)
@@ -650,14 +650,14 @@ const MATRIX_FUNCTIONS = [
 ]
 
 for f in MATRIX_FUNCTIONS
-    f_nameddims = Symbol(f, "_nameddims")
+    f_namedtensor = Symbol(f, "_namedtensor")
     @eval begin
         function Base.$f(
                 a::AbstractNamedTensor, names_codomain, names_domain; kwargs...
             )
-            return $f_nameddims(a, names_codomain, names_domain; kwargs...)
+            return $f_namedtensor(a, names_codomain, names_domain; kwargs...)
         end
-        function $f_nameddims(
+        function $f_namedtensor(
                 a::AbstractNamedTensor, names_codomain, names_domain; kwargs...
             )
             codomain = name.(names_codomain)
@@ -688,20 +688,20 @@ function name_projected(projected, input_names)
     return NamedTensor(projected, (input_names..., aux_names...))
 end
 
-# Each `<verb>_nameddims` runs the named-index layer of a `TensorAlgebra` verb: strip the axes to
+# Each `<verb>_namedtensor` runs the named-index layer of a `TensorAlgebra` verb: strip the axes to
 # their unnamed ranges, lower to the unnamed verb, and reattach the names (the `*_aux` verbs also
 # name the derived auxiliary leg, see `name_projected`). The one body also covers an empty codomain,
 # since `unnamed.(())` and `name.(())` are both `()`, so the all-domain (co-state) case needs no
 # separate path.
-function project_nameddims(a, codomain_inds, domain_inds; kwargs...)
+function project_namedtensor(a, codomain_inds, domain_inds; kwargs...)
     projected = TA.project(a, unnamed.(codomain_inds), unnamed.(domain_inds); kwargs...)
     return name_projected(projected, (name.(codomain_inds)..., name.(domain_inds)...))
 end
-function tryproject_nameddims(a, codomain_inds, domain_inds; kwargs...)
+function tryproject_namedtensor(a, codomain_inds, domain_inds; kwargs...)
     projected = TA.tryproject(a, unnamed.(codomain_inds), unnamed.(domain_inds); kwargs...)
     return name_projected(projected, (name.(codomain_inds)..., name.(domain_inds)...))
 end
-function unchecked_project_nameddims(a, codomain_inds, domain_inds; kwargs...)
+function unchecked_project_namedtensor(a, codomain_inds, domain_inds; kwargs...)
     projected =
         TA.unchecked_project(a, unnamed.(codomain_inds), unnamed.(domain_inds); kwargs...)
     return name_projected(projected, (name.(codomain_inds)..., name.(domain_inds)...))
@@ -709,16 +709,16 @@ end
 
 # The `*_aux` workers derive and append the flux-carrying auxiliary leg, which `name_projected`
 # names. Same named-index layer as the strict workers above, lowered to the `*_aux` unnamed verbs.
-function project_aux_nameddims(a, codomain_inds, domain_inds; kwargs...)
+function project_aux_namedtensor(a, codomain_inds, domain_inds; kwargs...)
     projected = TA.project_aux(a, unnamed.(codomain_inds), unnamed.(domain_inds); kwargs...)
     return name_projected(projected, (name.(codomain_inds)..., name.(domain_inds)...))
 end
-function tryproject_aux_nameddims(a, codomain_inds, domain_inds; kwargs...)
+function tryproject_aux_namedtensor(a, codomain_inds, domain_inds; kwargs...)
     projected =
         TA.tryproject_aux(a, unnamed.(codomain_inds), unnamed.(domain_inds); kwargs...)
     return name_projected(projected, (name.(codomain_inds)..., name.(domain_inds)...))
 end
-function unchecked_project_aux_nameddims(a, codomain_inds, domain_inds; kwargs...)
+function unchecked_project_aux_namedtensor(a, codomain_inds, domain_inds; kwargs...)
     projected =
         TA.unchecked_project_aux(
         a,
@@ -832,7 +832,7 @@ for f in (
         :project, :tryproject, :unchecked_project,
         :project_aux, :tryproject_aux, :unchecked_project_aux,
     )
-    fnamed = Symbol(f, :_nameddims)
+    f_namedtensor = Symbol(f, :_namedtensor)
     doc = Symbol("_", f, "_named_docstring")
     @eval begin
         @doc $doc function TA.$f(
@@ -840,20 +840,20 @@ for f in (
                 codomain_inds::Tuple{NamedUnitRange, Vararg{NamedUnitRange}},
                 domain_inds::Tuple{Vararg{NamedUnitRange}}; kwargs...
             )
-            return $fnamed(a, codomain_inds, domain_inds; kwargs...)
+            return $f_namedtensor(a, codomain_inds, domain_inds; kwargs...)
         end
         function TA.$f(
                 a::AbstractArray,
                 codomain_inds::Tuple{},
                 domain_inds::Tuple{NamedUnitRange, Vararg{NamedUnitRange}}; kwargs...
             )
-            return $fnamed(a, codomain_inds, domain_inds; kwargs...)
+            return $f_namedtensor(a, codomain_inds, domain_inds; kwargs...)
         end
         function TA.$f(
                 a::AbstractArray, inds::Tuple{NamedUnitRange, Vararg{NamedUnitRange}};
                 kwargs...
             )
-            return $fnamed(a, inds, (); kwargs...)
+            return $f_namedtensor(a, inds, (); kwargs...)
         end
     end
 end

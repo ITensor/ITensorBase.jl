@@ -140,9 +140,9 @@ end
 substitute_lazy(a, substitutions) = substitute(a, Dict(substitutions))
 using AbstractTrees: printnode
 function printnode_lazy(io, a)
-    # Use `printnode_nameddims` to avoid type piracy,
+    # Use `printnode_namedtensor` to avoid type piracy,
     # since it overloads on `AbstractNamedTensor`.
-    return printnode_nameddims(io, unwrap(a))
+    return printnode_namedtensor(io, unwrap(a))
 end
 function show_lazy(io::IO, a)
     if !iscall(a)

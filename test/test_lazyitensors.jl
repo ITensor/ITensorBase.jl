@@ -2,7 +2,7 @@ using AbstractTrees: AbstractTrees, print_tree, printnode
 using Base.Broadcast: materialize
 using ITensorBase: @names, Greedy, LazyNamedTensor, Mul, NamedOneTo, NamedTensor,
     NamedTensorOperator, SymbolicNamedTensor, inds, inputnames, ismul, lazy, names,
-    operator, optimize_evaluation_order, outputnames, state, substitute, symnameddims
+    operator, optimize_evaluation_order, outputnames, state, substitute, symnamedtensor
 using OMEinsumContractionOrders: ExhaustiveSearch, GreedyMethod, TreeSA
 using TermInterface: arguments, arity, children, head, iscall, isexpr, maketerm, operation,
     sorted_arguments, sorted_children
@@ -79,8 +79,8 @@ using WrappedUnions: unwrap
             "└─ {\"k\", \"l\"}\n"
     end
 
-    @testset "symnameddims" begin
-        a1, a2, a3 = symnameddims.((:a1, :a2, :a3))
+    @testset "symnamedtensor" begin
+        a1, a2, a3 = symnamedtensor.((:a1, :a2, :a3))
         @test a1 isa LazyNamedTensor
         @test unwrap(a1) isa SymbolicNamedTensor
         @test unwrap(a1) == SymbolicNamedTensor(:a1, ())
@@ -96,7 +96,7 @@ using WrappedUnions: unwrap
     end
 
     @testset "substitute" begin
-        s = symnameddims.((:a1, :a2, :a3))
+        s = symnamedtensor.((:a1, :a2, :a3))
         i = @names i[1:4]
         a = (randn(2, 2)[i[1], i[2]], randn(2, 2)[i[2], i[3]], randn(2, 2)[i[3], i[4]])
         l = lazy.(a)
@@ -109,7 +109,11 @@ using WrappedUnions: unwrap
 
     @testset "optimize_evaluation_order ($alg)" for alg in (Greedy(),)
         i, j, k, l = NamedOneTo.((2, 3, 4, 5), (:i, :j, :k, :l))
-        s = [symnameddims(:a, (i, j)), symnameddims(:b, (j, k)), symnameddims(:c, (k, l))]
+        s = [
+            symnamedtensor(:a, (i, j)),
+            symnamedtensor(:b, (j, k)),
+            symnamedtensor(:c, (k, l)),
+        ]
         flat = lazy(Mul(s))
         ordered = optimize_evaluation_order(flat; alg)
         @test ordered isa LazyNamedTensor
@@ -141,7 +145,11 @@ using WrappedUnions: unwrap
             TreeSA(),
         )
         i, j, k, l = NamedOneTo.((2, 3, 4, 5), (:i, :j, :k, :l))
-        s = [symnameddims(:a, (i, j)), symnameddims(:b, (j, k)), symnameddims(:c, (k, l))]
+        s = [
+            symnamedtensor(:a, (i, j)),
+            symnamedtensor(:b, (j, k)),
+            symnamedtensor(:c, (k, l)),
+        ]
         flat = lazy(Mul(s))
         ordered = optimize_evaluation_order(flat; alg)
         @test ordered isa LazyNamedTensor

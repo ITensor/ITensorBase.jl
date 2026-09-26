@@ -311,8 +311,8 @@ names(a::NamedTensorOperator) = names(state(a))
 parenttype(type::Type{<:NamedTensorOperator}) = fieldtype(type, :parent)
 statetype(type::Type{<:NamedTensorOperator}) = parenttype(type)
 
-function nameddimsof(a::NamedTensorOperator, b::AbstractArray)
-    return NamedTensorOperator(nameddimsof(state(a), b), a.outputnames, a.inputnames)
+function namedtensorof(a::NamedTensorOperator, b::AbstractArray)
+    return NamedTensorOperator(namedtensorof(state(a), b), a.outputnames, a.inputnames)
 end
 
 outputnames(a::NamedTensorOperator) = a.outputnames
