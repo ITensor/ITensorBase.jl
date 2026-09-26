@@ -17,8 +17,8 @@ end
 using AbstractTrees: AbstractTrees
 # Only print the dimension names when printing with `AbstractTrees.print_tree`.
 function AbstractTrees.printnode(io::IO, a::AbstractNamedTensor)
-    dimnames_a = "{" * join(map(s -> "\"$s\"", dimnames(a)), ", ") * "}"
-    print(io, dimnames_a)
+    names_a = "{" * join(map(s -> "\"$s\"", names(a)), ", ") * "}"
+    print(io, names_a)
     return nothing
 end
 

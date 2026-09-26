@@ -1,7 +1,9 @@
 abstract type AbstractName end
 # TODO: Decide if this is a good definition, probably not.
 # name(n::AbstractName) = throw(MethodError(name, Tuple{typeof(n)}))
-Base.getindex(n::AbstractName, I) = named(I, name(n))
+# `I` can be a position, a range, or `:`, so the named type it takes is only known at
+# runtime.
+Base.getindex(n::AbstractName, I) = to_named(I, name(n))
 
 struct Name{Value} <: AbstractName
     value::Value

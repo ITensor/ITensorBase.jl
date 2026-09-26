@@ -4,17 +4,17 @@ using Test: @test, @testset
     exports = [
         :ITensorBase, :AbstractNamedTensor, :NamedTensor, :AbstractITensor, :ITensor,
         :Index, :NamedUnitRange,
-        :aligndims, :aligneddims, :apply, :commonind, :commoninds,
-        :dimnames, :dimnametype, :hascommoninds, :id,
-        :inds, :inputaxes, :inputinds, :inputnames, :mapinds, :named, :nameddims,
-        :noncommonind, :noncommoninds,
+        :align, :aligned, :apply, :commonind, :commoninds,
+        :hascommoninds, :id,
+        :inds, :inputaxes, :inputinds, :inputnames,
+        :nametype, :noncommonind, :noncommoninds,
         :noprime, :operator, :outputaxes, :outputinds, :outputnames,
         :prime,
-        :replaceinds, :sim, :similar_operator, :state, :trycommonind, :trynoncommonind,
+        :sim, :similar_operator, :state, :trycommonind, :trynoncommonind,
         :tryuniqueind, :uniqueind, :uniqueinds, :unioninds, :uniquename,
     ]
     publics = [
-        :IndexName, :name, :nametype, :replacedimnames, :setname, :space, :unnamed,
+        :IndexName, :name, :rename, :setname, :space, :unnamed,
         :unnamedtype,
         :decoration, :emptytags, :gettag, :gettags, :hastag, :plev, :settags, :tags,
         :unsettags,

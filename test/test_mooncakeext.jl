@@ -1,5 +1,5 @@
-using ITensorBase: Name, NamedTensor, NamedUnitRange, dimnames, dimnames_setdiff, inds,
-    name, nameperm, to_inds, uniquename
+using ITensorBase: Name, NamedTensor, NamedUnitRange, inds, name, nameperm, names_setdiff,
+    to_inds, uniquename
 using LinearAlgebra: mul!
 using Mooncake: Mooncake
 using Random: Random
@@ -23,13 +23,13 @@ using Test: @test, @testset
         Mooncake.TestUtils.test_rule(
             rng, nameperm, a1, (i,), (j,); mode, is_primitive
         )
-        Mooncake.TestUtils.test_rule(rng, dimnames, a1; mode, is_primitive)
-        Mooncake.TestUtils.test_rule(rng, dimnames, a1, 1; mode, is_primitive)
+        Mooncake.TestUtils.test_rule(rng, names, a1; mode, is_primitive)
+        Mooncake.TestUtils.test_rule(rng, names, a1, 1; mode, is_primitive)
         Mooncake.TestUtils.test_rule(rng, inds, a1; mode, is_primitive)
         Mooncake.TestUtils.test_rule(rng, inds, a1, 1; mode, is_primitive)
         Mooncake.TestUtils.test_rule(
             rng,
-            dimnames_setdiff,
+            names_setdiff,
             (i, j),
             (j, k);
             mode,

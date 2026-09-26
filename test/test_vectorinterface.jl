@@ -1,5 +1,5 @@
 import VectorInterface as VI
-using ITensorBase: dimnames, named, unnamed
+using ITensorBase: Named, unnamed
 using Test: @test, @testset
 
 # These name-aware methods are what let an NamedTensor be used directly as a vector in
@@ -7,11 +7,11 @@ using Test: @test, @testset
 # through `VectorInterface`.
 @testset "VectorInterface (eltype=$(elt))" for elt in
     (Float32, Float64, Complex{Float32})
-    i, j = named.(2, (:i, :j))
+    i, j = Named.(2, (:i, :j))
     a = randn(elt, i, j)
     b = randn(elt, j, i)
     ua = unnamed(a)
-    ub = unnamed(b, dimnames(a))
+    ub = unnamed(b, names(a))
 
     @test VI.scalartype(a) === elt
     @test VI.scalartype([a, b]) === elt
@@ -21,7 +21,7 @@ using Test: @test, @testset
     z = VI.zerovector(a, ComplexF64)
     @test VI.scalartype(z) === ComplexF64
     @test iszero(unnamed(z))
-    @test dimnames(z) == dimnames(a)
+    @test names(z) == names(a)
     z = VI.zerovector!(copy(a))
     @test VI.scalartype(z) === elt
     @test iszero(unnamed(z))
@@ -42,13 +42,13 @@ using Test: @test, @testset
     @test unnamed(s) ≈ 2im * ua
 
     # add / add! / add!!
-    @test unnamed(VI.add(b, a), dimnames(a)) ≈ ub + ua
-    @test unnamed(VI.add(b, a, 2, 3), dimnames(a)) ≈ 3 * ub + 2 * ua
-    @test unnamed(VI.add!(copy(b), a, 2, 3), dimnames(a)) ≈ 3 * ub + 2 * ua
-    @test unnamed(VI.add!!(copy(b), a, 2, 3), dimnames(a)) ≈ 3 * ub + 2 * ua
+    @test unnamed(VI.add(b, a), names(a)) ≈ ub + ua
+    @test unnamed(VI.add(b, a, 2, 3), names(a)) ≈ 3 * ub + 2 * ua
+    @test unnamed(VI.add!(copy(b), a, 2, 3), names(a)) ≈ 3 * ub + 2 * ua
+    @test unnamed(VI.add!!(copy(b), a, 2, 3), names(a)) ≈ 3 * ub + 2 * ua
     r = VI.add!!(copy(b), a, 2im, 3)
     @test VI.scalartype(r) === complex(elt)
-    @test unnamed(r, dimnames(a)) ≈ 3 * ub + 2im * ua
+    @test unnamed(r, names(a)) ≈ 3 * ub + 2im * ua
 
     @test VI.inner(a, b) ≈ VI.inner(ua, ub)
 end

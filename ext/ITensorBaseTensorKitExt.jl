@@ -15,13 +15,6 @@ function ITensorBase.NamedUnitRange(unnamed::ElementarySpace, name)
     return ITensorBase.NamedUnitRange{typeof(name), Int, typeof(unnamed)}(unnamed, name)
 end
 
-# `conj(index)` lowers to `named(conj(space), name)`, and `trivialrange` mints a fresh axis via
-# `namedunitrange(space, name)`, so both must rebuild a `NamedUnitRange` over the space rather than
-# fall through to the generic (array-shaped) `Named`. `named` delegates to `namedunitrange`, as the
-# core `AbstractUnitRange` path does.
-ITensorBase.namedunitrange(r::ElementarySpace, name) = ITensorBase.NamedUnitRange(r, name)
-ITensorBase.named(r::ElementarySpace, name) = ITensorBase.namedunitrange(r, name)
-
 # The flat length of a space-backed axis is its total (dense) dimension, so `size`/`length`
 # of a `TensorMap`-backed ITensor report dense dimensions.
 function Base.length(r::NamedUnitRange{<:Any, <:Any, <:ElementarySpace})

@@ -1,8 +1,8 @@
-using ITensorBase: ITensorBase, Index, aligndims, dimnames, name, prime, unnamed
+using ITensorBase: ITensorBase, ITensor, Index, align, name, prime, unnamed
 using LinearAlgebra: norm
 using MatrixAlgebraKit: qr_compact, svd_compact
 using StableRNGs: StableRNG
-using TensorAlgebra: TensorAlgebra, project, unchecked_project
+using TensorAlgebra: TensorAlgebra, matricize, project, unchecked_project, unmatricize
 using TensorKit: TensorKit as TK, @tensor, AbstractTensorMap, SU2Irrep, U1Irrep, Vect, ←, ⊗
 using Test: @test, @test_throws, @testset
 
@@ -60,7 +60,7 @@ using Test: @test, @test_throws, @testset
         # Contraction over the shared (dualized) leg matches a direct TensorKit reference.
         b = randn(rng, elt, conj(j), k)
         c = a * b
-        @test Set(dimnames(c)) == Set(name.((i, k)))
+        @test Set(names(c)) == Set(name.((i, k)))
         ta, tb, gc = unnamed(a), unnamed(b), unnamed(c)
         @tensor ref[vi; vk] := ta[vi, vj] * tb[vj, vk]
         @test TK.space(ref) == TK.space(gc)
@@ -75,11 +75,11 @@ using Test: @test, @test_throws, @testset
         @test_throws ErrorException sin.(a)
 
         # Named broadcasting aligns operands by name within their codomain/domain split, so a within-split
-        # reorder of a multi-leg operand still adds correctly (compared at a common split via `aligndims`).
+        # reorder of a multi-leg operand still adds correctly (compared at a common split via `align`).
         mr1 = randn(rng, elt, (i, j), (k,))
         mr2 = randn(rng, elt, (j, i), (k,))
-        @test unnamed(aligndims(mr1 .+ mr2, (i, j), (k,))) ≈
-            unnamed(mr1) + unnamed(aligndims(mr2, (i, j), (k,)))
+        @test unnamed(align(mr1 .+ mr2, (i, j), (k,))) ≈
+            unnamed(mr1) + unnamed(align(mr2, (i, j), (k,)))
         # Adding across an incompatible split (a shared leg in the codomain of one operand and the domain
         # of the other) has mismatched axes and errors.
         cs1 = randn(rng, elt, (i,), (j,))
@@ -101,7 +101,8 @@ using Test: @test, @test_throws, @testset
         @test Array(a) == convert(Array, unnamed(a))
 
         # `trivialrange` mints a fresh trivial axis over the native space (used e.g. by the
-        # boundary-MPS setup), routing through the `namedunitrange(::ElementarySpace, name)` overload.
+        # boundary-MPS setup), routing through the `NamedUnitRange(::ElementarySpace, name)`
+        # constructor.
         t1 = TensorAlgebra.trivialrange(i)
         @test t1 isa Index
         @test length(t1) == 1
@@ -130,25 +131,37 @@ using Test: @test, @test_throws, @testset
         cd = randn(rng, elt, (), (j,))
         @test unnamed(cd) isa AbstractTensorMap
         @test TK.space(unnamed(cd)) == (one(Vj) ← Vj)
-        @test dimnames(cd) == [name(j)]
+        @test names(cd) == [name(j)]
         @test TK.space(unnamed(zeros(elt, (), (j,)))) == (one(Vj) ← Vj)
         @test_throws MethodError randn(rng, elt, (), ())
 
-        # `aligndims` reorders a `TensorMap`-backed tensor. The flat form gives an all-codomain
+        # `matricize` fuses the codomain/domain split into the unnamed matrix (here a
+        # two-leg `TensorMap`), and `unmatricize` splits one back out over named indices,
+        # taking the domain index codomain-facing while storing it dualized.
+        ma = randn(rng, elt, (i, j), (k,))
+        mm = matricize(ma, (i, j), (k,))
+        @test mm isa AbstractTensorMap
+        @test TK.space(mm) == ((Vi ⊗ Vj) ← Vk)
+        rt = unmatricize(mm, (i, j), (k,))
+        @test names(rt) == names(ma)
+        @test TK.space(unnamed(rt)) == TK.space(unnamed(ma))
+        @test unnamed(rt) ≈ unnamed(ma)
+
+        # `align` reorders a `TensorMap`-backed tensor. The flat form gives an all-codomain
         # result and the map form re-expresses the requested codomain/domain split, both
         # carrying each index with its arrow to the new position.
-        mf = aligndims(m, (j, i))
-        @test dimnames(mf) == [name(j), name(i)]
+        mf = align(m, (j, i))
+        @test names(mf) == [name(j), name(i)]
         @test TK.space(unnamed(mf), 1) == TK.dual(Vj)
         @test TK.space(unnamed(mf), 2) == Vi
-        md = aligndims(m, (j,), (i,))
-        @test dimnames(md) == [name(j), name(i)]
+        md = align(m, (j,), (i,))
+        @test names(md) == [name(j), name(i)]
         @test TK.space(unnamed(md)) == (TK.dual(Vj) ← TK.dual(Vi))
         @test TK.space(unnamed(md), 1) == TK.dual(Vj)
         @test TK.space(unnamed(md), 2) == Vi
         # An empty codomain moves both indices into the domain, preserving the outward axes.
-        me = aligndims(m, (), (i, j))
-        @test dimnames(me) == [name(i), name(j)]
+        me = align(m, (), (i, j))
+        @test names(me) == [name(i), name(j)]
         @test TK.space(unnamed(me)) == (one(Vi) ← (TK.dual(Vi) ⊗ Vj))
         @test TK.space(unnamed(me), 1) == Vi
         @test TK.space(unnamed(me), 2) == TK.dual(Vj)
@@ -166,7 +179,7 @@ using Test: @test, @test_throws, @testset
         top = project(Sz, (prime(w),), (w,))
         @test unnamed(top) isa AbstractTensorMap
         @test TK.space(unnamed(top)) == (W ← W)
-        @test Set(dimnames(top)) == Set(name.((prime(w), w)))
+        @test Set(names(top)) == Set(name.((prime(w), w)))
 
         # a charge-breaking operator is projected to zero by `unchecked_project`; the checked
         # `project` rejects the discard
@@ -184,6 +197,20 @@ using Test: @test, @test_throws, @testset
         cobra = project(elt[1, 0], (), (w,))
         @test unnamed(cobra) isa AbstractTensorMap
         @test TK.space(unnamed(cobra)) == (one(W) ← W)
-        @test Set(dimnames(cobra)) == Set((name(w),))
+        @test Set(names(cobra)) == Set((name(w),))
     end
+end
+
+# A dimension given as an index asserts its whole space. Over a `TensorMap` backend the axes are
+# TensorKit spaces, so the check compares spaces and catches a dual mismatch that has the same
+# total dimension.
+@testset "TensorKitExt constructor space check" begin
+    rng = StableRNG(1234)
+    Vi = Vect[U1Irrep](0 => 2, 1 => 3)
+    Vj = Vect[U1Irrep](0 => 1, 1 => 2)
+    i, j = Index(Vi), Index(Vj)
+    t = TK.randn(rng, Float64, Vi ⊗ Vj)
+    @test ITensor(t, (i, j)) isa ITensor
+    @test TK.dim(TK.dual(Vj)) == TK.dim(Vj)
+    @test_throws ArgumentError ITensor(t, (i, Index(TK.dual(Vj))))
 end

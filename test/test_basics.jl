@@ -1,8 +1,8 @@
 using ITensorBase: ITensorBase, AbstractNamedTensor, ITensor, Index, IndexName, NamedTensor,
-    commonind, commoninds, dimnametype, gettag, hascommoninds, hastag, id, inds, mapinds,
-    name, named, noncommonind, noncommoninds, noprime, operator, plev, prime, replaceinds,
-    setplev, settag, sim, tags, trycommonind, trynoncommonind, tryuniqueind, unioninds,
-    uniqueind, uniqueinds, uniquename, unname, unnamed, unsettag, uuid
+    commonind, commoninds, gettag, hascommoninds, hastag, id, inds, name, nametype,
+    noncommonind, noncommoninds, noprime, operator, plev, prime, rename, setplev, settag,
+    sim, tags, trycommonind, trynoncommonind, tryuniqueind, unioninds, uniqueind,
+    uniqueinds, uniquename, unname, unnamed, unsettag, uuid
 using Test: @test, @test_broken, @test_throws, @testset
 using UUIDs: UUID
 
@@ -115,17 +115,17 @@ using UUIDs: UUID
         @test plev(i) == 0
         @test plev(prime(i)) == 1
         @test length(tags(i)) == 0
-        a′ = mapinds(prime, a)
+        a′ = rename(prime, a)
         @test unnamed(a′) == x
         @test issetequal(inds(a′), (prime(i), prime(j)))
 
-        # The number of dimnames must match the array's `ndims`, and the dimnames are
+        # The number of names must match the array's `ndims`, and the names are
         # passed as a single collection.
         @test_throws ArgumentError NamedTensor(randn(elt, 4), (:i, :j))
         @test_throws MethodError NamedTensor(randn(elt, 2, 2), :i, :j)
 
-        # Passing indices as a tuple or vector builds the tensor, using only their names and
-        # taking the space from the array. A single bare index still errors (it is ambiguous).
+        # Passing indices as a tuple or vector builds the tensor from their names, keeping only
+        # the names. A single bare index still errors (it is ambiguous).
         i, j = Index.((2, 3))
         @test NamedTensor(randn(elt, 2, 3), (i, j)) isa ITensor
         @test ITensor(randn(elt, 2, 3), (i, j)) isa ITensor
@@ -133,8 +133,21 @@ using UUIDs: UUID
         t = ITensor(randn(elt, 2, 3), (i, j))
         @test issetequal(name.(inds(t)), name.((i, j)))
         @test_throws ArgumentError ITensor(randn(elt, 2), i)
-        # The space is taken from the array, not from the index (a mismatched index dim is ignored).
-        @test size(unnamed(ITensor(randn(elt, 2, 3), (i, Index(9))))) == (2, 3)
+        # A dimension given as an index asserts a space, which has to match the array's axis.
+        @test_throws ArgumentError ITensor(randn(elt, 2, 3), (i, Index(9)))
+        @test_throws ArgumentError NamedTensor(randn(elt, 2, 3), (i, Index(9)))
+        # A bare name asserts no space, so it is unaffected by the check.
+        @test ITensor(randn(elt, 2, 3), (name(i), name(Index(9)))) isa ITensor
+
+        # The codomain/domain form takes the two dimension groups separately, with the same
+        # space check on each group and the same rejection of a lone index.
+        @test NamedTensor(randn(elt, 2, 3), (i,), (j,)) isa ITensor
+        @test names(ITensor(randn(elt, 2, 3), (i,), (j,))) == name.([i, j])
+        @test ITensor(randn(elt, 2, 3), (), (i, j)) isa ITensor
+        @test_throws ArgumentError ITensor(randn(elt, 2, 3), i, (j,))
+        @test_throws ArgumentError ITensor(randn(elt, 2, 3), (i,), j)
+        @test_throws ArgumentError ITensor(randn(elt, 2, 3), (i,), (Index(9),))
+        @test_throws ArgumentError ITensor(randn(elt, 2), (i,), (j,))
         # The other supported constructions: index the array (inherit the space from the
         # indices), or attach only the names (take the space from the array).
         @test randn(elt, 2, 3)[i, j] isa ITensor
@@ -165,19 +178,19 @@ using UUIDs: UUID
         @test unnamed(a) == unname(b, (i, j, k))
         @test unnamed(a) == permutedims(unnamed(b), (2, 3, 1))
     end
-    @testset "dimnametype" begin
+    @testset "nametype" begin
         i, j = Index.((2, 3))
         a = randn(Float64, i, j)
         @test a isa NamedTensor
-        @test dimnametype(a) === IndexName
-        @test dimnametype(typeof(a)) === IndexName
-        @test dimnametype(NamedTensor{IndexName}) === IndexName
+        @test nametype(a) === IndexName
+        @test nametype(typeof(a)) === IndexName
+        @test nametype(NamedTensor{IndexName}) === IndexName
         # An operator reports the dimname flavor of its underlying tensor.
         op = operator(a, (name(i),), (name(j),))
-        @test dimnametype(op) === IndexName
-        @test dimnametype(typeof(op)) === IndexName
+        @test nametype(op) === IndexName
+        @test nametype(typeof(op)) === IndexName
         # Unparameterized `NamedTensor` does not fix its dimname flavor, like `eltype(Array)`.
-        @test dimnametype(NamedTensor) === Any
+        @test nametype(NamedTensor) === Any
     end
     @testset "show" begin
         i = Index(2)
@@ -200,9 +213,9 @@ using UUIDs: UUID
         @test noprime(a′) == a
         @test issetequal(inds(noprime(prime(a′))), (i, j))
 
-        # `replaceinds` is a name-only synonym for the pair-based relabel.
+        # `rename` takes index-keyed pairs, relabeling name-only.
         k, l = Index.((2, 3))
-        a_r = replaceinds(a, i => k, j => l)
+        a_r = rename(a, i => k, j => l)
         @test unnamed(a_r) == unnamed(a)
         @test issetequal(inds(a_r), (k, l))
 

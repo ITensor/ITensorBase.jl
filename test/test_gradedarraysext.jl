@@ -1,8 +1,8 @@
 using GradedArrays: U1, sectors
-using ITensorBase: ITensorBase, Index, aligndims, inds, prime, space, unnamed
+using ITensorBase: ITensorBase, ITensor, Index, align, inds, prime, space, unnamed
 using StableRNGs: StableRNG
-using TensorAlgebra: TensorAlgebra, isdual, project, project_aux, tryproject,
-    tryproject_aux, unchecked_project, unchecked_project_aux
+using TensorAlgebra: TensorAlgebra, dual, isdual, matricize, project, project_aux,
+    tryproject, tryproject_aux, unchecked_project, unchecked_project_aux, unmatricize
 using TensorKitSectors: FermionNumber
 using Test: @test, @test_throws, @testset
 
@@ -78,7 +78,7 @@ end
 
 # Broadcasting over graded (GradedArrays.jl) indices routes the named expression through the
 # `GradedArray` / matricized `FusedGradedMatrix` backend. Linear combinations add block-wise; a sum
-# flattens all-codomain, so a within-split reorder is compared at a common split via `aligndims`.
+# flattens all-codomain, so a within-split reorder is compared at a common split via `align`.
 @testset "GradedArraysExt broadcasting (eltype = $elt)" for elt in (Float64, ComplexF64)
     rng = StableRNG(1234)
     i = Index([U1(0) => 2, U1(1) => 3]; tags = "i")
@@ -97,11 +97,35 @@ end
     n = randn(rng, elt, (i,), (j,))
     @test unnamed(m .+ n) ≈ unnamed(m) + unnamed(n)
 
-    # Within-split reorder still adds correctly (the sum is all-codomain, compared via `aligndims`).
+    # Within-split reorder still adds correctly (the sum is all-codomain, compared via `align`).
     mr1 = randn(rng, elt, (i, j), (k,))
     mr2 = randn(rng, elt, (j, i), (k,))
-    @test unnamed(aligndims(mr1 .+ mr2, (i, j), (k,))) ≈
-        unnamed(mr1) + unnamed(aligndims(mr2, (i, j), (k,)))
+    @test unnamed(align(mr1 .+ mr2, (i, j), (k,))) ≈
+        unnamed(mr1) + unnamed(align(mr2, (i, j), (k,)))
+end
+
+# `matricize` fuses a tensor's codomain/domain split into an unnamed matrix and `unmatricize`
+# splits one back out over named indices. The domain index is stored dualized while it is given
+# to `unmatricize` codomain-facing, so a graded backend is where that convention is visible.
+@testset "GradedArraysExt matricize/unmatricize (eltype = $elt)" for elt in
+    (
+        Float64,
+        ComplexF64,
+    )
+    rng = StableRNG(1234)
+    i = Index([U1(0) => 2, U1(1) => 3]; tags = "i")
+    j = Index([U1(0) => 1, U1(1) => 2]; tags = "j")
+    k = Index([U1(-1) => 1, U1(0) => 2]; tags = "k")
+
+    a = randn(rng, elt, (i, j), (k,))
+    @test isdual(inds(a)[3])
+    m = matricize(a, (i, j), (k,))
+    @test m isa AbstractMatrix{elt}
+    @test size(m) == (length(i) * length(j), length(k))
+    rt = unmatricize(m, (i, j), (k,))
+    @test names(rt) == names(a)
+    @test isdual(inds(rt)[3])
+    @test unnamed(rt) ≈ unnamed(a)
 end
 
 # `project_aux` and its siblings derive a named auxiliary leg carrying the operator's flux, so a
@@ -135,4 +159,26 @@ end
             @test only(sectors(space(aux))) == U1(1)   # carries the operator's flux
         end
     end
+end
+
+# A dimension given as an index asserts its whole space, not just its length: over graded
+# indices that means the sectors and the duality, both of which a length-only check would miss.
+@testset "GradedArraysExt constructor space check" begin
+    rng = StableRNG(1234)
+    i = Index([U1(0) => 1, U1(1) => 2]; tags = "i")
+    j = Index([U1(0) => 2, U1(1) => 1]; tags = "j")
+    a = unnamed(randn(rng, (i, j)))
+    @test ITensor(a, (i, j)) isa ITensor
+    # Same length, opposite duality.
+    @test length(dual(j)) == length(j)
+    @test_throws ArgumentError ITensor(a, (i, dual(j)))
+    # Same length, different sectors.
+    k = Index([U1(0) => 1, U1(2) => 2]; tags = "k")
+    @test length(k) == length(i)
+    @test_throws ArgumentError ITensor(a, (k, j))
+    # The codomain/domain form takes the domain index codomain-facing while the storage holds
+    # it dualized, so the domain index is checked against the dual of the stored axis.
+    m = unnamed(randn(rng, (i,), (j,)))
+    @test ITensor(m, (i,), (j,)) isa ITensor
+    @test_throws ArgumentError ITensor(m, (i,), (dual(j),))
 end

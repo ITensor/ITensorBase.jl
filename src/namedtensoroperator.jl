@@ -17,7 +17,7 @@ on its own. For a plain tensor that is not an operator, `state` returns it uncha
 # Examples
 
 ```jldoctest
-julia> a = nameddims(zeros(2), (:i,));
+julia> a = NamedTensor(zeros(2), (:i,));
 
 julia> state(a) == a
 true
@@ -90,7 +90,7 @@ julia> op = operator(zeros(2, 2), ("i",), ("j",));
 
 julia> outputinds(op)
 1-element Vector{NamedUnitRange{String, Int64, Base.OneTo{Int64}}}:
- named(Base.OneTo(2), "i")
+ NamedOneTo(2, "i")
 ```
 
 See also [`outputnames`](@ref), [`inputinds`](@ref), [`outputaxes`](@ref), [`operator`](@ref).
@@ -127,7 +127,7 @@ julia> op = operator(zeros(2, 2), ("i",), ("j",));
 
 julia> inputinds(op)
 1-element Vector{NamedUnitRange{String, Int64, Base.OneTo{Int64}}}:
- named(Base.OneTo(2), "j")
+ NamedOneTo(2, "j")
 ```
 
 See also [`inputnames`](@ref), [`outputinds`](@ref), [`inputaxes`](@ref), [`operator`](@ref).
@@ -172,7 +172,7 @@ end
 # every name shared between `x` and `y` must be an input of `x` that is not also an input of
 # `y`. Landing an input of `x` on an input of `y`, or sharing any other name, is rejected.
 function check_apply(x::AbstractNamedTensor, y::AbstractNamedTensor)
-    for s in intersect(dimnames(x), dimnames(y))
+    for s in intersect(names(x), names(y))
         if !(s in inputnames(x)) || (s in inputnames(y))
             throw(
                 ArgumentError(
@@ -200,7 +200,7 @@ unchanged; applying it to another operator gives an operator.
 ```jldoctest
 julia> op = operator(reshape(Float64[1, 0, 0, 1], 2, 2), ("i",), ("j",));
 
-julia> v = nameddims([3.0, 4.0], ("j",));
+julia> v = NamedTensor([3.0, 4.0], ("j",));
 
 julia> apply(op, v) == v
 true
@@ -213,9 +213,9 @@ function apply(x::AbstractNamedTensor, y::AbstractNamedTensor)
     check_apply(x, y)
     xy = x * y
     relabels = [
-        ox => ix for (ox, ix) in zip(outputnames(x), inputnames(x)) if ix in dimnames(y)
+        ox => ix for (ox, ix) in zip(outputnames(x), inputnames(x)) if ix in names(y)
     ]
-    result = replacedimnames(xy, relabels...)
+    result = rename(xy, relabels...)
     # A result with no surviving pairing is a plain state (e.g. an operator applied to a
     # bare state), so return it unwrapped.
     return isempty(outputnames(result)) ? state(result) : result
@@ -227,7 +227,7 @@ function Base.transpose(a::AbstractNamedTensor)
     out = outputnames(a)
     inp = inputnames(a)
     a_map = merge(Dict(out .=> inp), Dict(inp .=> out))
-    a′ = mapdimnames(state(a)) do i
+    a′ = rename(state(a)) do i
         return get(a_map, i, i)
     end
     return operator(a′, out, inp)
@@ -269,8 +269,8 @@ function product(a::AbstractNamedTensor, b::AbstractNamedTensor)
     a′, b′ = a, b
     for s in intersect(inputnames(a), inputnames(b))
         bond = uniquename(s)
-        a′ = replacedimnames(a′, s => bond)                      # a's input site → bond
-        b′ = replacedimnames(b′, outputname(b, s, s) => bond)   # b's matching output → bond
+        a′ = rename(a′, s => bond)                      # a's input site → bond
+        b′ = rename(b′, outputname(b, s, s) => bond)   # b's matching output → bond
     end
     return operator_product(a′, b′)
 end
@@ -306,7 +306,7 @@ state(a::AbstractNamedTensor) = a
 state(a::NamedTensorOperator) = a.parent
 Base.parent(a::NamedTensorOperator) = state(a)
 unnamed(a::NamedTensorOperator) = unnamed(state(a))
-dimnames(a::NamedTensorOperator) = dimnames(state(a))
+Base.names(a::NamedTensorOperator) = names(state(a))
 
 parenttype(type::Type{<:NamedTensorOperator}) = fieldtype(type, :parent)
 statetype(type::Type{<:NamedTensorOperator}) = parenttype(type)
@@ -319,21 +319,20 @@ outputnames(a::NamedTensorOperator) = a.outputnames
 inputnames(a::NamedTensorOperator) = a.inputnames
 
 # Relabeling an operator's dimension names updates both its state and its pairing (the
-# generic `AbstractNamedTensor` methods reconstruct via `nameddims` and would drop the
-# pairing). `mapdimnames(f, op)` routes through the function form via the generic
-# `mapdimnames(f, ::AbstractNamedTensor) = replacedimnames(f, ...)`.
-function replacedimnames(op::NamedTensorOperator, replacements::Pair...)
+# generic `AbstractNamedTensor` methods reconstruct via `NamedTensor` and would drop the
+# pairing).
+function rename(op::NamedTensorOperator, replacements::Pair...)
     isempty(replacements) && return op
     ps = map(p -> name(first(p)) => name(last(p)), replacements)
     return operator(
-        replacedimnames(state(op), ps...),
+        rename(state(op), ps...),
         replace(outputnames(op), ps...),
         replace(inputnames(op), ps...)
     )
 end
-function replacedimnames(f, op::NamedTensorOperator)
+function rename(f, op::NamedTensorOperator)
     return operator(
-        replacedimnames(f, state(op)), map(f, outputnames(op)), map(f, inputnames(op))
+        rename(f, state(op)), map(f, outputnames(op)), map(f, inputnames(op))
     )
 end
 
@@ -383,7 +382,7 @@ function operator end
 # TODO: Unify these two functions.
 function operator(a::AbstractArray, output, input)
     output, input = name.(output), name.(input)
-    na = nameddims(a, (output..., input...))
+    na = NamedTensor(a, (output..., input...))
     return operator(na, output, input)
 end
 function operator(a::AbstractNamedTensor, output, input)
@@ -425,7 +424,7 @@ operator_pairs(a::AbstractNamedTensor) = ()
 # any contracted (shared) names. A name whose chain dead-ends on a contracted
 # index is left dangling, so the result is well defined for any contraction.
 function product_output_input(a::AbstractNamedTensor, b::AbstractNamedTensor)
-    shared = intersect(dimnames(a), dimnames(b))
+    shared = intersect(names(a), names(b))
     pairs = collect(Iterators.flatten((operator_pairs(a), operator_pairs(b))))
     forward = Dict(pairs)
     input = eltype(keys(forward))[]
@@ -550,9 +549,9 @@ the input names, leaving the input unchanged.
 # Examples
 
 ```jldoctest
-julia> using ITensorBase: apply, namedoneto, operator
+julia> using ITensorBase: NamedOneTo, apply, operator
 
-julia> i, j, k, l = namedoneto.((2, 3, 2, 3), ("i", "j", "k", "l"));
+julia> i, j, k, l = NamedOneTo.((2, 3, 2, 3), ("i", "j", "k", "l"));
 
 julia> op = operator(randn(i, j, k, l), ("i", "j"), ("k", "l"));
 
@@ -617,8 +616,8 @@ See also [`operator`](@ref), [`uniquename`](@ref).
 function similar_operator(
         prototype, ::Type{T}, unnamed_input_axes, outputnames, inputnames
     ) where {T}
-    output_axes = named.(unnamed_input_axes, outputnames)
-    input_axes = named.(unnamed_input_axes, inputnames)
+    output_axes = NamedUnitRange.(unnamed_input_axes, outputnames)
+    input_axes = NamedUnitRange.(unnamed_input_axes, inputnames)
     raw = TA.similar_map(prototype, T, output_axes, input_axes)
     return operator(raw, outputnames, inputnames)
 end

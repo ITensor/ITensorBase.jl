@@ -12,8 +12,11 @@ stable user-facing API. For the stable user-facing API, see the [User Interface]
 
 A concrete tensor type subtypes [`AbstractNamedTensor`](@ref). [`NamedTensor`](@ref)
 is the built-in implementation, and [`ITensor`](@ref) is the `NamedTensor` with dimension
-names that are [`IndexName`](@ref)s. Its `NamedTensor(array, dimnames)` constructor pairs an array of
-any kind with its dimension names directly. User code usually builds one by calling an array constructor on indices or by
+names that are [`IndexName`](@ref)s. Its `NamedTensor(array, names)` constructor pairs an array of
+any kind with its dimension names directly, and a name given as an index also asserts that
+dimension's space. A second form, `NamedTensor(array, codomain_names, domain_names)`, splits the
+dimensions into a codomain and a domain group, as a map from the domain to the codomain.
+User code usually builds one by calling an array constructor on indices or by
 indexing an array (see [Constructors](@ref)) rather than calling it. The underlying
 named-range model has [`NamedUnitRange`](@ref) as the named-range type that a tensor's
 dimensions are ([`Index`](@ref) is the flavor keyed by an index name).
@@ -26,25 +29,23 @@ NamedUnitRange
 
 ## Named array operations
 
-Construct named objects with [`named`](@ref) and [`nameddims`](@ref), recover their parts
-with [`name`](@ref), [`unnamed`](@ref), and [`dimnames`](@ref), and query their types with
-[`dimnametype`](@ref), [`nametype`](@ref), and [`unnamedtype`](@ref). [`setname`](@ref) and
-[`replacedimnames`](@ref) rename, and [`aligndims`](@ref) and [`aligneddims`](@ref) reorder a
+Construct named objects with the [`NamedTensor`](@ref) and [`NamedUnitRange`](@ref)
+constructors, recover their parts with [`name`](@ref), [`unnamed`](@ref), and
+[`Base.names`](@ref), and query their types with [`nametype`](@ref) and
+[`unnamedtype`](@ref). [`setname`](@ref) and
+[`rename`](@ref) change names, and [`align`](@ref) and [`aligned`](@ref) reorder a
 tensor's dimensions by name (a copy and a view, respectively).
 
 ```@docs; canonical=false
-named
-nameddims
 name
 unnamed
-dimnames
-dimnametype
+Base.names
 nametype
 unnamedtype
 setname
-replacedimnames
-aligndims
-aligneddims
+rename
+align
+aligned
 ```
 
 ## Experimental

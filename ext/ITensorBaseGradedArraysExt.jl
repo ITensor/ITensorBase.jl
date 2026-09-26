@@ -1,7 +1,7 @@
 module ITensorBaseGradedArraysExt
 
 using GradedArrays: SectorRange
-using ITensorBase: ITensorBase, name, nameddims, uniquename, unnamed
+using ITensorBase: ITensorBase, NamedTensor, name, uniquename, unnamed
 using Random: AbstractRNG, default_rng
 using TensorKitSectors: Sector
 
@@ -15,9 +15,9 @@ const NamedUnitRange = ITensorBase.NamedUnitRange
 # Name the delegated result: the physical-leg names followed by a fresh name for the dangling aux
 # leg, minted of the legs' name type (not hardcoded to `IndexName`).
 function nameddims_aux(a, codomain, domain)
-    dimnames = name.((codomain..., domain...))
-    aux_name = uniquename(eltype(dimnames))
-    return nameddims(a, (dimnames..., aux_name))
+    names = name.((codomain..., domain...))
+    aux_name = uniquename(eltype(names))
+    return NamedTensor(a, (names..., aux_name))
 end
 
 # Three signature groups, each carrying a named physical axis so overloading `Base` is not piracy:

@@ -13,10 +13,10 @@ end
 parenttype(::Type{LazyNamedTensor}) = AbstractNamedTensor
 
 function LazyNamedTensor(a::AbstractNamedTensor)
-    return LazyNamedTensor{dimnametype(typeof(a)), typeof(a)}(a)
+    return LazyNamedTensor{nametype(typeof(a)), typeof(a)}(a)
 end
 function LazyNamedTensor(a::Mul{L}) where {L <: LazyNamedTensor}
-    return LazyNamedTensor{dimnametype(L), parenttype(L)}(a)
+    return LazyNamedTensor{nametype(L), parenttype(L)}(a)
 end
 lazy(a::LazyNamedTensor) = a
 lazy(a::AbstractNamedTensor) = LazyNamedTensor(a)
@@ -50,7 +50,7 @@ function Base.convert(
     return lazy(Mul(map(arg -> convert(LazyNamedTensor{D, A2}, arg), arguments(a))))
 end
 
-dimnames(a::LazyNamedTensor) = dimnames_lazy(a)
+Base.names(a::LazyNamedTensor) = names_lazy(a)
 inds(a::LazyNamedTensor) = inds_lazy(a)
 # `axes` is computed from `inds_lazy` rather than the generic `unnamed`-based fallback
 # because a `Mul` expression has no materialized `unnamed` array to take axes of.
