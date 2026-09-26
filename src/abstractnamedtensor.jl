@@ -785,27 +785,27 @@ Base.IndexStyle(s1::IndexStyle, s2::NamedIndexCartesian) = NamedIndexCartesian()
 Base.IndexStyle(s1::NamedIndexCartesian, s2::IndexStyle) = NamedIndexCartesian()
 
 # Like CartesianIndex but with named dimensions.
-struct NamedTensorCartesianIndex{N, Index <: Tuple{Vararg{NamedInteger, N}}} <:
+struct NamedCartesianIndex{N, Index <: Tuple{Vararg{NamedInteger, N}}} <:
     Base.AbstractCartesianIndex{N}
     I::Index
 end
-NamedTensorCartesianIndex(I::NamedInteger...) = NamedTensorCartesianIndex(I)
-Base.Tuple(I::NamedTensorCartesianIndex) = I.I
-function Base.show(io::IO, I::NamedTensorCartesianIndex)
-    print(io, "NamedTensorCartesianIndex")
+NamedCartesianIndex(I::NamedInteger...) = NamedCartesianIndex(I)
+Base.Tuple(I::NamedCartesianIndex) = I.I
+function Base.show(io::IO, I::NamedCartesianIndex)
+    print(io, "NamedCartesianIndex")
     show(io, Tuple(I))
     return nothing
 end
 
 # Like CartesianIndices but with named dimensions.
-struct NamedTensorCartesianIndices{
+struct NamedCartesianIndices{
         N,
         DimName,
         Indices <: Tuple{Vararg{NamedUnitRange, N}},
         Index <: Tuple{Vararg{NamedInteger, N}},
     } <: AbstractNamedTensor{DimName}
     indices::Indices
-    function NamedTensorCartesianIndices(indices::Tuple{Vararg{NamedUnitRange}})
+    function NamedCartesianIndices(indices::Tuple{Vararg{NamedUnitRange}})
         dimname = eltype(name.(indices))
         return new{length(indices), dimname, typeof(indices), Tuple{eltype.(indices)...}}(
             indices
@@ -815,29 +815,29 @@ end
 # The element type is no longer carried by the (rank-erased) supertype, so recover
 # it from the stored index-tuple parameter.
 function Base.eltype(
-        ::Type{<:NamedTensorCartesianIndices{N, <:Any, <:Any, Index}}
+        ::Type{<:NamedCartesianIndices{N, <:Any, <:Any, Index}}
     ) where {N, Index}
-    return NamedTensorCartesianIndex{N, Index}
+    return NamedCartesianIndex{N, Index}
 end
-Base.eltype(I::NamedTensorCartesianIndices) = eltype(typeof(I))
-Base.axes(I::NamedTensorCartesianIndices) = (only ∘ axes).(I.indices)
-Base.size(I::NamedTensorCartesianIndices) = length.(I.indices)
+Base.eltype(I::NamedCartesianIndices) = eltype(typeof(I))
+Base.axes(I::NamedCartesianIndices) = (only ∘ axes).(I.indices)
+Base.size(I::NamedCartesianIndices) = length.(I.indices)
 
-function Base.getindex(a::NamedTensorCartesianIndices{N}, I::Vararg{Int, N}) where {N}
+function Base.getindex(a::NamedCartesianIndices{N}, I::Vararg{Int, N}) where {N}
     index = map(a.indices, I) do r, i
         return r[i]
     end
-    return NamedTensorCartesianIndex(index)
+    return NamedCartesianIndex(index)
 end
 
-function unnamed(I::NamedTensorCartesianIndices)
+function unnamed(I::NamedCartesianIndices)
     return CartesianIndices(unnamed.(I.indices))
 end
 
-# Iterating yields `NamedTensorCartesianIndex`es. The generic `AbstractNamedTensor`
+# Iterating yields `NamedCartesianIndex`es. The generic `AbstractNamedTensor`
 # iteration forwards to `unnamed`, which here is a plain `CartesianIndices`, so
 # convert each parent index back through `getindex`.
-function Base.iterate(I::NamedTensorCartesianIndices, state...)
+function Base.iterate(I::NamedCartesianIndices, state...)
     y = iterate(unnamed(I), state...)
     isnothing(y) && return nothing
     cartesian, next_state = y
@@ -852,7 +852,7 @@ function Base.eachindex(
     all(a -> issetequal(names(a1), names(a)), a_rest) ||
         throw(NameMismatch("Dimension name mismatch $(names.((a1, a_rest...)))."))
     # TODO: Check the shapes match.
-    return NamedTensorCartesianIndices(axes(a1))
+    return NamedCartesianIndices(axes(a1))
 end
 
 # `unname` (eager), not `unnamed` (lazy view): reducing over a lazy permuted view
@@ -947,7 +947,7 @@ function Base.to_indices(a::AbstractNamedTensor, I::Tuple{Pair, Vararg{Pair}})
     return map((i, name) -> name[i], last.(I), inds)
 end
 
-function Base.to_indices(a::AbstractNamedTensor, I::Tuple{NamedTensorCartesianIndex})
+function Base.to_indices(a::AbstractNamedTensor, I::Tuple{NamedCartesianIndex})
     return to_indices(a, Tuple(only(I)))
 end
 
@@ -989,7 +989,7 @@ function Base.setindex!(
     setindex!(a, value, to_indices(a, (I1, Irest...))...)
     return a
 end
-function Base.setindex!(a::AbstractNamedTensor, value, I::NamedTensorCartesianIndex)
+function Base.setindex!(a::AbstractNamedTensor, value, I::NamedCartesianIndex)
     setindex!(a, value, to_indices(a, (I,))...)
     return a
 end

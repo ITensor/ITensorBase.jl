@@ -1,6 +1,6 @@
 using Combinatorics: Combinatorics
-using ITensorBase: @names, AbstractNamedTensor, Name, NameMismatch, Named, NamedOneTo,
-    NamedTensor, NamedTensorCartesianIndex, NamedTensorCartesianIndices, NamedUnitRange,
+using ITensorBase: @names, AbstractNamedTensor, Name, NameMismatch, Named,
+    NamedCartesianIndex, NamedCartesianIndices, NamedOneTo, NamedTensor, NamedUnitRange,
     align, aligned, apply, dim, dims, inds, isnamed, name, names, nametype, product, rename,
     setnames, unname, unnamed, unnamedtype
 using LinearAlgebra: LinearAlgebra
@@ -317,10 +317,10 @@ end
         nb = NamedTensor(randn(elt, 3, 2), (:j, :i))
         nc = zeros(elt, Named.((2, 3), (:i, :j)))
         Is = eachindex(na, nb)
-        @test Is isa NamedTensorCartesianIndices{2}
+        @test Is isa NamedCartesianIndices{2}
         @test issetequal(Is.indices, (NamedUnitRange(1:2, :i), NamedUnitRange(1:3, :j)))
         for I in Is
-            @test I isa NamedTensorCartesianIndex{2}
+            @test I isa NamedCartesianIndex{2}
             @test issetequal(name.(Tuple(I)), (:i, :j))
             nc[I] = na[I] + nb[I]
         end
