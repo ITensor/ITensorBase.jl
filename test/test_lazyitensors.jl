@@ -1,8 +1,8 @@
 using AbstractTrees: AbstractTrees, print_tree, printnode
 using Base.Broadcast: materialize
-using ITensorBase: @names, Greedy, LazyNamedTensor, Mul, NamedTensor, NamedTensorOperator,
-    SymbolicNamedTensor, dimnames, inds, inputnames, ismul, lazy, nameddims, namedoneto,
-    operator, optimize_evaluation_order, outputnames, state, substitute, symnameddims
+using ITensorBase: @names, Greedy, LazyNamedTensor, Mul, NamedOneTo, NamedTensor,
+    NamedTensorOperator, SymbolicNamedTensor, inds, inputnames, ismul, lazy, names,
+    operator, optimize_evaluation_order, outputnames, state, substitute, symnamedtensor
 using OMEinsumContractionOrders: ExhaustiveSearch, GreedyMethod, TreeSA
 using TermInterface: arguments, arity, children, head, iscall, isexpr, maketerm, operation,
     sorted_arguments, sorted_children
@@ -11,7 +11,7 @@ using WrappedUnions: unwrap
 
 @testset "LazyNamedTensors" begin
     @testset "Basics" begin
-        i, j, k, l = namedoneto.(2, (:i, :j, :k, :l))
+        i, j, k, l = NamedOneTo.(2, (:i, :j, :k, :l))
         a1 = randn(i, j)
         a2 = randn(j, k)
         a3 = randn(k, l)
@@ -36,9 +36,9 @@ using WrappedUnions: unwrap
     end
 
     @testset "TermInterface" begin
-        a1 = nameddims(randn(2, 2), (:i, :j))
-        a2 = nameddims(randn(2, 2), (:j, :k))
-        a3 = nameddims(randn(2, 2), (:k, :l))
+        a1 = NamedTensor(randn(2, 2), (:i, :j))
+        a2 = NamedTensor(randn(2, 2), (:j, :k))
+        a3 = NamedTensor(randn(2, 2), (:k, :l))
         l1, l2, l3 = lazy.((a1, a2, a3))
 
         @test_throws ErrorException arguments(l1)
@@ -79,14 +79,14 @@ using WrappedUnions: unwrap
             "└─ {\"k\", \"l\"}\n"
     end
 
-    @testset "symnameddims" begin
-        a1, a2, a3 = symnameddims.((:a1, :a2, :a3))
+    @testset "symnamedtensor" begin
+        a1, a2, a3 = symnamedtensor.((:a1, :a2, :a3))
         @test a1 isa LazyNamedTensor
         @test unwrap(a1) isa SymbolicNamedTensor
         @test unwrap(a1) == SymbolicNamedTensor(:a1, ())
         @test isequal(unwrap(a1), SymbolicNamedTensor(:a1, ()))
         @test isempty(inds(a1))
-        @test isempty(dimnames(a1))
+        @test isempty(names(a1))
 
         ex = a1 * a2 * a3
         @test copy(ex) == ex
@@ -96,7 +96,7 @@ using WrappedUnions: unwrap
     end
 
     @testset "substitute" begin
-        s = symnameddims.((:a1, :a2, :a3))
+        s = symnamedtensor.((:a1, :a2, :a3))
         i = @names i[1:4]
         a = (randn(2, 2)[i[1], i[2]], randn(2, 2)[i[2], i[3]], randn(2, 2)[i[3], i[4]])
         l = lazy.(a)
@@ -108,8 +108,12 @@ using WrappedUnions: unwrap
     end
 
     @testset "optimize_evaluation_order ($alg)" for alg in (Greedy(),)
-        i, j, k, l = namedoneto.((2, 3, 4, 5), (:i, :j, :k, :l))
-        s = [symnameddims(:a, (i, j)), symnameddims(:b, (j, k)), symnameddims(:c, (k, l))]
+        i, j, k, l = NamedOneTo.((2, 3, 4, 5), (:i, :j, :k, :l))
+        s = [
+            symnamedtensor(:a, (i, j)),
+            symnamedtensor(:b, (j, k)),
+            symnamedtensor(:c, (k, l)),
+        ]
         flat = lazy(Mul(s))
         ordered = optimize_evaluation_order(flat; alg)
         @test ordered isa LazyNamedTensor
@@ -117,12 +121,12 @@ using WrappedUnions: unwrap
         # Reordering nests the flat product into binary contractions and preserves
         # the open indices.
         @test arity(ordered) == 2
-        @test issetequal(dimnames(ordered), dimnames(flat))
+        @test issetequal(names(ordered), names(flat))
     end
 
     @testset "optimize_evaluation_order with repeated arguments ($alg)" for alg in
         (Greedy(),)
-        i, j = namedoneto.((2, 3), (:i, :j))
+        i, j = NamedOneTo.((2, 3), (:i, :j))
         a = randn(i, j)
         # Three equal arguments: the optimizer must contract them pairwise rather than
         # treating the repeats as one argument.
@@ -130,7 +134,7 @@ using WrappedUnions: unwrap
         ordered = optimize_evaluation_order(flat; alg)
         @test ismul(ordered)
         @test arity(ordered) == 2
-        @test issetequal(dimnames(ordered), dimnames(flat))
+        @test issetequal(names(ordered), names(flat))
         @test materialize(ordered) ≈ (a * a) * a
     end
 
@@ -140,19 +144,23 @@ using WrappedUnions: unwrap
             GreedyMethod(),
             TreeSA(),
         )
-        i, j, k, l = namedoneto.((2, 3, 4, 5), (:i, :j, :k, :l))
-        s = [symnameddims(:a, (i, j)), symnameddims(:b, (j, k)), symnameddims(:c, (k, l))]
+        i, j, k, l = NamedOneTo.((2, 3, 4, 5), (:i, :j, :k, :l))
+        s = [
+            symnamedtensor(:a, (i, j)),
+            symnamedtensor(:b, (j, k)),
+            symnamedtensor(:c, (k, l)),
+        ]
         flat = lazy(Mul(s))
         ordered = optimize_evaluation_order(flat; alg)
         @test ordered isa LazyNamedTensor
         @test ismul(ordered)
         @test arity(ordered) == 2
-        @test issetequal(dimnames(ordered), dimnames(flat))
+        @test issetequal(names(ordered), names(flat))
     end
 end
 
 @testset "lazy operator promotion" begin
-    i, j = namedoneto.(2, (:i, :j))
+    i, j = NamedOneTo.(2, (:i, :j))
     p = randn(i, j)                          # eager plain
     o = operator(randn(i, j), (i,), (j,))    # eager operator
     lp = lazy(p)                             # lazy plain

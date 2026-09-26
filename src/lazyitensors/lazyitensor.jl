@@ -13,10 +13,10 @@ end
 parenttype(::Type{LazyNamedTensor}) = AbstractNamedTensor
 
 function LazyNamedTensor(a::AbstractNamedTensor)
-    return LazyNamedTensor{dimnametype(typeof(a)), typeof(a)}(a)
+    return LazyNamedTensor{nametype(typeof(a)), typeof(a)}(a)
 end
 function LazyNamedTensor(a::Mul{L}) where {L <: LazyNamedTensor}
-    return LazyNamedTensor{dimnametype(L), parenttype(L)}(a)
+    return LazyNamedTensor{nametype(L), parenttype(L)}(a)
 end
 lazy(a::LazyNamedTensor) = a
 lazy(a::AbstractNamedTensor) = LazyNamedTensor(a)
@@ -50,7 +50,7 @@ function Base.convert(
     return lazy(Mul(map(arg -> convert(LazyNamedTensor{D, A2}, arg), arguments(a))))
 end
 
-dimnames(a::LazyNamedTensor) = dimnames_lazy(a)
+names(a::LazyNamedTensor) = names_lazy(a)
 inds(a::LazyNamedTensor) = inds_lazy(a)
 # `axes` is computed from `inds_lazy` rather than the generic `unnamed`-based fallback
 # because a `Mul` expression has no materialized `unnamed` array to take axes of.
@@ -86,7 +86,7 @@ Base.hash(a::LazyNamedTensor, h::UInt64) = hash_lazy(a, h)
 map_arguments(f, a::LazyNamedTensor) = map_arguments_lazy(f, a)
 substitute(a::LazyNamedTensor, substitutions) = substitute_lazy(a, substitutions)
 AbstractTrees.printnode(io::IO, a::LazyNamedTensor) = printnode_lazy(io, a)
-printnode_nameddims(io::IO, a::LazyNamedTensor) = printnode_lazy(io, a)
+printnode_namedtensor(io::IO, a::LazyNamedTensor) = printnode_lazy(io, a)
 Base.show(io::IO, a::LazyNamedTensor) = show_lazy(io, a)
 Base.show(io::IO, mime::MIME"text/plain", a::LazyNamedTensor) = show_lazy(io, mime, a)
 Base.:*(a::LazyNamedTensor) = mul_lazy(a)

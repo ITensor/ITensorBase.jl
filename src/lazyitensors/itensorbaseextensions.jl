@@ -17,8 +17,8 @@ end
 using AbstractTrees: AbstractTrees
 # Only print the dimension names when printing with `AbstractTrees.print_tree`.
 function AbstractTrees.printnode(io::IO, a::AbstractNamedTensor)
-    dimnames_a = "{" * join(map(s -> "\"$s\"", dimnames(a)), ", ") * "}"
-    print(io, dimnames_a)
+    names_a = "{" * join(map(s -> "\"$s\"", names(a)), ", ") * "}"
+    print(io, names_a)
     return nothing
 end
 
@@ -26,4 +26,4 @@ end
 # avoid type piracy when overloading on `AbstractNamedTensor`.
 # Method specializations (`LazyNamedTensor`, `SymbolicNamedTensor`) live in
 # `lazyitensor.jl` and `symbolicitensor.jl`.
-printnode_nameddims(io::IO, x) = AbstractTrees.printnode(io, x)
+printnode_namedtensor(io::IO, x) = AbstractTrees.printnode(io, x)

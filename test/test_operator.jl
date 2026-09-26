@@ -1,8 +1,8 @@
 using GradedArrays: U1, gradedrange, isdual
-using ITensorBase: ITensorBase as NDA, Index, NamedTensor, NamedTensorOperator, apply,
-    dimnames, id, inds, inputaxes, inputinds, inputname, inputnames, nameddims, namedoneto,
-    operator, outputaxes, outputinds, outputname, outputnames, product, replacedimnames,
-    similar_operator, state, unname, unnamed
+using ITensorBase: ITensorBase as NDA, Index, NamedOneTo, NamedTensor, NamedTensorOperator,
+    apply, id, inds, inputaxes, inputinds, inputname, inputnames, names, operator,
+    outputaxes, outputinds, outputname, outputnames, product, rename, similar_operator,
+    state, unname, unnamed
 using LinearAlgebra: I, norm
 using MatrixAlgebraKit: project_hermitian
 using Random: Random, randn
@@ -35,18 +35,18 @@ using Test: @test, @test_throws, @testset
     o = operator(randn(2, 2, 2, 2), ("i'", "j'"), ("i", "j"))
     @test o isa NamedTensorOperator
     o² = product(o, o)
-    @test issetequal(dimnames(o²), ("i'", "j'", "i", "j"))
-    õ = replacedimnames(
+    @test issetequal(names(o²), ("i'", "j'", "i", "j"))
+    õ = rename(
         state(o), "i" => "i'", "j" => "j'", "i'" => "x", "j'" => "y"
     )
-    o²′ = replacedimnames(õ * o, "x" => "i'", "y" => "j'")
+    o²′ = rename(õ * o, "x" => "i'", "y" => "j'")
     @test state(o²) ≈ o²′
 
     o = operator(randn(2, 2, 2, 2), ("i'", "j'"), ("i", "j"))
     v = NamedTensor(randn(2, 2), ("i", "j"))
     ov = apply(o, v)
-    @test issetequal(dimnames(ov), ("i", "j"))
-    @test ov ≈ replacedimnames(o * v, "i'" => "i", "j'" => "j")
+    @test issetequal(names(ov), ("i", "j"))
+    @test ov ≈ rename(o * v, "i'" => "i", "j'" => "j")
 end
 
 @testset "wire lookups" begin
@@ -118,7 +118,7 @@ end
     v = NamedTensor(randn(2, 2), ("j", "i"))
     Av = apply(A, v)
     @test Av isa NamedTensor
-    @test issetequal(dimnames(Av), ("j", "i"))
+    @test issetequal(names(Av), ("j", "i"))
     @test unname(Av, ("j", "i")) ≈ Am * unname(v, ("j", "i"))
 
     # Disjoint apply tensors, like `*`/product.
@@ -162,12 +162,12 @@ end
     # Partial overlap: A on sites (1, 2), B on sites (2, 3), sharing site 2 →
     # a three-site operator composed on 2 and tensored on 1 and 3.
     A3 = operator(
-        nameddims(randn(2, 2, 2, 2), ("1'", "2'", "1", "2")),
+        NamedTensor(randn(2, 2, 2, 2), ("1'", "2'", "1", "2")),
         ("1'", "2'"),
         ("1", "2")
     )
     B3 = operator(
-        nameddims(randn(2, 2, 2, 2), ("2'", "3'", "2", "3")),
+        NamedTensor(randn(2, 2, 2, 2), ("2'", "3'", "2", "3")),
         ("2'", "3'"),
         ("2", "3")
     )
@@ -176,8 +176,8 @@ end
     @test issetequal(inputnames(AB3), ("1", "2", "3"))
     # Value: weld A's input 2 to B's output 2' and contract.
     manual =
-        replacedimnames(state(A3), "2" => "bond") *
-        replacedimnames(state(B3), "2'" => "bond")
+        rename(state(A3), "2" => "bond") *
+        rename(state(B3), "2'" => "bond")
     order = ("1'", "2'", "3'", "1", "2", "3")
     @test unname(state(AB3), order) ≈ unname(manual, order)
 
@@ -186,7 +186,7 @@ end
     Aop = operator(randn(2, 2), ("i'",), ("i",))
     v = NamedTensor(randn(2, 3), ("i", "j"))
     Av = product(Aop, v)
-    @test issetequal(dimnames(Av), ("i'", "j"))
+    @test issetequal(names(Av), ("i'", "j"))
     @test isempty(outputnames(Av))
     @test isempty(inputnames(Av))
     @test unname(state(Av), ("i'", "j")) ≈
@@ -194,11 +194,11 @@ end
 
     # Kraus: composing two operators that share both the i-wire and a dangling Kraus
     # index `j` welds the wire and sums over `j`.
-    K = operator(nameddims(randn(2, 2, 3), ("i'", "i", "j")), ("i'",), ("i",))
+    K = operator(NamedTensor(randn(2, 2, 3), ("i'", "i", "j")), ("i'",), ("i",))
     KK = product(K, K)
     @test issetequal(outputnames(KK), ("i'",))
     @test issetequal(inputnames(KK), ("i",))
-    @test issetequal(dimnames(KK), ("i'", "i"))  # j contracted away
+    @test issetequal(names(KK), ("i'", "i"))  # j contracted away
     Km = unname(state(K), ("i'", "i", "j"))
     manual_kraus = sum(Km[:, :, jj] * Km[:, :, jj] for jj in axes(Km, 3))
     @test unname(state(KK), ("i'", "i")) ≈ manual_kraus
@@ -225,7 +225,7 @@ end
 
 @testset "operator from named ranges" begin
     # Output/input may be given as named ranges, not just names.
-    i, ip = namedoneto(2, "i"), namedoneto(2, "i'")
+    i, ip = NamedOneTo(2, "i"), NamedOneTo(2, "i'")
     o = operator(randn(2, 2), [ip], [i])
     @test o isa NamedTensorOperator{String}
     @test issetequal(outputnames(o), ("i'",))
@@ -234,41 +234,41 @@ end
 
 @testset "one(::NamedTensorOperator)" begin
     # Identity-operator construction: matricized form is the identity matrix.
-    i, j, k, l = namedoneto.((2, 3, 2, 3), ("i", "j", "k", "l"))
+    i, j, k, l = NamedOneTo.((2, 3, 2, 3), ("i", "j", "k", "l"))
     op = operator(randn(i, j, k, l), ("i", "j"), ("k", "l"))
     Id = one(op)
     @test Id isa NamedTensorOperator{String}
     @test outputnames(Id) == outputnames(op)
     @test inputnames(Id) == inputnames(op)
-    Id_mat = matricize(state(Id), (i, j) => "row", (k, l) => "col")
-    @test unname(Id_mat, ("row", "col")) ≈ I(6)
+    Id_mat = matricize(state(Id), (i, j), (k, l))
+    @test Id_mat ≈ I(6)
 end
 
 @testset "one(::AbstractNamedTensor, codomain, domain)" begin
     # Trivial codomain/domain layout.
-    i, j, k, l = namedoneto.((2, 3, 2, 3), ("i", "j", "k", "l"))
+    i, j, k, l = NamedOneTo.((2, 3, 2, 3), ("i", "j", "k", "l"))
     a = randn(i, j, k, l)
     Id = one(a, (i, j), (k, l))
-    Id_mat = matricize(Id, (i, j) => "row", (k, l) => "col")
-    @test unname(Id_mat, ("row", "col")) ≈ I(6)
+    Id_mat = matricize(Id, (i, j), (k, l))
+    @test Id_mat ≈ I(6)
 
     # Non-trivial axis ordering: codomain/domain are interleaved in `a`.
-    p, q, r, s = namedoneto.((2, 4, 2, 4), ("p", "q", "r", "s"))
+    p, q, r, s = NamedOneTo.((2, 4, 2, 4), ("p", "q", "r", "s"))
     a = randn(p, r, q, s)  # storage order interleaves codomain (p, q) and domain (r, s)
     Id = one(a, (p, q), (r, s))
-    @test issetequal(dimnames(Id), ("p", "r", "q", "s"))
-    Id_mat = matricize(Id, (p, q) => "row", (r, s) => "col")
-    @test unname(Id_mat, ("row", "col")) ≈ I(8)
+    @test issetequal(names(Id), ("p", "r", "q", "s"))
+    Id_mat = matricize(Id, (p, q), (r, s))
+    @test Id_mat ≈ I(8)
 end
 
 @testset "id(elt, codomain, domain)" begin
     # From-scratch identity map (no prototype): matricized form is the identity matrix.
-    i, j, k, l = namedoneto.((2, 3, 2, 3), ("i", "j", "k", "l"))
+    i, j, k, l = NamedOneTo.((2, 3, 2, 3), ("i", "j", "k", "l"))
     Id = id(Float64, (i, j), (k, l))
     @test eltype(Id) === Float64
-    @test issetequal(dimnames(Id), ("i", "j", "k", "l"))
-    Id_mat = matricize(Id, (i, j) => "row", (k, l) => "col")
-    @test unname(Id_mat, ("row", "col")) ≈ I(6)
+    @test issetequal(names(Id), ("i", "j", "k", "l"))
+    Id_mat = matricize(Id, (i, j), (k, l))
+    @test Id_mat ≈ I(6)
 
     # The requested element type is honored.
     @test eltype(id(ComplexF64, (i, j), (k, l))) === ComplexF64
@@ -288,7 +288,7 @@ end
     @test only(outputnames(op)) != "i"
 
     # Named-axes form reuses each axis's name as the input.
-    i = namedoneto(3, "i")
+    i = NamedOneTo(3, "i")
     op = similar_operator(randn(3, 3), Float64, (i,))
     @test issetequal(inputnames(op), ("i",))
     @test only(outputnames(op)) != "i"
@@ -390,13 +390,13 @@ end
     # A shared *dangling* leg (in neither pairing) is summed away, and the
     # surviving output/input of each operand combine. This is the `c† * c`
     # hopping pattern: two operators paired over an auxiliary link.
-    a = operator(nameddims(randn(2, 2, 3), ("i'", "i", "aux")), ["i'"], ["i"])
-    b = operator(nameddims(randn(2, 2, 3), ("j'", "j", "aux")), ["j'"], ["j"])
+    a = operator(NamedTensor(randn(2, 2, 3), ("i'", "i", "aux")), ["i'"], ["i"])
+    b = operator(NamedTensor(randn(2, 2, 3), ("j'", "j", "aux")), ["j'"], ["j"])
     ab = a * b
     @test ab isa NamedTensorOperator
     @test issetequal(outputnames(ab), ("i'", "j'"))
     @test issetequal(inputnames(ab), ("i", "j"))
-    @test !("aux" in dimnames(ab))
+    @test !("aux" in names(ab))
     @test state(ab) ≈ state(a) * state(b)
 
     # A shared *paired* index (a's input equals b's output) chains through the
@@ -411,12 +411,12 @@ end
     # Applying an operator to a plain state contracts the operator's input and
     # leaves its output dangling. The result stays an `NamedTensorOperator` with empty
     # output/input (the surviving `a'` leg is dangling, in neither).
-    v = nameddims(randn(2), ("m",))
+    v = NamedTensor(randn(2), ("m",))
     Av = operator(randn(2, 2), ("a'",), ("m",)) * v
     @test Av isa NamedTensorOperator
     @test isempty(outputnames(Av))
     @test isempty(inputnames(Av))
-    @test issetequal(dimnames(Av), ("a'",))
+    @test issetequal(names(Av), ("a'",))
 end
 
 @testset "Hermitian square roots on NamedTensorOperator" begin

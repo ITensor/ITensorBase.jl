@@ -405,11 +405,11 @@ prime(i::Index) = setname(i, prime(name(i)))
 noprime(i::Index) = setname(i, noprime(name(i)))
 sim(i::Index) = setname(i, sim(name(i)))
 
-# Whole-tensor index manipulation: relabel every index name-only via `mapinds`, leaving the
+# Whole-tensor index manipulation: relabel every index name-only via `rename`, leaving the
 # data and spaces untouched.
-prime(a::AbstractNamedTensor) = mapinds(prime, a)
-noprime(a::AbstractNamedTensor) = mapinds(noprime, a)
-sim(a::AbstractNamedTensor) = mapinds(sim, a)
+prime(a::AbstractNamedTensor) = rename(prime, a)
+noprime(a::AbstractNamedTensor) = rename(noprime, a)
+sim(a::AbstractNamedTensor) = rename(sim, a)
 
 function primestring(plev)
     if plev < 0

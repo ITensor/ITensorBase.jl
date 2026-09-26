@@ -1,10 +1,10 @@
 module ITensorBaseAdaptExt
 
 using Adapt: Adapt, adapt
-using ITensorBase: AbstractNamedTensor, dimnames, nameddims, unnamed
+using ITensorBase: AbstractNamedTensor, NamedTensor, names, unnamed
 
 function Adapt.adapt_structure(to, a::AbstractNamedTensor)
-    return nameddims(adapt(to, unnamed(a)), dimnames(a))
+    return NamedTensor(adapt(to, unnamed(a)), names(a))
 end
 
 end

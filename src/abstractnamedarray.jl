@@ -12,16 +12,11 @@ const AbstractNamedMatrix{Name, UnnamedT} = AbstractNamedArray{Name, UnnamedT, 2
 unnamed(a::AbstractNamedArray) = throw(MethodError(unnamed, Tuple{typeof(a)}))
 name(a::AbstractNamedArray) = throw(MethodError(name, Tuple{typeof(a)}))
 
-# This can be customized to output different named array types,
-# such as `namedarray(a::AbstractArray, name::IndexName) = Index(a, name)`.
-namedarray(a::AbstractArray, name) = NamedArray(a, name)
-
-# Shorthand.
-named(a::AbstractArray, name) = namedarray(a, name)
+to_named(a::AbstractArray, name) = NamedArray(a, name)
 
 # Derived interface.
 # TODO: Use `Accessors.@set`?
-setname(a::AbstractNamedArray, name) = namedarray(unnamed(a), name)
+setname(a::AbstractNamedArray, name) = NamedArray(unnamed(a), name)
 
 # `Name` leads, so `nametype` reads it from the abstract type. The wrapped
 # container type lives only on the concrete subtypes, so `unnamedtype` is defined
@@ -42,7 +37,9 @@ function Base.:(==)(a1::AbstractNamedArray, a2::AbstractNamedArray)
 end
 Base.hash(a::AbstractNamedArray, h::UInt) = hash_named(:NamedArray, a, h)
 
-getindex_named(a::AbstractArray, I...) = named(getindex(unnamed(a), I...), name(a))
+# The slice can be an element, a range, or a general array depending on `I` and on what
+# the parent is, so the named type it takes is only known at runtime.
+getindex_named(a::AbstractArray, I...) = to_named(getindex(unnamed(a), I...), name(a))
 
 # Array funcionality.
 Base.size(a::AbstractNamedArray) = size(unnamed(a))
@@ -69,20 +66,31 @@ Base.isempty(a::AbstractNamedArray) = isempty(unnamed(a))
 ## Base.iterate(a::AbstractNamedArray) = isempty(a) ? nothing : (first(a), first(a))
 ## function Base.iterate(a::AbstractNamedArray, i)
 ##   i == last(a) && return nothing
-##   next = named(unnamed(i) + unnamed(step(a)), name(a))
+##   next = Named(unnamed(i) + unnamed(step(a)), name(a))
 ##   return (next, next)
 ## end
 
 function uniquename(rng::AbstractRNG, a::AbstractNamedArray)
-    return named(unnamed(a), uniquename(rng, name(a)))
+    return setname(a, uniquename(rng, name(a)))
 end
 
+# Show as the constructor call that rebuilds the value, so the output round-trips. A
+# `NamedOneTo` (the common case, since it is what a tensor dimension of a plain array is)
+# prints through `NamedOneTo`, the spelling that builds one from a length.
 function Base.show(io::IO, a::AbstractNamedArray)
-    print(io, "named(", unnamed(a), ", ", repr(name(a)), ")")
+    if a isa NamedOneTo
+        print(io, "NamedOneTo(", length(unnamed(a)), ", ", repr(name(a)), ")")
+    else
+        print(io, nameof(typeof(a)), "(", unnamed(a), ", ", repr(name(a)), ")")
+    end
     return nothing
 end
 function Base.show(io::IO, mime::MIME"text/plain", a::AbstractNamedArray)
-    print(io, "named(\n")
+    if a isa NamedOneTo
+        show(io, a)
+        return nothing
+    end
+    print(io, nameof(typeof(a)), "(\n")
     show(io, mime, unnamed(a))
     print(io, ",\n ", repr(name(a)), ")")
     return nothing

@@ -17,7 +17,7 @@ by name under contraction, addition, and indexing. Unlike an `AbstractArray`, th
 and element type live in the data rather than the type, so `ndims` and `eltype` are not
 fixed at the type level.
 
-See also [`NamedTensor`](@ref), [`dimnames`](@ref), [`inds`](@ref).
+See also [`NamedTensor`](@ref), [`names`](@ref), [`inds`](@ref).
 """
 abstract type AbstractNamedTensor{DimName} end
 
@@ -28,65 +28,51 @@ abstract type AbstractNamedTensor{DimName} end
 Base.ndims(::Type{<:AbstractNamedTensor}) = Any
 
 """
-    dimnames(a::AbstractNamedTensor)
-    dimnames(a::AbstractNamedTensor, dim::Int)
+    names(a::AbstractNamedTensor)
+    names(a::AbstractNamedTensor, dim::Int)
 
 The dimension names of `a`, as a collection in dimension order. The second form returns
-the name of dimension `dim`.
+the name of dimension `dim`. `Base.names` is an equivalent spelling that forwards here,
+so either can be called; a new tensor type overloads `ITensorBase.names`.
 
 # Examples
 
 ```jldoctest
-julia> a = nameddims(zeros(2, 3), (:i, :j));
+julia> a = NamedTensor(zeros(2, 3), (:i, :j));
 
-julia> dimnames(a)
+julia> names(a)
 2-element Vector{Symbol}:
  :i
  :j
 
-julia> dimnames(a, 2)
+julia> names(a, 2)
 :j
 ```
 
-See also [`inds`](@ref), [`nameddims`](@ref).
+See also [`inds`](@ref), [`NamedTensor`](@ref).
 """
-function dimnames end
-dimnames(a::AbstractNamedTensor) = throw(MethodError(dimnames, a))
-function dimnames(a::AbstractNamedTensor, dim::Int)
-    return dimnames(a)[dim]
+function names end
+
+names(a::AbstractNamedTensor) = throw(MethodError(names, a))
+function names(a::AbstractNamedTensor, dim::Int)
+    return names(a)[dim]
 end
 
-"""
-    dimnametype(a::AbstractNamedTensor)
-    dimnametype(type::Type{<:AbstractNamedTensor})
+Base.names(a::AbstractNamedTensor) = names(a)
+Base.names(a::AbstractNamedTensor, dim::Int) = names(a, dim)
 
-The type of an individual dimension name of `a`. The primary method dispatches
-on the array type, and `dimnametype(a)` forwards to `dimnametype(typeof(a))`. A
-type that does not fix its dimname flavor (such as the unparameterized `NamedTensor`)
-returns `Any`, the same way `eltype(Array)` is `Any`.
-
-# Examples
-
-```jldoctest
-julia> a = nameddims(zeros(2, 3), (:i, :j));
-
-julia> dimnametype(a)
-Symbol
-
-julia> dimnametype(typeof(a))
-Symbol
-```
-"""
-function dimnametype end
-dimnametype(a::AbstractNamedTensor) = dimnametype(typeof(a))
-dimnametype(::Type{<:AbstractNamedTensor{DimName}}) where {DimName} = DimName
-dimnametype(::Type{<:AbstractNamedTensor}) = Any
+# `nametype` (documented with the named-array methods in `named.jl`) reports the type of an
+# individual dimension name. `AbstractNamedTensor` is a separate hierarchy from
+# `AbstractNamedArray`, so it needs its own methods.
+nametype(a::AbstractNamedTensor) = nametype(typeof(a))
+nametype(::Type{<:AbstractNamedTensor{DimName}}) where {DimName} = DimName
+nametype(::Type{<:AbstractNamedTensor}) = Any
 
 # Unwrapping the names (named-array interface).
 # TODO: Use `IsNamed` trait?
 unnamed(a::AbstractNamedTensor) = throw(MethodError(unnamed, a))
-function unnamed(a::AbstractNamedTensor, names)
-    return _permuteddims_to(unnamed(a), getperm(dimnames(a), names))
+function unnamed(a::AbstractNamedTensor, nms)
+    return _permuteddims_to(unnamed(a), getperm(names(a), nms))
 end
 # Function barrier: `unnamed(a)` is abstractly typed, so dispatching on the concrete array here
 # makes `ndims` a compile-time constant. Building the permutation as an `ntuple(…, Val(ndims))`
@@ -98,7 +84,7 @@ end
 @noinline function _permuteddims_to(array, perm)
     return permuteddims(array, ntuple(i -> perm[i], Val(TensorAlgebra.ndims(array))))
 end
-unname(a::AbstractNamedTensor, inds) = unnamed(aligndims(a, inds))
+unname(a::AbstractNamedTensor, inds) = unnamed(align(a, inds))
 
 """
     inds(a::AbstractNamedTensor)
@@ -106,7 +92,7 @@ unname(a::AbstractNamedTensor, inds) = unnamed(aligndims(a, inds))
 
 The named axes (indices) of `a`, as a `Vector` with one entry per dimension. Each entry
 pairs a dimension's axis with its name. The second form returns the index of dimension
-`dim`. Compare with [`dimnames`](@ref), which returns just the names without the axes. The
+`dim`. Compare with [`names`](@ref), which returns just the names without the axes. The
 `axes` function returns the same indices as a `Tuple`, which the `AbstractArray` interface
 relies on; `inds` returns a `Vector` because the indices are most often manipulated as a
 collection (`filter`, `setdiff`, `union`).
@@ -114,15 +100,15 @@ collection (`filter`, `setdiff`, `union`).
 # Examples
 
 ```jldoctest
-julia> a = nameddims(zeros(2, 3), (:i, :j));
+julia> a = NamedTensor(zeros(2, 3), (:i, :j));
 
 julia> inds(a)
 2-element Vector{NamedUnitRange{Symbol, Int64, Base.OneTo{Int64}}}:
- named(Base.OneTo(2), :i)
- named(Base.OneTo(3), :j)
+ NamedOneTo(2, :i)
+ NamedOneTo(3, :j)
 
 julia> inds(a, 1)
-named(Base.OneTo(2), :i)
+NamedOneTo(2, :i)
 ```
 """
 function inds end
@@ -132,7 +118,7 @@ inds(a::AbstractNamedTensor, dim::Int) = axes(a)[dim]
 isnamed(::Type{<:AbstractNamedTensor}) = true
 
 function dim(a::AbstractNamedTensor, n)
-    return findfirst(==(name(n)), dimnames(a))
+    return findfirst(==(name(n)), names(a))
 end
 dims(a::AbstractNamedTensor, ns) = Base.Fix1(dim, a).(ns)
 
@@ -158,41 +144,16 @@ function to_inds(a::AbstractNamedTensor, dims)
     return Base.Fix1(inds, a).(is)
 end
 
-# Generic construction of named dims arrays.
-
-"""
-    nameddims(a, dimnames)
-
-Construct a named dimensions array from an unnamed parent `a` and named dimensions
-`dimnames`. The parent is usually an `AbstractArray`, but any object that a `NamedTensor`
-can wrap works (e.g. a TensorKit `TensorMap`).
-
-# Examples
-
-```jldoctest
-julia> nameddims(zeros(2, 3), (:i, :j))
-named(Base.OneTo(2), :i)×named(Base.OneTo(3), :j) NamedTensor{Symbol}:
-2×3 Matrix{Float64}:
- 0.0  0.0  0.0
- 0.0  0.0  0.0
-```
-
-See also [`NamedTensor`](@ref), [`named`](@ref).
-"""
-function nameddims(a, dimnames)
-    return NamedTensor(a, dimnames)
-end
-
 #=
-    nameddimsof(a::AbstractNamedTensor, b)
+    namedtensorof(a::AbstractNamedTensor, b)
 
-Construct a named dimensions array with the dimension names of `a`
+Construct a named tensor with the dimension names of `a`
 and with the data from `b`. The parent `b` is usually an `AbstractArray` but may be any
 object a `NamedTensor` can wrap (e.g. a TensorKit `TensorMap`), so `copy`/`zero` of a
 named tensor round-trip through whatever backend `unnamed(a)` uses.
 =#
-function nameddimsof(a::AbstractNamedTensor, b)
-    return nameddims(b, dimnames(a))
+function namedtensorof(a::AbstractNamedTensor, b)
+    return NamedTensor(b, names(a))
 end
 
 # TODO: Move to `utils.jl` file.
@@ -215,8 +176,8 @@ function checked_indexin(x::AbstractUnitRange, y::AbstractUnitRange)
     return findfirst(==(first(x)), y):findfirst(==(last(x)), y)
 end
 
-Base.copy(a::AbstractNamedTensor) = nameddimsof(a, copy(unnamed(a)))
-Base.zero(a::AbstractNamedTensor) = nameddimsof(a, zero(unnamed(a)))
+Base.copy(a::AbstractNamedTensor) = namedtensorof(a, copy(unnamed(a)))
+Base.zero(a::AbstractNamedTensor) = namedtensorof(a, zero(unnamed(a)))
 
 # `CartesianIndices` of a named tensor is the parent's, via the named axes (as the
 # `AbstractArray` fallback did through `axes`).
@@ -290,7 +251,7 @@ Base.Array{<:Any, N}(a::AbstractNamedTensor) where {N} = Array{eltype(a), N}(a)
 # Read the parent's axes through TensorAlgebra's interface (not `Base.axes`) so a non-array
 # backend like a TensorMap, whose axes are its native spaces, is supported.
 function Base.axes(a::AbstractNamedTensor)
-    return named.(TensorAlgebra.axes(unnamed(a)), Tuple(dimnames(a)))
+    return NamedUnitRange.(TensorAlgebra.axes(unnamed(a)), Tuple(names(a)))
 end
 function Base.size(a::AbstractNamedTensor)
     return length.(axes(a))
@@ -325,7 +286,7 @@ end
 function TensorAlgebra.add!(
         y::AbstractNamedTensor, x::AbstractNamedTensor, α::Number, β::Number
     )
-    TensorAlgebra.add!(unnamed(y), unnamed(x, dimnames(y)), α, β)
+    TensorAlgebra.add!(unnamed(y), unnamed(x, names(y)), α, β)
     return y
 end
 
@@ -393,23 +354,26 @@ Base.size(a::AbstractNamedTensor, dimname::Name) = size(a, dim(a, dimname))
 # Lowered through `TensorAlgebra.similar_map` (all-codomain, so identical to
 # `similar(parent, elt, axes)` for dense) so non-`AbstractArray` backends whose `similar`
 # wants a map-shaped space (e.g. a `TensorMap`) allocate through their own overload.
-function similar_nameddims(a::AbstractNamedTensor, elt::Type, ax)
-    return nameddims(
+function similar_namedtensor(a::AbstractNamedTensor, elt::Type, ax)
+    return NamedTensor(
         TensorAlgebra.similar_map(unnamed(a), elt, unnamed.(Tuple(ax)), ()),
         name.(ax)
     )
 end
-function similar_nameddims(a::AbstractArray, elt::Type, ax)
-    return nameddims(TensorAlgebra.similar_map(a, elt, unnamed.(Tuple(ax)), ()), name.(ax))
+function similar_namedtensor(a::AbstractArray, elt::Type, ax)
+    return NamedTensor(
+        TensorAlgebra.similar_map(a, elt, unnamed.(Tuple(ax)), ()),
+        name.(ax)
+    )
 end
 
 # Base.similar gets the eltype at compile time.
 Base.similar(a::AbstractNamedTensor) = similar(a, eltype(a))
 function Base.similar(a::AbstractNamedTensor, elt::Type)
-    return similar_nameddims(a, elt)
+    return similar_namedtensor(a, elt)
 end
-function similar_nameddims(a::AbstractNamedTensor, elt::Type)
-    return nameddimsof(a, similar(unnamed(a), elt))
+function similar_namedtensor(a::AbstractNamedTensor, elt::Type)
+    return namedtensorof(a, similar(unnamed(a), elt))
 end
 
 # This is defined explicitly since the Base version expects the eltype
@@ -424,7 +388,7 @@ function Base.similar(
         a::AbstractArray, elt::Type,
         inds::Tuple{NamedUnitRange, Vararg{NamedUnitRange}}
     )
-    return similar_nameddims(a, elt, inds)
+    return similar_namedtensor(a, elt, inds)
 end
 
 # Same entry points with a named-tensor prototype. An `AbstractNamedTensor` is no longer
@@ -440,7 +404,7 @@ function Base.similar(
         a::AbstractNamedTensor, elt::Type,
         inds::Tuple{NamedUnitRange, Vararg{NamedUnitRange}}
     )
-    return similar_nameddims(a, elt, inds)
+    return similar_namedtensor(a, elt, inds)
 end
 
 # Rank-0 (empty named axes): a scalar tensor on `a`'s backend, e.g. a backend-matched unit
@@ -448,7 +412,7 @@ end
 # least one `NamedUnitRange`.
 Base.similar(a::AbstractNamedTensor, inds::Tuple{}) = similar(a, eltype(a), inds)
 function Base.similar(a::AbstractNamedTensor, elt::Type, inds::Tuple{})
-    return similar_nameddims(a, elt, inds)
+    return similar_namedtensor(a, elt, inds)
 end
 
 # Map-shaped allocator: a shell over the `codomain`/`domain` named axes following `a`'s
@@ -463,16 +427,16 @@ function Base.similar(a::AbstractNamedTensor, codomain, domain)
 end
 function Base.similar(a::AbstractNamedTensor, elt::Type, codomain, domain)
     raw = TensorAlgebra.similar_map(unnamed(a), elt, unnamed.(codomain), unnamed.(domain))
-    return nameddims(raw, (name.(codomain)..., name.(domain)...))
+    return NamedTensor(raw, name.(codomain), name.(domain))
 end
 
-function setdimnames(a::AbstractNamedTensor, dimnames)
-    return nameddims(unnamed(a), dimnames)
+function setnames(a::AbstractNamedTensor, names)
+    return NamedTensor(unnamed(a), names)
 end
 
 """
-    replacedimnames(a::AbstractNamedTensor, replacements::Pair...)
-    replacedimnames(f, a::AbstractNamedTensor)
+    rename(a::AbstractNamedTensor, replacements::Pair...)
+    rename(f, a::AbstractNamedTensor)
 
 Return a tensor with the same data as `a` but with its dimension names replaced. The
 first form takes `old => new` pairs, replacing matching names and leaving the rest
@@ -481,84 +445,33 @@ unchanged. The second form replaces each name with `f(name)`.
 # Examples
 
 ```jldoctest
-julia> using ITensorBase: replacedimnames
+julia> a = NamedTensor(zeros(2, 3), (:i, :j));
 
-julia> a = nameddims(zeros(2, 3), (:i, :j));
-
-julia> dimnames(replacedimnames(a, :i => :k))
+julia> names(rename(a, :i => :k))
 2-element Vector{Symbol}:
  :k
  :j
 ```
 
-See also [`dimnames`](@ref).
+See also [`names`](@ref).
 """
-function replacedimnames end
+function rename end
 # `name` strips an `Index`/`NamedUnitRange` to its dimension name and passes a bare name
 # through unchanged, so an index-keyed pair (`i => j`) relabels like the name-keyed pair
-# (`name(i) => name(j)`). `dimnames(a)` holds names, so a raw-index key would never match and
+# (`name(i) => name(j)`). `names(a)` holds names, so a raw-index key would never match and
 # silently no-op.
-function replacedimnames(a::AbstractNamedTensor, replacements::Pair...)
+function rename(a::AbstractNamedTensor, replacements::Pair...)
     # Base's `replace(::AbstractArray)` with no pairs throws (unlike `replace(::AbstractString)`),
     # so short-circuit the empty case: with no replacements there is nothing to relabel.
     isempty(replacements) && return a
     replacements = map(p -> name(first(p)) => name(last(p)), replacements)
-    new_dimnames = replace(dimnames(a), replacements...)
-    return nameddims(unnamed(a), new_dimnames)
+    new_names = replace(names(a), replacements...)
+    return NamedTensor(unnamed(a), new_names)
 end
-function replacedimnames(f, a::AbstractNamedTensor)
-    new_dimnames = replace(f, dimnames(a))
-    return nameddims(unnamed(a), new_dimnames)
+function rename(f, a::AbstractNamedTensor)
+    new_names = replace(f, names(a))
+    return NamedTensor(unnamed(a), new_names)
 end
-mapdimnames(f, a::AbstractNamedTensor) = replacedimnames(f, a)
-
-"""
-    replaceinds(a::AbstractNamedTensor, replacements::Pair...)
-    replaceinds(f, a::AbstractNamedTensor)
-
-Return a tensor with the same data as `a`, with its indices relabeled to the ones specified.
-The pair form takes `old => new` index pairs, and the function form relabels each index `i`
-using `f(i)`.
-
-# Examples
-
-```jldoctest
-julia> i, j, k = Index.((2, 3, 2));
-
-julia> t = randn(i, j);
-
-julia> inds(replaceinds(t, i => k)) == [k, j]
-true
-```
-
-See also [`mapinds`](@ref), [`replacedimnames`](@ref).
-"""
-function replaceinds(a::AbstractNamedTensor, replacements::Pair...)
-    return replacedimnames(a, replacements...)
-end
-replaceinds(f, a::AbstractNamedTensor) = replaceinds(a, map(i -> i => f(i), inds(a))...)
-
-"""
-    mapinds(f, a::AbstractNamedTensor)
-
-Return a tensor with the same data as `a`, with each index `i` relabeled using `f(i)`. This is
-the function form of [`replaceinds`](@ref), taking a function input instead of `old => new`
-pairs.
-
-# Examples
-
-```jldoctest
-julia> i, j = Index.((2, 3));
-
-julia> t = randn(i, j);
-
-julia> inds(mapinds(prime, t)) == [prime(i), prime(j)]
-true
-```
-
-See also [`replaceinds`](@ref).
-"""
-mapinds(f, a::AbstractNamedTensor) = replaceinds(f, a)
 
 # Name-based index-set algebra (the `commoninds`/etc. surface). Layered in three:
 # small order-preserving set ops on arbitrary collections, the same ops keyed by index
@@ -872,27 +785,27 @@ Base.IndexStyle(s1::IndexStyle, s2::NamedIndexCartesian) = NamedIndexCartesian()
 Base.IndexStyle(s1::NamedIndexCartesian, s2::IndexStyle) = NamedIndexCartesian()
 
 # Like CartesianIndex but with named dimensions.
-struct NamedDimsCartesianIndex{N, Index <: Tuple{Vararg{NamedInteger, N}}} <:
+struct NamedCartesianIndex{N, Index <: Tuple{Vararg{NamedInteger, N}}} <:
     Base.AbstractCartesianIndex{N}
     I::Index
 end
-NamedDimsCartesianIndex(I::NamedInteger...) = NamedDimsCartesianIndex(I)
-Base.Tuple(I::NamedDimsCartesianIndex) = I.I
-function Base.show(io::IO, I::NamedDimsCartesianIndex)
-    print(io, "NamedDimsCartesianIndex")
+NamedCartesianIndex(I::NamedInteger...) = NamedCartesianIndex(I)
+Base.Tuple(I::NamedCartesianIndex) = I.I
+function Base.show(io::IO, I::NamedCartesianIndex)
+    print(io, "NamedCartesianIndex")
     show(io, Tuple(I))
     return nothing
 end
 
 # Like CartesianIndices but with named dimensions.
-struct NamedDimsCartesianIndices{
+struct NamedCartesianIndices{
         N,
         DimName,
         Indices <: Tuple{Vararg{NamedUnitRange, N}},
         Index <: Tuple{Vararg{NamedInteger, N}},
     } <: AbstractNamedTensor{DimName}
     indices::Indices
-    function NamedDimsCartesianIndices(indices::Tuple{Vararg{NamedUnitRange}})
+    function NamedCartesianIndices(indices::Tuple{Vararg{NamedUnitRange}})
         dimname = eltype(name.(indices))
         return new{length(indices), dimname, typeof(indices), Tuple{eltype.(indices)...}}(
             indices
@@ -902,29 +815,29 @@ end
 # The element type is no longer carried by the (rank-erased) supertype, so recover
 # it from the stored index-tuple parameter.
 function Base.eltype(
-        ::Type{<:NamedDimsCartesianIndices{N, <:Any, <:Any, Index}}
+        ::Type{<:NamedCartesianIndices{N, <:Any, <:Any, Index}}
     ) where {N, Index}
-    return NamedDimsCartesianIndex{N, Index}
+    return NamedCartesianIndex{N, Index}
 end
-Base.eltype(I::NamedDimsCartesianIndices) = eltype(typeof(I))
-Base.axes(I::NamedDimsCartesianIndices) = (only ∘ axes).(I.indices)
-Base.size(I::NamedDimsCartesianIndices) = length.(I.indices)
+Base.eltype(I::NamedCartesianIndices) = eltype(typeof(I))
+Base.axes(I::NamedCartesianIndices) = (only ∘ axes).(I.indices)
+Base.size(I::NamedCartesianIndices) = length.(I.indices)
 
-function Base.getindex(a::NamedDimsCartesianIndices{N}, I::Vararg{Int, N}) where {N}
+function Base.getindex(a::NamedCartesianIndices{N}, I::Vararg{Int, N}) where {N}
     index = map(a.indices, I) do r, i
         return r[i]
     end
-    return NamedDimsCartesianIndex(index)
+    return NamedCartesianIndex(index)
 end
 
-function unnamed(I::NamedDimsCartesianIndices)
+function unnamed(I::NamedCartesianIndices)
     return CartesianIndices(unnamed.(I.indices))
 end
 
-# Iterating yields `NamedDimsCartesianIndex`es. The generic `AbstractNamedTensor`
+# Iterating yields `NamedCartesianIndex`es. The generic `AbstractNamedTensor`
 # iteration forwards to `unnamed`, which here is a plain `CartesianIndices`, so
 # convert each parent index back through `getindex`.
-function Base.iterate(I::NamedDimsCartesianIndices, state...)
+function Base.iterate(I::NamedCartesianIndices, state...)
     y = iterate(unnamed(I), state...)
     isnothing(y) && return nothing
     cartesian, next_state = y
@@ -936,10 +849,10 @@ function Base.eachindex(
         a1::AbstractNamedTensor,
         a_rest::AbstractNamedTensor...
     )
-    all(a -> issetequal(dimnames(a1), dimnames(a)), a_rest) ||
-        throw(NameMismatch("Dimension name mismatch $(dimnames.((a1, a_rest...)))."))
+    all(a -> issetequal(names(a1), names(a)), a_rest) ||
+        throw(NameMismatch("Dimension name mismatch $(names.((a1, a_rest...)))."))
     # TODO: Check the shapes match.
-    return NamedDimsCartesianIndices(axes(a1))
+    return NamedCartesianIndices(axes(a1))
 end
 
 # `unname` (eager), not `unnamed` (lazy view): reducing over a lazy permuted view
@@ -948,22 +861,22 @@ end
 # Base version ignores dimension names.
 # TODO: Use `mapreduce(isequal, &&, a1, a2)`?
 function Base.isequal(a1::AbstractNamedTensor, a2::AbstractNamedTensor)
-    issetequal(dimnames(a1), dimnames(a2)) || return false
-    return isequal(unnamed(a1), unname(a2, dimnames(a1)))
+    issetequal(names(a1), names(a2)) || return false
+    return isequal(unnamed(a1), unname(a2, names(a1)))
 end
 
 # Base version ignores dimension names.
 # TODO: Use `mapreduce(==, &&, a1, a2)`?
 # TODO: Handle `missing` values properly.
 function Base.:(==)(a1::AbstractNamedTensor, a2::AbstractNamedTensor)
-    issetequal(dimnames(a1), dimnames(a2)) || return false
-    return unnamed(a1) == unname(a2, dimnames(a1))
+    issetequal(names(a1), names(a2)) || return false
+    return unnamed(a1) == unname(a2, names(a1))
 end
 
 # Base version ignores dimension names.
 function Base.isapprox(a1::AbstractNamedTensor, a2::AbstractNamedTensor; kwargs...)
-    issetequal(dimnames(a1), dimnames(a2)) || return false
-    return isapprox(unnamed(a1), unname(a2, dimnames(a1)); kwargs...)
+    issetequal(names(a1), names(a2)) || return false
+    return isapprox(unnamed(a1), unname(a2, names(a1)); kwargs...)
 end
 
 # Generalization of `Base.sort` to Tuples for Julia v1.10 compatibility.
@@ -973,7 +886,7 @@ _sort(x::NTuple{N}; kwargs...) where {N} = NTuple{N}(sort(collect(x); kwargs...)
 
 function Base.hash(a::AbstractNamedTensor, h::UInt64)
     h = hash(:NamedTensor, h)
-    a′ = aligneddims(a, _sort(dimnames(a)))
+    a′ = aligned(a, _sort(names(a)))
     h = hash(unnamed(a′), h)
     for i in axes(a′)
         h = hash(i, h)
@@ -1015,7 +928,7 @@ end
 function Base.to_indices(
         a::AbstractNamedTensor, I::Tuple{NamedInteger, Vararg{NamedInteger}}
     )
-    perm = getperm(name.(I), dimnames(a))
+    perm = getperm(name.(I), names(a))
     # TODO: Throw a `NameMismatch` error.
     @assert isperm(perm)
     I = map(p -> I[p], perm)
@@ -1032,10 +945,9 @@ end
 function Base.to_indices(a::AbstractNamedTensor, I::Tuple{Pair, Vararg{Pair}})
     inds = to_inds(a, first.(I))
     return map((i, name) -> name[i], last.(I), inds)
-    return to_indices(a, named.(last.(I), first.(I)))
 end
 
-function Base.to_indices(a::AbstractNamedTensor, I::Tuple{NamedDimsCartesianIndex})
+function Base.to_indices(a::AbstractNamedTensor, I::Tuple{NamedCartesianIndex})
     return to_indices(a, Tuple(only(I)))
 end
 
@@ -1077,7 +989,7 @@ function Base.setindex!(
     setindex!(a, value, to_indices(a, (I1, Irest...))...)
     return a
 end
-function Base.setindex!(a::AbstractNamedTensor, value, I::NamedDimsCartesianIndex)
+function Base.setindex!(a::AbstractNamedTensor, value, I::NamedCartesianIndex)
     setindex!(a, value, to_indices(a, (I,))...)
     return a
 end
@@ -1130,8 +1042,10 @@ end
 # TODO: Should this be a view?
 Base.getindex(a, I1::Name, Irest::Name...) = copy(view(a, I1, Irest...))
 Base.getindex(a::AbstractArray, I1::Name, Irest::Name...) = copy(view(a, I1, Irest...))
-Base.view(a, I1::Name, Irest::Name...) = nameddims(a, name.((I1, Irest...)))
-Base.view(a::AbstractArray, I1::Name, Irest::Name...) = nameddims(a, name.((I1, Irest...)))
+Base.view(a, I1::Name, Irest::Name...) = NamedTensor(a, name.((I1, Irest...)))
+function Base.view(a::AbstractArray, I1::Name, Irest::Name...)
+    return NamedTensor(a, name.((I1, Irest...)))
+end
 
 function Base.getindex(a::AbstractArray, I1::NamedViewIndex, Irest::NamedViewIndex...)
     return copy(view(a, I1, Irest...))
@@ -1144,7 +1058,7 @@ function Base.getindex(a::Array, I1::NamedUnitRange)
 end
 function Base.view(a::AbstractArray, I1::NamedViewIndex, Irest::NamedViewIndex...)
     I = (I1, Irest...)
-    return nameddims(view(a, unnamed.(I)...), name.(I))
+    return NamedTensor(view(a, unnamed.(I)...), name.(I))
 end
 
 # TODO: Should this be a view?
@@ -1152,10 +1066,10 @@ function Base.getindex(a::AbstractNamedTensor, I1::Name, Irest::Name...)
     return copy(view(a, I1, Irest...))
 end
 function Base.view(a::AbstractNamedTensor, I1::Name, Irest::Name...)
-    issetequal(dimnames(a), name.((I1, Irest...))) ||
+    issetequal(names(a), name.((I1, Irest...))) ||
         throw(
         NameMismatch(
-            "Dimension name mismatch $(dimnames(a)), $(name.((I1, Irest...)))."
+            "Dimension name mismatch $(names(a)), $(name.((I1, Irest...)))."
         )
     )
     return a
@@ -1177,14 +1091,14 @@ function Base.getindex(
 end
 function Base.view(a::AbstractNamedTensor, I1::NamedViewIndex, Irest::NamedViewIndex...)
     I = (I1, Irest...)
-    perm = getperm(name.(I), dimnames(a))
+    perm = getperm(name.(I), names(a))
     isperm(perm) || throw(
         NameMismatch(
-            "Dimension name mismatch $(dimnames(a)), $(name.(I))."
+            "Dimension name mismatch $(names(a)), $(name.(I))."
         )
     )
     Ip = map(p -> unnamed(I[p]), perm)
-    return view_nameddims(a, Ip...)
+    return view_namedtensor(a, Ip...)
 end
 
 # Repeated definition of `Base.ViewIndex`.
@@ -1199,22 +1113,22 @@ isscalarindex(I::Real) = true
 # Slicing with unnamed indices, such as:
 # a = NamedTensor(rand(3,4), (:x, :y))
 # b = view(a, 1:2, 2)
-function view_nameddims(a::AbstractNamedTensor, I...)
+function view_namedtensor(a::AbstractNamedTensor, I...)
     nonscalar_dims = filter(dim -> !isscalarindex(I[dim]), ntuple(identity, ndims(a)))
-    nonscalar_dimnames = map(dim -> dimnames(a, dim), nonscalar_dims)
-    return nameddims(view(unnamed(a), I...), nonscalar_dimnames)
+    nonscalar_names = map(dim -> names(a, dim), nonscalar_dims)
+    return NamedTensor(view(unnamed(a), I...), nonscalar_names)
 end
 
 function Base.view(a::AbstractNamedTensor, I::ViewIndex...)
-    return view_nameddims(a, I...)
+    return view_namedtensor(a, I...)
 end
 
-function getindex_nameddims(a::AbstractNamedTensor, I...)
+function getindex_namedtensor(a::AbstractNamedTensor, I...)
     return copy(view(a, I...))
 end
 
 function Base.getindex(a::AbstractNamedTensor, I::ViewIndex...)
-    return getindex_nameddims(a, I...)
+    return getindex_namedtensor(a, I...)
 end
 
 function Base.setindex!(
@@ -1233,7 +1147,7 @@ function Base.setindex!(
         Irest::NamedViewIndex...
     )
     I = (I1, Irest...)
-    a[I...] = nameddims(value, name.(I))
+    a[I...] = NamedTensor(value, name.(I))
     return a
 end
 function Base.setindex!(
@@ -1255,7 +1169,7 @@ end
 # Permute/align dimensions
 
 """
-    aligndims(a::AbstractNamedTensor, dims)
+    align(a::AbstractNamedTensor, dims)
 
 Reorder the dimensions of `a` into the order given by `dims`, matched by name. Returns a
 tensor with the same data and dimension names as `a` but with the dimensions permuted, and
@@ -1264,29 +1178,29 @@ throws a `NameMismatch` if `dims` is not a permutation of `a`'s dimension names.
 # Examples
 
 ```jldoctest
-julia> a = nameddims(zeros(2, 3), (:i, :j));
+julia> a = NamedTensor(zeros(2, 3), (:i, :j));
 
-julia> aligndims(a, (:j, :i))
-named(Base.OneTo(3), :j)×named(Base.OneTo(2), :i) NamedTensor{Symbol}:
+julia> align(a, (:j, :i))
+NamedOneTo(3, :j)×NamedOneTo(2, :i) NamedTensor{Symbol}:
 3×2 Matrix{Float64}:
  0.0  0.0
  0.0  0.0
  0.0  0.0
 ```
 """
-function aligndims(a::AbstractNamedTensor, dims)
-    new_dimnames = name.(dims)
-    perm = Tuple(getperm(dimnames(a), new_dimnames))
+function align(a::AbstractNamedTensor, dims)
+    new_names = name.(dims)
+    perm = Tuple(getperm(names(a), new_names))
     isperm(perm) || throw(
         NameMismatch(
-            "Dimension name mismatch $(dimnames(a)), $(new_dimnames)."
+            "Dimension name mismatch $(names(a)), $(new_names)."
         )
     )
-    return nameddims(TensorAlgebra.permutedims(unnamed(a), perm), new_dimnames)
+    return NamedTensor(TensorAlgebra.permutedims(unnamed(a), perm), new_names)
 end
 
 """
-    aligndims(a::AbstractNamedTensor, codomain, domain)
+    align(a::AbstractNamedTensor, codomain, domain)
 
 Reorder the dimensions of `a` into `(codomain..., domain...)`, matched by name, and forward
 the codomain/domain split to the underlying storage. Like the two-argument form, the result
@@ -1295,51 +1209,51 @@ has the same data and dimension names as `a`, and a `NameMismatch` is thrown if
 that supports a bipartition (such as a TensorKit `TensorMap`) uses it, while a dense backend
 stores the result flat.
 """
-function aligndims(a::AbstractNamedTensor, codomain, domain)
-    new_dimnames = (name.(codomain)..., name.(domain)...)
-    perm = Tuple(getperm(dimnames(a), new_dimnames))
+function align(a::AbstractNamedTensor, codomain, domain)
+    new_names = (name.(codomain)..., name.(domain)...)
+    perm = Tuple(getperm(names(a), new_names))
     isperm(perm) || throw(
         NameMismatch(
-            "Dimension name mismatch $(dimnames(a)), $(new_dimnames)."
+            "Dimension name mismatch $(names(a)), $(new_names)."
         )
     )
     perm_codomain = perm[1:length(codomain)]
     perm_domain = perm[(length(codomain) + 1):end]
-    return nameddims(
-        TensorAlgebra.permutedims(unnamed(a), perm_codomain, perm_domain), new_dimnames
+    return NamedTensor(
+        TensorAlgebra.permutedims(unnamed(a), perm_codomain, perm_domain), new_names
     )
 end
 
 """
-    aligneddims(a::AbstractNamedTensor, dims)
+    aligned(a::AbstractNamedTensor, dims)
 
-Like [`aligndims`](@ref), but returns a lazily-permuted view that shares data with `a`
+Like [`align`](@ref), but returns a lazily-permuted view that shares data with `a`
 instead of copying. Reorders the dimensions of `a` into the order given by `dims`, matched by
 name, and throws a `NameMismatch` if `dims` is not a permutation of `a`'s dimension names.
 
 # Examples
 
 ```jldoctest
-julia> a = nameddims(reshape(1:6, 2, 3), (:i, :j));
+julia> a = NamedTensor(reshape(1:6, 2, 3), (:i, :j));
 
-julia> dimnames(aligneddims(a, (:j, :i)))
+julia> names(aligned(a, (:j, :i)))
 2-element Vector{Symbol}:
  :j
  :i
 ```
 
-See also [`aligndims`](@ref).
+See also [`align`](@ref).
 """
-function aligneddims(a::AbstractNamedTensor, dims)
-    new_dimnames = name.(dims)
-    perm = getperm(dimnames(a), new_dimnames)
+function aligned(a::AbstractNamedTensor, dims)
+    new_names = name.(dims)
+    perm = getperm(names(a), new_names)
     isperm(perm) || throw(
         NameMismatch(
-            "Dimension name mismatch $(dimnames(a)), $(new_dimnames)."
+            "Dimension name mismatch $(names(a)), $(new_names)."
         )
     )
-    return nameddims(
-        permuteddims(unnamed(a), perm), new_dimnames
+    return NamedTensor(
+        permuteddims(unnamed(a), perm), new_names
     )
 end
 
@@ -1424,7 +1338,7 @@ end
 # and the result is named with the codomain names followed by the domain names. The
 # `rand`/`randn`/`zeros` two-tuple forms (`randn((i,), (j,))`) forward to these.
 #
-# Each constructor is a shared `*_nameddims` builder (strip the names, call the map hook on the
+# Each constructor is a shared `*_namedtensor` builder (strip the names, call the map hook on the
 # raw axes, reattach the names) plus two forwarding methods: one for a nonempty codomain and one
 # for an empty codomain with a nonempty domain. The two-way split (rather than a single
 # `Tuple{Vararg{NamedUnitRange}}` on both sides) reads the index type from whichever side is
@@ -1433,8 +1347,8 @@ end
 # error rather than recurse.
 for f in [:rand, :randn]
     f_map = Symbol(f, :_map)
-    f_nameddims = Symbol(f, :_nameddims)
-    @eval function $f_nameddims(rng::AbstractRNG, elt::Type{<:Number}, codomain, domain)
+    f_namedtensor = Symbol(f, :_namedtensor)
+    @eval function $f_namedtensor(rng::AbstractRNG, elt::Type{<:Number}, codomain, domain)
         a = TensorAlgebra.$f_map(rng, elt, unnamed.(codomain), unnamed.(domain))
         return a[Name.(name.((codomain..., domain...)))...]
     end
@@ -1450,7 +1364,7 @@ for f in [:rand, :randn]
                     rng::AbstractRNG, elt::Type{<:Number},
                     codomain::$codomain_type, domain::$domain_type
                 )
-                return $f_nameddims(rng, elt, codomain, domain)
+                return $f_namedtensor(rng, elt, codomain, domain)
             end
             function Base.$f(
                     rng::AbstractRNG, elt::Type{<:Number},
@@ -1475,8 +1389,8 @@ for f in [:rand, :randn]
     end
 end
 for (f, f_map) in [(:zeros, :zeros_map), (:ones, :ones_map)]
-    f_nameddims = Symbol(f, :_nameddims)
-    @eval function $f_nameddims(elt::Type{<:Number}, codomain, domain)
+    f_namedtensor = Symbol(f, :_namedtensor)
+    @eval function $f_namedtensor(elt::Type{<:Number}, codomain, domain)
         a = TensorAlgebra.$f_map(elt, unnamed.(codomain), unnamed.(domain))
         return a[Name.(name.((codomain..., domain...)))...]
     end
@@ -1491,7 +1405,7 @@ for (f, f_map) in [(:zeros, :zeros_map), (:ones, :ones_map)]
             function TensorAlgebra.$f_map(
                     elt::Type{<:Number}, codomain::$codomain_type, domain::$domain_type
                 )
-                return $f_nameddims(elt, codomain, domain)
+                return $f_namedtensor(elt, codomain, domain)
             end
             function Base.$f(
                     elt::Type{<:Number}, codomain::$codomain_type, domain::$domain_type
@@ -1506,7 +1420,7 @@ for (f, f_map) in [(:zeros, :zeros_map), (:ones, :ones_map)]
 end
 # `fill` takes the fill value first, so it does not fit the eltype-leading forms above; it gets
 # the same map-shaped split via `fill_map`.
-function fill_nameddims(value, codomain, domain)
+function fill_namedtensor(value, codomain, domain)
     a = TensorAlgebra.fill_map(value, unnamed.(codomain), unnamed.(domain))
     return a[Name.(name.((codomain..., domain...)))...]
 end
@@ -1520,7 +1434,7 @@ for (codomain_type, domain_type) in [
                 codomain::$codomain_type,
                 domain::$domain_type
             )
-            return fill_nameddims(value, codomain, domain)
+            return fill_namedtensor(value, codomain, domain)
         end
         function Base.fill(value, codomain::$codomain_type, domain::$domain_type)
             return TensorAlgebra.fill_map(value, codomain, domain)
@@ -1547,8 +1461,8 @@ end
 function Base.map!(f, a_dest::AbstractNamedTensor, a_srcs::AbstractNamedTensor...)
     a′_dest = unnamed(a_dest)
     # TODO: Use `unnamed` to do the permutations lazily.
-    # TODO: Define `unname[d](dimnames) = Base.Fix1(unname[d], dimnames)` and use it here?
-    a′_srcs = Base.Fix2(unname, dimnames(a_dest)).(a_srcs)
+    # TODO: Define `unname[d](names) = Base.Fix1(unname[d], names)` and use it here?
+    a′_srcs = Base.Fix2(unname, names(a_dest)).(a_srcs)
     map!(f, a′_dest, a′_srcs...)
     return a_dest
 end

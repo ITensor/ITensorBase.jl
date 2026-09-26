@@ -5,17 +5,17 @@ using TensorAlgebra: TensorAlgebra, dual, isdual, to_range, trivialrange, ungrad
 
 A unit range with a name attached, used as a named dimension (axis) of a tensor. It
 pairs an underlying integer unit range with a name of type `Name`. [`Index`](@ref) is
-the `NamedUnitRange` flavor whose name is an `IndexName`. Build one by calling
-[`named`](@ref) on a range, or use `Index` to mint a fresh unique name.
+the `NamedUnitRange` flavor whose name is an `IndexName`. Build one from a range and a
+name, or use `Index` to mint a fresh unique name.
 
 # Examples
 
 ```jldoctest
-julia> named(1:3, :i)
-named(1:3, :i)
+julia> NamedUnitRange(1:3, :i)
+NamedUnitRange(1:3, :i)
 ```
 
-See also [`Index`](@ref), [`named`](@ref).
+See also [`Index`](@ref).
 """
 struct NamedUnitRange{Name, UnnamedT, Unnamed} <: AbstractNamedVector{Name, UnnamedT}
     # The `unnamed` value is usually an integer `AbstractUnitRange`, but the bound is left open
@@ -70,28 +70,30 @@ function NamedUnitRange(space, name)
     return NamedUnitRange(to_range(space), name)
 end
 
-# This can be customized to output different named unit range types.
-namedunitrange(r::AbstractUnitRange, name) = NamedUnitRange(r, name)
+to_named(r::AbstractUnitRange, name) = NamedUnitRange(r, name)
+
+# A named range over `Base.OneTo`, i.e. a tensor dimension given by a plain length. This is
+# the common case, since it is what a dimension of an unnamed `AbstractArray` is. The
+# `Integer` constructor is unambiguous with the range constructors above because an
+# `Integer` is not an `AbstractUnitRange`.
+const NamedOneTo{Name, S} = NamedUnitRange{Name, S, Base.OneTo{S}}
+NamedOneTo(length::Integer, name) = NamedUnitRange(Base.oneto(length), name)
 
 # Mint a fresh trivial *named* range matching `r`'s backend: the trivial range of the
 # underlying (unnamed) axis, carrying a fresh unique name of `r`'s name type.
 function TensorAlgebra.trivialrange(r::NamedUnitRange{Name}) where {Name}
-    return namedunitrange(trivialrange(unnamed(r)), uniquename(Name))
+    return NamedUnitRange(trivialrange(unnamed(r)), uniquename(Name))
 end
 function TensorAlgebra.trivialrange(r::NamedUnitRange{Name}, n::Integer) where {Name}
-    return namedunitrange(trivialrange(unnamed(r), n), uniquename(Name))
+    return NamedUnitRange(trivialrange(unnamed(r), n), uniquename(Name))
 end
 
-# Shorthand: attach an existing name to a range.
-named(r::AbstractUnitRange, name) = namedunitrange(r, name)
-
 # Derived interface. `setname` differs from the `AbstractNamedArray` method: it
-# rebuilds through `named` so the result stays a named unit range, not a named
-# array. The rest of the named interface (`isnamed`, `unnamedtype`, `nametype`,
-# `uniquename`, `show`, `isempty`) is inherited from `AbstractNamedArray`; `==`,
-# `isequal`, and `hash` are overridden just below.
+# rebuilds a named unit range, not a named array. The rest of the named interface
+# (`isnamed`, `unnamedtype`, `nametype`, `uniquename`, `show`, `isempty`) is inherited
+# from `AbstractNamedArray`; `==`, `isequal`, and `hash` are overridden just below.
 # TODO: Use `Accessors.@set`?
-setname(r::NamedUnitRange, name) = named(unnamed(r), name)
+setname(r::NamedUnitRange, name) = NamedUnitRange(unnamed(r), name)
 
 # Equality and hashing answer identity ("is this the same leg?"), keyed on the name plus the
 # axis's ungraded extent (via `TensorAlgebra.ungrade`). Conjugation preserves the name and the
@@ -107,25 +109,25 @@ Base.isequal(r1::NamedUnitRange, r2::NamedUnitRange) = r1 == r2
 # through the shared `hash_named(:NamedArray, ...)` path on the ungraded range. That keeps `hash`
 # consistent with `==` above and with a named array of equal values (Base's `[1, 2, 3] == 1:3`
 # and `hash([1, 2, 3]) == hash(1:3)` contract).
-TensorAlgebra.ungrade(r::NamedUnitRange) = named(ungrade(unnamed(r)), name(r))
+TensorAlgebra.ungrade(r::NamedUnitRange) = NamedUnitRange(ungrade(unnamed(r)), name(r))
 Base.hash(r::NamedUnitRange, h::UInt) = hash_named(:NamedArray, ungrade(r), h)
 
 # Forward `conj` to the underlying range so graded axes flip their sector
 # arrows. The `Base.conj(::AbstractArray{<:Real}) = x` fallback would
 # otherwise short-circuit before the inner range is touched.
-Base.conj(r::NamedUnitRange) = named(conj(unnamed(r)), name(r))
+Base.conj(r::NamedUnitRange) = NamedUnitRange(conj(unnamed(r)), name(r))
 
 # Forward `dual`/`isdual` to the underlying range so an index answers its duality directly.
-TensorAlgebra.dual(r::NamedUnitRange) = named(dual(unnamed(r)), name(r))
+TensorAlgebra.dual(r::NamedUnitRange) = NamedUnitRange(dual(unnamed(r)), name(r))
 TensorAlgebra.isdual(r::NamedUnitRange) = isdual(unnamed(r))
 
 # Unit range functionality.
-Base.first(r::NamedUnitRange) = named(first(unnamed(r)), name(r))
-Base.last(r::NamedUnitRange) = named(last(unnamed(r)), name(r))
+Base.first(r::NamedUnitRange) = Named(first(unnamed(r)), name(r))
+Base.last(r::NamedUnitRange) = Named(last(unnamed(r)), name(r))
 # `length`, `size`, and `axes` are inherited from the `AbstractNamedArray` generic:
 # the count and the positional axes are plain (unnamed). The element-layer methods
 # (`first`, `last`, `step`, indexing, iteration) stay named.
-Base.step(r::NamedUnitRange) = named(step(unnamed(r)), name(r))
+Base.step(r::NamedUnitRange) = Named(step(unnamed(r)), name(r))
 Base.getindex(r::NamedUnitRange, I::Int) = getindex_named(r, I)
 # Fix ambiguity error.
 function Base.getindex(r::NamedUnitRange, I::AbstractUnitRange{<:Integer})
@@ -161,12 +163,11 @@ function Base.AbstractUnitRange{Int}(r::NamedUnitRange)
     return AbstractUnitRange{Int}(unnamed(r))
 end
 
-Base.oneto(length::NamedInteger) = named(Base.OneTo(unnamed(length)), name(length))
-namedoneto(length::Integer, name) = Base.oneto(named(length, name))
+Base.oneto(length::NamedInteger) = NamedUnitRange(Base.OneTo(unnamed(length)), name(length))
 Base.iterate(r::NamedUnitRange) = isempty(r) ? nothing : (first(r), first(r))
 function Base.iterate(r::NamedUnitRange, i)
     i == last(r) && return nothing
-    next = named(unnamed(i) + unnamed(step(r)), name(r))
+    next = Named(unnamed(i) + unnamed(step(r)), name(r))
     return (next, next)
 end
 
@@ -175,7 +176,7 @@ struct NamedColon{Name} <: Function
 end
 unnamed(c::NamedColon) = Colon()
 name(c::NamedColon) = c.name
-named(::Colon, name) = NamedColon(name)
+to_named(::Colon, name) = NamedColon(name)
 
 struct FirstIndex{Arr, Dim}
     array::Arr
