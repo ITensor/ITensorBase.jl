@@ -33,14 +33,11 @@ struct NamedTensor{DimName} <: AbstractNamedTensor{DimName}
     # `axes`/algebra interface) can be the parent directly. See the TensorKit extension.
     unnamed::Any
     names::Vector{DimName}
-    # The sole inner constructor: enforces the representation invariants (one name per dimension,
-    # names distinct) on already-collected names. The outer constructors below normalize the
-    # inputs (strip index names, fix the eltype) and funnel through here.
+    # The sole inner constructor, and unchecked: it takes already-collected names and wraps them.
+    # Validating the arguments is `TensorAlgebra.check_input`'s job, which every outer constructor
+    # below calls before normalizing the inputs (stripping index names, fixing the eltype) and
+    # funnelling through here, so the whole contract reads in one place.
     global function _NamedTensor(unnamed, names::Vector{DimName}) where {DimName}
-        TensorAlgebra.ndims(unnamed) == length(names) ||
-            throw(ArgumentError("Number of named dims must match ndims."))
-        allunique(names) ||
-            throw(ArgumentError("Dimension names must be distinct, got $(names)."))
         return new{DimName}(unnamed, names)
     end
 end
@@ -58,6 +55,22 @@ function checkspace(ax, n::NamedUnitRange)
             corresponding axis $(ax) of the array."
         )
     )
+end
+
+# One name per dimension, and no name used twice. `name` is the identity on a plain name, so
+# these compare what actually gets stored: an index and its own bare name collide.
+function checkndims(unnamed, nnames)
+    TensorAlgebra.ndims(unnamed) == nnames ||
+        throw(ArgumentError("Number of named dims must match ndims."))
+    return nothing
+end
+function checkdistinct(names)
+    allunique(Iterators.map(name, names)) || throw(
+        ArgumentError(
+            "Dimension names must be distinct, got $(collect(Iterators.map(name, names)))."
+        )
+    )
+    return nothing
 end
 
 # A `NamedUnitRange` is itself an iterable of its range values, so a lone index passed where the
@@ -89,9 +102,8 @@ function checkbipartition(unnamed, codomain_inds, domain_inds)
     )
 end
 
-# Each dimension is checked against the axis the storage holds at its position. `zip` stops at the
-# shorter of its arguments, so a count mismatch checks fewer dimensions rather than running off
-# the end, leaving the arity to the inner constructor to report.
+# Each dimension is checked against the axis the storage holds at its position. `checkndims` has
+# already established that the counts agree, so these walk every dimension.
 function checkspaces(unnamed, names)
     foreach(checkspace, TensorAlgebra.axes(unnamed), names)
     return nothing
@@ -112,6 +124,8 @@ end
 # constructor's own arguments.
 function TensorAlgebra.check_input(::Type{<:NamedTensor}, unnamed, names)
     checknotind(names)
+    checkndims(unnamed, length(names))
+    checkdistinct(names)
     checkspaces(unnamed, names)
     return nothing
 end
@@ -123,6 +137,8 @@ function TensorAlgebra.check_input(
     )
     checknotind(codomain_inds)
     checknotind(domain_inds)
+    checkndims(unnamed, length(codomain_inds) + length(domain_inds))
+    checkdistinct(Iterators.flatten((codomain_inds, domain_inds)))
     checkbipartition(unnamed, codomain_inds, domain_inds)
     checkspaces(unnamed, codomain_inds, domain_inds)
     return nothing
