@@ -14,7 +14,7 @@ an [`Index`](@ref)). An index also asserts a space, which has to match the array
 axis, duality included, and an `ArgumentError` is thrown if it does not. A plain name asserts
 nothing, so the array's axis stands.
 
-See also the `NamedTensor(unnamed, codomain_names, domain_names)` method for the map-shaped
+See also the `NamedTensor(unnamed, codomain_inds, domain_inds)` method for the map-shaped
 form.
 
 # Examples
@@ -45,96 +45,114 @@ struct NamedTensor{DimName} <: AbstractNamedTensor{DimName}
     end
 end
 
-# A dimension given as an index asserts a space, so it has to agree with the array's axis; a
-# bare name asserts nothing, so only the index case is checked. The comparison is on the
-# underlying ranges (`space`) rather than on the indices, because `==` on an `Index` ignores
-# duality and would pass a dual/non-dual mismatch.
-function checkspaces(unnamed, names)
-    # A count mismatch is the inner constructor's error to report, so skip rather than compare
-    # against a padded axis.
-    length(names) == TensorAlgebra.ndims(unnamed) || return nothing
-    for (d, n) in enumerate(names)
-        checkspace(unnamed, d, n, identity)
-    end
-    return nothing
-end
-
-# Codomain/domain form: the domain names are given codomain-facing while the storage holds them
-# dualized (the convention of `TensorAlgebra.similar_map` and `TensorAlgebra.unmatricize`), so a
-# domain index asserts the dual of its own space.
-function checkspaces(unnamed, codomain_names, domain_names)
-    ncodomain = length(codomain_names)
-    # A count mismatch is the inner constructor's error to report, so skip rather than compare
-    # against a padded axis.
-    ncodomain + length(domain_names) == TensorAlgebra.ndims(unnamed) || return nothing
-    for (d, n) in enumerate(codomain_names)
-        checkspace(unnamed, d, n, identity)
-    end
-    for (d, n) in enumerate(domain_names)
-        checkspace(unnamed, ncodomain + d, n, conj)
-    end
-    return nothing
-end
-
-# `dualize` maps a dimension's space to the space the storage holds at that position (`identity`
-# in the codomain, `conj` in the domain). It is taken as a function rather than as a precomputed
-# space because `space` is only defined once `n` is known to be an index.
-function checkspace(unnamed, d, n, dualize)
-    n isa NamedUnitRange || return nothing
-    expected = dualize(space(n))
-    ax = TensorAlgebra.axes(unnamed, d)
-    ax == expected && return nothing
-    asserted = if dualize === identity
-        "whose space $(expected)"
-    else
-        "whose space dualized for its domain position, $(expected),"
-    end
+# A dimension given as an index asserts a space, so it has to agree with the corresponding axis;
+# a bare name asserts nothing, so only the index case is checked. The comparison is on the
+# underlying range (`space`) rather than on the index, because `==` on an `Index` ignores duality
+# and would pass a dual/non-dual mismatch.
+checkspace(ax, n) = nothing
+function checkspace(ax, n::NamedUnitRange)
+    ax == space(n) && return nothing
     throw(
         ArgumentError(
-            "Dimension $(d) was given the index $(n), $(asserted) does not match the \
+            "The index $(n) asserts the space $(space(n)), which does not match the \
             corresponding axis $(ax) of the array."
         )
     )
 end
 
-# A lone index is ambiguous as a group of dimensions (a `NamedUnitRange` is itself an iterable
-# of its range values), so it is rejected rather than splatted into its elements.
-function checknotindex(names)
-    names isa NamedUnitRange && throw(
+# A `NamedUnitRange` is itself an iterable of its range values, so a lone index passed where the
+# dimension names were expected would splat into integers rather than name one dimension.
+checknotind(names) = nothing
+function checknotind(names::NamedUnitRange)
+    throw(
         ArgumentError(
             "Got a single index (`NamedUnitRange` such as `Index`) as the dimension names. \
             Pass a tuple or vector, e.g. `ITensor(array, (i, j))`."
         )
     )
+end
+
+# `TensorAlgebra.ndims_codomain` defaults to `ndims`, so a plain `Array` reports all-codomain and
+# an arity assertion on its own would reject the ordinary dense case. `has_bipartition` is what
+# separates a bipartition the storage genuinely carries from that default, so the claimed one is
+# only checkable against storage that says it has one.
+function checkbipartition(unnamed, codomain_inds, domain_inds)
+    TensorAlgebra.has_bipartition(unnamed) || return nothing
+    ncodomain = TensorAlgebra.ndims_codomain(unnamed)
+    ncodomain == length(codomain_inds) && return nothing
+    throw(
+        ArgumentError(
+            "Got $(length(codomain_inds)) codomain and $(length(domain_inds)) domain \
+            dimensions, but the array is a map from $(TensorAlgebra.ndims_domain(unnamed)) \
+            dimensions to $(ncodomain)."
+        )
+    )
+end
+
+# Each dimension is checked against the axis the storage holds at its position. `zip` stops at the
+# shorter of its arguments, so a count mismatch checks fewer dimensions rather than running off
+# the end, leaving the arity to the inner constructor to report.
+function checkspaces(unnamed, names)
+    foreach(checkspace, TensorAlgebra.axes(unnamed), names)
+    return nothing
+end
+# The storage holds the domain axes dualized (the convention of `TensorAlgebra.similar_map` and
+# `TensorAlgebra.unmatricize`) while the domain inds are given codomain-facing, so `conj` puts
+# that half back in the form the inds are written in. It is a no-op on a dense axis.
+function checkspaces(unnamed, codomain_inds, domain_inds)
+    ncodomain = length(codomain_inds)
+    axes = TensorAlgebra.axes(unnamed)
+    foreach(checkspace, Iterators.take(axes, ncodomain), codomain_inds)
+    foreach(checkspace, Iterators.map(conj, Iterators.drop(axes, ncodomain)), domain_inds)
+    return nothing
+end
+
+# The constructors' input check, keyed on the constructor the way TensorAlgebra keys its other
+# validation hooks (`check_input(unmatricize, m, axes_codomain, axes_domain)`), and taking the
+# constructor's own arguments.
+function TensorAlgebra.check_input(::Type{<:NamedTensor}, unnamed, names)
+    checknotind(names)
+    checkspaces(unnamed, names)
+    return nothing
+end
+function TensorAlgebra.check_input(
+        ::Type{<:NamedTensor},
+        unnamed,
+        codomain_inds,
+        domain_inds
+    )
+    checknotind(codomain_inds)
+    checknotind(domain_inds)
+    checkbipartition(unnamed, codomain_inds, domain_inds)
+    checkspaces(unnamed, codomain_inds, domain_inds)
     return nothing
 end
 
 # `names` can hold plain names or indices (`NamedUnitRange`s such as `Index`): `name` maps an
 # index to its name and is the identity on a plain name, so only an index's name is stored (the
-# array carries the axes), after `checkspaces` has checked that the space it asserts agrees.
-# The methods below repeat this normalization rather than delegating to one another, so each
-# strips names exactly once.
+# array carries the axes), after `check_input` has checked that the space it asserts agrees.
 function NamedTensor{DimName}(unnamed, names) where {DimName}
-    checknotindex(names)
-    checkspaces(unnamed, names)
+    TensorAlgebra.check_input(NamedTensor, unnamed, names)
     return _NamedTensor(unnamed, collect(DimName, name.(names)))
 end
 # The dimension-name type is inferred from the names, so indices infer `IndexName`, not their type.
 function NamedTensor(unnamed, names)
-    checknotindex(names)
-    checkspaces(unnamed, names)
+    TensorAlgebra.check_input(NamedTensor, unnamed, names)
     return _NamedTensor(unnamed, collect(name.(names)))
 end
 
 """
-    NamedTensor(unnamed, codomain_names, domain_names)
+    NamedTensor(unnamed, codomain_inds, domain_inds)
 
 A tensor whose dimensions are split into a codomain group and a domain group, as a map from
 the domain to the codomain. The storage holds the codomain dimensions first and the domain
-dimensions last. `codomain_names` and `domain_names` hold names or indices, and the domain
-indices are given codomain-facing: an index `n` in `domain_names` asserts that the storage's
-axis is the dual `conj(space(n))`, matching how `TensorAlgebra.similar_map` and
-`TensorAlgebra.unmatricize` build map-shaped storage.
+dimensions last. `codomain_inds` and `domain_inds` hold indices or plain names, and the domain
+indices are given codomain-facing: the storage holds the domain axes dualized, following
+`TensorAlgebra.similar_map` and `TensorAlgebra.unmatricize`, so an index in `domain_inds` asserts
+the undualized space.
+
+When the array carries a bipartition of its own, the claimed one has to agree with it. Dense
+storage carries none, so any bipartition may be claimed over it.
 
 # Examples
 
@@ -148,20 +166,17 @@ NamedOneTo(2, :i)×NamedOneTo(3, :j) NamedTensor{Symbol}:
  0.0  0.0  0.0
 ```
 """
-function NamedTensor(unnamed, codomain_names, domain_names)
-    checknotindex(codomain_names)
-    checknotindex(domain_names)
-    checkspaces(unnamed, codomain_names, domain_names)
+function NamedTensor(unnamed, codomain_inds, domain_inds)
+    TensorAlgebra.check_input(NamedTensor, unnamed, codomain_inds, domain_inds)
     return _NamedTensor(
-        unnamed, collect((name.(codomain_names)..., name.(domain_names)...))
+        unnamed,
+        collect((name.(codomain_inds)..., name.(domain_inds)...))
     )
 end
-function NamedTensor{DimName}(unnamed, codomain_names, domain_names) where {DimName}
-    checknotindex(codomain_names)
-    checknotindex(domain_names)
-    checkspaces(unnamed, codomain_names, domain_names)
+function NamedTensor{DimName}(unnamed, codomain_inds, domain_inds) where {DimName}
+    TensorAlgebra.check_input(NamedTensor, unnamed, codomain_inds, domain_inds)
     return _NamedTensor(
-        unnamed, collect(DimName, (name.(codomain_names)..., name.(domain_names)...))
+        unnamed, collect(DimName, (name.(codomain_inds)..., name.(domain_inds)...))
     )
 end
 NamedTensor(a::AbstractNamedTensor, inds) = throw(ArgumentError("Already named."))

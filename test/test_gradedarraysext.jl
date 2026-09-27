@@ -181,4 +181,9 @@ end
     m = unnamed(randn(rng, (i,), (j,)))
     @test ITensor(m, (i,), (j,)) isa ITensor
     @test_throws ArgumentError ITensor(m, (i,), (dual(j),))
+    # A graded array carries its own codomain/domain split, so a claimed split that disagrees
+    # with it is rejected even when every space matches: `m` is a map of one dimension to one.
+    @test_throws ArgumentError ITensor(m, (i, dual(j)), ())
+    # Naming the dimensions flat claims no split, so it stays available.
+    @test ITensor(m, (i, dual(j))) isa ITensor
 end

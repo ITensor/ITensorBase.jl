@@ -143,6 +143,7 @@ using UUIDs: UUID
         # space check on each group and the same rejection of a lone index.
         @test NamedTensor(randn(elt, 2, 3), (i,), (j,)) isa ITensor
         @test names(ITensor(randn(elt, 2, 3), (i,), (j,))) == name.([i, j])
+        # Dense storage carries no split of its own, so either grouping is accepted.
         @test ITensor(randn(elt, 2, 3), (), (i, j)) isa ITensor
         @test_throws ArgumentError ITensor(randn(elt, 2, 3), i, (j,))
         @test_throws ArgumentError ITensor(randn(elt, 2, 3), (i,), j)

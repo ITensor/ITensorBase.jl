@@ -14,7 +14,7 @@ A concrete tensor type subtypes [`AbstractNamedTensor`](@ref). [`NamedTensor`](@
 is the built-in implementation, and [`ITensor`](@ref) is the `NamedTensor` with dimension
 names that are [`IndexName`](@ref)s. Its `NamedTensor(array, names)` constructor pairs an array of
 any kind with its dimension names directly, and a name given as an index also asserts that
-dimension's space. A second form, `NamedTensor(array, codomain_names, domain_names)`, splits the
+dimension's space. A second form, `NamedTensor(array, codomain_inds, domain_inds)`, splits the
 dimensions into a codomain and a domain group, as a map from the domain to the codomain.
 User code usually builds one by calling an array constructor on indices or by
 indexing an array (see [Constructors](@ref)) rather than calling it. The underlying
