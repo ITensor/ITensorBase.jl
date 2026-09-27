@@ -1,5 +1,4 @@
-using ..ITensorBase:
-    AbstractNamedTensor, ITensorBase, dimnames, getperm, named, nameddims, unnamed
+using ..ITensorBase: AbstractNamedTensor, ITensorBase, getperm, unnamed
 using Base.Broadcast: Broadcast as BC, Broadcasted, broadcasted
 using TensorAlgebra: TensorAlgebra as TA
 
@@ -25,8 +24,11 @@ BC.broadcastable(a::AbstractNamedTensor) = a
 # the output names, so no permutation is needed and its codomain/domain split is kept; only a sum needs
 # its addends aligned. (Flattening distributes scaling/conjugation over `+`, so a `Scaled`/`Conj` node
 # never wraps an `Add`, and the no-permutation recursion below never reaches one.)
-unnamed_linear(a::TA.LinearBroadcasted, names) = unnamed_linear(a)
-unnamed_linear(a::TA.AddBroadcasted, names) = unnamed_linear_aligned(a, names)
+unnamed_linear(a::TA.LinearBroadcasted, nms) = unnamed_linear(a)
+unnamed_linear(a::TA.AddBroadcasted, nms) = unnamed_linear_aligned(a, nms)
+# `identity.(a)` folds to the operand itself, and the output names are taken from it, so it needs
+# no alignment. The aligned path below already had this case.
+unnamed_linear(a::AbstractNamedTensor, nms) = unnamed_linear(a)
 
 # No permutation: strip names down the expression tree via the `operation`/`arguments` term interface.
 function unnamed_linear(a::TA.LinearBroadcasted)
@@ -35,30 +37,19 @@ end
 unnamed_linear(a::AbstractNamedTensor) = unnamed(a)
 unnamed_linear(a::Number) = a
 
-# Align every leaf to `names` through the `PermutedDims` wrapper (all-codomain output). Used for a sum's
+# Align every leaf to `nms` through the `PermutedDims` wrapper (all-codomain output). Used for a sum's
 # addends and for every in-place `copyto!` (aligned to the destination).
-function unnamed_linear_aligned(a::TA.LinearBroadcasted, names)
+function unnamed_linear_aligned(a::TA.LinearBroadcasted, nms)
     return TA.linearbroadcasted(
-        TA.operation(a), map(x -> unnamed_linear_aligned(x, names), TA.arguments(a))...
+        TA.operation(a), map(x -> unnamed_linear_aligned(x, nms), TA.arguments(a))...
     )
 end
-function unnamed_linear_aligned(a::AbstractNamedTensor, names)
-    return _broadcast_permuteddims(unnamed(a), getperm(dimnames(a), names))
+function unnamed_linear_aligned(a::AbstractNamedTensor, nms)
+    return _broadcast_permuteddims(unnamed(a), getperm(names(a), nms))
 end
-unnamed_linear_aligned(a::Number, names) = a
+unnamed_linear_aligned(a::Number, nms) = a
 
-# Non-linear fallback: unname a general `Broadcasted` by aligning each operand to `names`, so Base's
-# generic broadcast can run (all-codomain output). Only the linear path preserves the split.
-unnamed_broadcasted(x::Number, names) = x
-function unnamed_broadcasted(a::AbstractNamedTensor, names)
-    # An operand already aligned to `names` needs no permutation, skipping the identity wrapper.
-    dimnames(a) == names && return unnamed(a)
-    return _broadcast_permuteddims(unnamed(a), getperm(dimnames(a), names))
-end
-function unnamed_broadcasted(bc::Broadcasted, names)
-    return broadcasted(bc.f, Base.Fix2(unnamed_broadcasted, names).(bc.args)...)
-end
-# Broadcasting-only alignment: unlike the public `unnamed(a, names)` (which returns a
+# Broadcasting-only alignment: unlike the public `unnamed(a, nms)` (which returns a
 # `Base.PermutedDimsArray`, a full array), this wraps in `TensorAlgebra.PermutedDims`, which stores
 # the permutation in a field rather than a type parameter, so it builds cheaply and type-stably
 # from the runtime permutation and is a broadcast leaf the linear-combination fold absorbs via
@@ -77,26 +68,24 @@ BC.instantiate(bc::Broadcasted{<:AbstractNamedTensorStyle}) = bc
 
 # The destination dimension names of a broadcast are those of its first named operand.
 # Sourcing them here (rather than from `axes(bc)`) keeps the named axes off the hot path.
-_dimnames(a::AbstractNamedTensor, args...) = dimnames(a)
-_dimnames(bc::Broadcasted, args...) = _dimnames(bc.args..., args...)
-_dimnames(_, args...) = _dimnames(args...)
-dimnames(bc::Broadcasted) = _dimnames(bc.args...)
+_names(a::AbstractNamedTensor, args...) = names(a)
+_names(bc::Broadcasted, args...) = _names(bc.args..., args...)
+_names(_, args...) = _names(args...)
 
 function Base.copy(bc::Broadcasted{<:AbstractNamedTensorStyle})
-    nms = dimnames(bc)
-    return nameddims(_copy_unnamed(bc, nms), nms)
+    nms = _names(bc)
+    return ITensorBase.NamedTensor(_copy_unnamed(bc, nms), nms)
 end
 
 # Function barrier: `bc`'s named leaves are abstractly typed, so re-dispatching on the concrete `bc`
 # here keeps the flatten/unname/materialize below type-stable. A linear expression folds to a
 # `LinearBroadcasted` and materializes through `copy(lb)`, whose allocation (`similar(lb)`) is the
 # unnamed backend's own broadcast-style `similar`, so the result inherits the backend (dense, graded,
-# ...) and `unnamed_linear` keeps a single scaled/conjugated operand's codomain/domain split. A
-# non-linear expression falls back to unnaming the raw `Broadcasted` and Base's generic broadcast.
+# ...) and `unnamed_linear` keeps a single scaled/conjugated operand's codomain/domain split.
+# `flattenlinear` throws on anything else: named broadcasting is linear-only, since aligning
+# operands by name is only meaningful for an expression the fold can rewrite.
 @noinline function _copy_unnamed(bc, nms)
-    lb = TA.tryflattenlinear(bc)
-    isnothing(lb) && return copy(unnamed_broadcasted(bc, nms))
-    return copy(unnamed_linear(lb, nms))
+    return copy(unnamed_linear(TA.flattenlinear(bc), nms))
 end
 
 # `Base.Broadcast.materialize!` otherwise reconstructs the broadcast over `axes(dest)` and
@@ -115,16 +104,13 @@ function Base.copyto!(
         dest::AbstractNamedTensor,
         bc::Broadcasted{<:AbstractNamedTensorStyle}
     )
-    _copyto_unnamed!(unnamed(dest), bc, dimnames(dest))
+    _copyto_unnamed!(unnamed(dest), bc, names(dest))
     return dest
 end
 
-# Function barrier mirroring `_copy_unnamed`. In place, so every operand aligns to `dest`; non-linear
-# falls back to Base's generic in-place broadcast.
+# Function barrier mirroring `_copy_unnamed`. In place, so every operand aligns to `dest`.
 @noinline function _copyto_unnamed!(dest_unnamed, bc, nms)
-    lb = TA.tryflattenlinear(bc)
-    isnothing(lb) && return copyto!(dest_unnamed, unnamed_broadcasted(bc, nms))
-    return copyto!(dest_unnamed, unnamed_linear_aligned(lb, nms))
+    return copyto!(dest_unnamed, unnamed_linear_aligned(TA.flattenlinear(bc), nms))
 end
 
 # Operator-preserving broadcasting.

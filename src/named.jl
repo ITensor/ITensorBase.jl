@@ -18,40 +18,38 @@ const NamedInteger{Name, Unnamed <: Integer} = Named{Name, Unnamed}
     name(a)
 
 The name attached to a named object `a`, such as a `Named` scalar, a named array, or a
-named unit range. This is the inverse of the name component of [`named`](@ref): `name`
-recovers the name, [`unnamed`](@ref) recovers the value.
+named unit range. `name` recovers the name, [`unnamed`](@ref) recovers the value.
 
 # Examples
 
 ```jldoctest
-julia> using ITensorBase: name
+julia> using ITensorBase: Named, name
 
-julia> name(named(2, :i))
+julia> name(Named(2, :i))
 :i
 ```
 
-See also [`named`](@ref), [`unnamed`](@ref), [`setname`](@ref).
+See also [`unnamed`](@ref), [`setname`](@ref).
 """
 function name end
 
 """
     unnamed(a)
 
-The underlying value of a named object `a`, with its name stripped off. This is the
-inverse of the value component of [`named`](@ref): [`name`](@ref) recovers the name,
-`unnamed` recovers the value. On an [`AbstractNamedTensor`](@ref) it returns the underlying
-unnamed array.
+The underlying value of a named object `a`, with its name stripped off. [`name`](@ref)
+recovers the name, `unnamed` recovers the value. On an [`AbstractNamedTensor`](@ref) it
+returns the underlying unnamed array.
 
 # Examples
 
 ```jldoctest
-julia> using ITensorBase: unnamed
+julia> using ITensorBase: Named, unnamed
 
-julia> unnamed(named(2, :i))
+julia> unnamed(Named(2, :i))
 2
 ```
 
-See also [`named`](@ref), [`name`](@ref).
+See also [`name`](@ref).
 """
 function unnamed end
 
@@ -64,28 +62,44 @@ underlying value unchanged.
 # Examples
 
 ```jldoctest
-julia> using ITensorBase: setname
+julia> using ITensorBase: Named, setname
 
-julia> setname(named(2, :i), :j)
-named(2, :j)
+julia> setname(Named(2, :i), :j)
+Named(2, :j)
 ```
 
-See also [`named`](@ref), [`name`](@ref).
+See also [`name`](@ref).
 """
 function setname end
 
 """
     nametype(type::Type)
+    nametype(a::AbstractNamedTensor)
+    nametype(type::Type{<:AbstractNamedTensor})
 
-The type of the name carried by a named type, such as a `Named` scalar type, a named
-array type, or a named unit range type.
+The type of the name carried by a named object. For a `Named` scalar type, a named array
+type, or a named unit range type this is the type of its single name; for a named tensor it
+is the type of an individual dimension name. The primary methods dispatch on the type, and
+`nametype(a::AbstractNamedTensor)` forwards to `nametype(typeof(a))`. A named tensor type
+that does not fix its dimension-name flavor (such as the unparameterized `NamedTensor`)
+returns `Any`, the same way `eltype(Array)` is `Any`.
 
 # Examples
 
 ```jldoctest
-julia> using ITensorBase: nametype
+julia> using ITensorBase: Named
 
-julia> nametype(typeof(named(2, :i)))
+julia> nametype(typeof(Named(2, :i)))
+Symbol
+```
+
+```jldoctest
+julia> a = NamedTensor(zeros(2, 3), (:i, :j));
+
+julia> nametype(a)
+Symbol
+
+julia> nametype(typeof(a))
 Symbol
 ```
 
@@ -101,9 +115,9 @@ The type of the underlying (unnamed) value carried by a named type.
 # Examples
 
 ```jldoctest
-julia> using ITensorBase: unnamedtype
+julia> using ITensorBase: Named, unnamedtype
 
-julia> unnamedtype(typeof(named(2, :i)))
+julia> unnamedtype(typeof(Named(2, :i)))
 Int64
 ```
 
@@ -115,24 +129,15 @@ function unnamedtype end
 unnamed(i::Named) = i.unnamed
 name(i::Named) = i.name
 
-"""
-    named(value, name)
-
-Attach `name` to `value`, pairing them into a single named object. On a scalar this produces
-a `Named`. Arrays and unit ranges have their own more specific methods.
-
-# Examples
-
-```jldoctest
-julia> named(2, :i)
-named(2, :i)
-```
-"""
-named(value, name) = Named(value, name)
+# Attach a name to a value whose type is only known at runtime, picking the named type that
+# matches its shape. Call sites that know what they are building use the constructor
+# (`Named`, `NamedUnitRange`, `NamedArray`, `NamedColon`) directly; the per-type methods live
+# alongside those types.
+to_named(value, name) = Named(value, name)
 
 # Derived interface.
-setname(i::Named, name) = named(unnamed(i), name)
-setunnamed(i::Named, unnamed) = named(unnamed, name(i))
+setname(i::Named, name) = Named(unnamed(i), name)
+setunnamed(i::Named, unnamed) = Named(unnamed, name(i))
 
 unnamedtype(::Type{<:Named{<:Any, Unnamed}}) where {Unnamed} = Unnamed
 nametype(::Type{<:Named{Name}}) where {Name} = Name
@@ -155,14 +160,14 @@ end
 Base.hash(i::Named, h::UInt) = hash_named(:Named, i, h)
 
 function uniquename(rng::AbstractRNG, i::Named)
-    return named(unnamed(i), uniquename(name(i)))
+    return Named(unnamed(i), uniquename(name(i)))
 end
 
 function Base.string(i::Named; kwargs...)
-    return "named($(string(unnamed(i); kwargs...)), $(repr(name(i))))"
+    return "Named($(string(unnamed(i); kwargs...)), $(repr(name(i))))"
 end
 function Base.show(io::IO, i::Named)
-    print(io, "named(", unnamed(i), ", ", repr(name(i)), ")")
+    print(io, "Named(", unnamed(i), ", ", repr(name(i)), ")")
     return nothing
 end
 
@@ -174,7 +179,7 @@ Base.:-(i::NamedInteger) = setunnamed(i, -unnamed(i))
 ## Here, named numbers are treated as unitful, so multiplying them
 ## with unnamed numbers means the result inherits the name.
 ## function Base.:*(i1::NamedInteger, i2::Number)
-##   return named(unnamed(i1) * i2, name(i1))
+##   return Named(unnamed(i1) * i2, name(i1))
 ## end
 
 Base.zero(i::NamedInteger) = setunnamed(i, zero(unnamed(i)))

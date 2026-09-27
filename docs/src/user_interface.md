@@ -14,12 +14,15 @@ see the [Reference](@ref).
 An [`ITensor`](@ref) labels its dimensions by name, and an [`Index`](@ref) is a named
 dimension. Get a tensor's indices with [`inds`](@ref), make distinct copies of an index with
 [`prime`](@ref) and [`noprime`](@ref), and mint a fresh unique name with [`uniquename`](@ref).
+Relabel a tensor's indices with [`rename`](@ref), which takes either a set of replacements or a
+function to apply to every name, and leaves the data and the spaces untouched.
 
 ```@docs; canonical=false
 Index
 inds
 prime
 noprime
+rename
 uniquename
 ```
 
@@ -93,8 +96,10 @@ intermediates:
 2 .* a .+ 3 .* c
 ```
 
-Non-linear broadcasting (functions of one or more tensors, such as `sin.(a)` or `a .^ 2`) is
-experimental and incompletely supported, and is subject to change.
+Broadcasting is linear-only. A sum of tensors, a scalar multiple and `conj` are supported,
+and anything else throws, including `sin.(a)`, `a .^ 2`, `a .* b` and the scalar shift `a .+ 1`.
+The same applies to `map`, which broadcasts. To apply a general function, unname the tensor,
+broadcast over the array, and name the result.
 
 ## Factorizations
 

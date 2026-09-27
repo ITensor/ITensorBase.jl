@@ -140,9 +140,9 @@ end
 substitute_lazy(a, substitutions) = substitute(a, Dict(substitutions))
 using AbstractTrees: printnode
 function printnode_lazy(io, a)
-    # Use `printnode_nameddims` to avoid type piracy,
+    # Use `printnode_namedtensor` to avoid type piracy,
     # since it overloads on `AbstractNamedTensor`.
-    return printnode_nameddims(io, unwrap(a))
+    return printnode_namedtensor(io, unwrap(a))
 end
 function show_lazy(io::IO, a)
     if !iscall(a)
@@ -183,12 +183,12 @@ mul_lazy(a1::Number, a2::Number) = a1 * a2
 div_lazy(a1, a2::Number) = error("Not implemented.")
 
 # ITensorBase.jl named-tensor interface.
-function dimnames_lazy(a)
+function names_lazy(a)
     u = unwrap(a)
     if !iscall(u)
-        return dimnames(u)
+        return names(u)
     elseif ismul(u)
-        return mapreduce(dimnames, symdiff, arguments(u))
+        return mapreduce(names, symdiff, arguments(u))
     else
         return error("Variant not supported.")
     end

@@ -1,14 +1,14 @@
 # Expression leaf with no array payload, so it defines no `unnamed`/`getindex`.
 # A symbolic tensor is a placeholder substituted with a real tensor before
 # contraction, so it only needs what drives contraction-order selection: the
-# `dimnames` and the index `size`s (the cost model uses lengths). Its `axes` are
-# reconstructed as plain ranges of those sizes. Storing sizes and dimnames as
+# `names` and the index `size`s (the cost model uses lengths). Its `axes` are
+# reconstructed as plain ranges of those sizes. Storing sizes and names as
 # fields rather than type parameters lets symbolic tensors of different rank
 # share one concrete type so a flat `Mul` over them stays concretely typed.
 struct SymbolicNamedTensor{DimName, Name} <: AbstractNamedTensor{DimName}
     name::Name
     size::Vector{Int}
-    dimnames::Vector{DimName}
+    names::Vector{DimName}
 end
 function SymbolicNamedTensor(symname, inds)
     dnames = collect(name.(inds))
@@ -19,20 +19,23 @@ end
 
 symname(a::SymbolicNamedTensor) = getfield(a, :name)
 
-dimnames(a::SymbolicNamedTensor) = getfield(a, :dimnames)
+names(a::SymbolicNamedTensor) = getfield(a, :names)
 function Base.axes(a::SymbolicNamedTensor)
-    return named.(Tuple(Base.OneTo.(getfield(a, :size))), Tuple(getfield(a, :dimnames)))
+    return NamedUnitRange.(
+        Tuple(Base.OneTo.(getfield(a, :size))),
+        Tuple(getfield(a, :names))
+    )
 end
-Base.ndims(a::SymbolicNamedTensor) = length(getfield(a, :dimnames))
+Base.ndims(a::SymbolicNamedTensor) = length(getfield(a, :names))
 
 function Base.:(==)(a::SymbolicNamedTensor, b::SymbolicNamedTensor)
-    return symname(a) == symname(b) && dimnames(a) == dimnames(b)
+    return symname(a) == symname(b) && names(a) == names(b)
 end
 Base.isequal(a::SymbolicNamedTensor, b::SymbolicNamedTensor) = a == b
 function Base.hash(a::SymbolicNamedTensor, h::UInt64)
     h = hash(:SymbolicNamedTensor, h)
     h = hash(symname(a), h)
-    return hash(dimnames(a), h)
+    return hash(names(a), h)
 end
 
 # Products build lazy expressions rather than contracting numerically.
@@ -46,7 +49,7 @@ issymbolic(a::LazyNamedTensor) = !iscall(a) && issymbolic(unwrap(a))
 function Base.show(io::IO, a::SymbolicNamedTensor)
     print(io, symname(a))
     if ndims(a) > 0
-        print(io, "[", join(dimnames(a), ","), "]")
+        print(io, "[", join(names(a), ","), "]")
     end
     return nothing
 end
@@ -66,12 +69,12 @@ function AbstractTrees.printnode(io::IO, a::SymbolicNamedTensor)
     return nothing
 end
 
-function symnameddims(symname, dims)
+function symnamedtensor(symname, dims)
     return lazy(SymbolicNamedTensor(symname, dims))
 end
-symnameddims(name) = symnameddims(name, ())
+symnamedtensor(name) = symnamedtensor(name, ())
 
-function printnode_nameddims(io::IO, a::SymbolicNamedTensor)
+function printnode_namedtensor(io::IO, a::SymbolicNamedTensor)
     AbstractTrees.printnode(io, a)
     return nothing
 end

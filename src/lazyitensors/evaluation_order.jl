@@ -21,7 +21,7 @@ end
 function time_complexity(
         ::typeof(+), t1::AbstractNamedTensor, t2::AbstractNamedTensor
     )
-    @assert issetequal(dimnames(t1), dimnames(t2))
+    @assert issetequal(names(t1), names(t2))
     return prod(size(t1))
 end
 function time_complexity(::typeof(*), c::Number, t::AbstractNamedTensor)
@@ -103,7 +103,7 @@ function optimize_contraction_order(alg::Greedy, a)
         # Penalize outer product contractions.
         # TODO: Still order the outer products by time complexity,
         # say by checking if there are only outer products left.
-        isdisjoint(dimnames(args[i1]), dimnames(args[i2])) && return typemax(Int)
+        isdisjoint(names(args[i1]), names(args[i2])) && return typemax(Int)
         return time_complexity(*, args[i1], args[i2])
     end
     rest = [arg for (i, arg) in pairs(args) if i ∉ (i1, i2)]
