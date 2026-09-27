@@ -96,8 +96,10 @@ intermediates:
 2 .* a .+ 3 .* c
 ```
 
-Non-linear broadcasting (functions of one or more tensors, such as `sin.(a)` or `a .^ 2`) is
-experimental and incompletely supported, and is subject to change.
+Broadcasting is linear-only. A sum of tensors, a scalar multiple and `conj` are supported,
+and anything else throws, including `sin.(a)`, `a .^ 2`, `a .* b` and the scalar shift `a .+ 1`.
+The same applies to `map`, which broadcasts. To apply a general function, unname the tensor,
+broadcast over the array, and name the result.
 
 ## Factorizations
 

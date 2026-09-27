@@ -342,6 +342,21 @@ end
         c = NamedTensor(Array{elt}(undef, 2, 3), (:i, :j))
         c .= a .+ 2 .* b
         @test unname(c, (:i, :j)) ≈ unname(a, (:i, :j)) + 2 * unname(b, (:i, :j))
+        # `identity.(a)` folds to the operand itself, which the out-of-place path also handles.
+        @test unname(identity.(a), (:i, :j)) ≈ unname(a, (:i, :j))
+
+        # Broadcasting is linear-only: a sum, a scalar multiple and `conj` fold, and everything
+        # else is rejected rather than falling back to a generic element-wise broadcast. `map`
+        # broadcasts, so it is rejected on the same expressions.
+        @test_throws ArgumentError a .* b
+        @test_throws ArgumentError a ./ b
+        @test_throws ArgumentError sqrt.(abs.(a))
+        # A scalar shift is affine rather than linear, so it goes too.
+        @test_throws ArgumentError a .+ 1
+        @test_throws ArgumentError map(sqrt, a)
+        @test_throws ArgumentError map(*, a, b)
+        c = NamedTensor(Array{elt}(undef, 2, 3), (:i, :j))
+        @test_throws ArgumentError c .= a .* b
 
         # Regression test for proper permutations.
         a = NamedTensor(randn(elt, 2, 3, 4), (:i, :j, :k))

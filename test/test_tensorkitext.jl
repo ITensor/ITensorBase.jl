@@ -66,13 +66,13 @@ using Test: @test, @test_throws, @testset
         @test TK.space(ref) == TK.space(gc)
         @test ref ≈ gc
 
-        # Linear-combination broadcast lowers to `bipermutedimsopadd!`; a non-linear element-wise
-        # `f.(a)` on a graded tensor errors (graded broadcasting is linear-only).
+        # Linear-combination broadcast lowers to `bipermutedimsopadd!`. A non-linear element-wise
+        # `f.(a)` is rejected, since named broadcasting is linear-only.
         b2 = randn(rng, elt, i, j)
         @test unnamed(a + b2) ≈ unnamed(a) + unnamed(b2)
         @test unnamed(2 * a) ≈ 2 * unnamed(a)
         @test unnamed(a .- 3 .* b2) ≈ unnamed(a) - 3 * unnamed(b2)
-        @test_throws ErrorException sin.(a)
+        @test_throws ArgumentError sin.(a)
 
         # Named broadcasting aligns operands by name within their codomain/domain split, so a within-split
         # reorder of a multi-leg operand still adds correctly (compared at a common split via `align`).
