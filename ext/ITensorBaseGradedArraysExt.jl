@@ -1,11 +1,41 @@
 module ITensorBaseGradedArraysExt
 
-using GradedArrays: SectorRange
+using GradedArrays: FusedGradedDiagonal, FusedGradedMatrix, SectorRange
 using ITensorBase: ITensorBase, NamedTensor, name, uniquename, unnamed
 using Random: AbstractRNG, default_rng
+using TensorAlgebra: TensorAlgebra as TA
 using TensorKitSectors: Sector
 
 const NamedUnitRange = ITensorBase.NamedUnitRange
+
+# GradedArrays defines `unmatricize` for its fused matrices with untyped axes, which ties with
+# ITensorBase's methods on named axes. Restate those for each fused matrix type so the named
+# unmatricize of a graded matrix has a unique most-specific method.
+for M in (:FusedGradedMatrix, :FusedGradedDiagonal)
+    @eval begin
+        function TA.unmatricize(
+                m::$M,
+                codomain::Tuple{NamedUnitRange, Vararg{NamedUnitRange}},
+                domain::Tuple{Vararg{NamedUnitRange}}
+            )
+            return ITensorBase.unmatricize_namedtensor(m, codomain, domain)
+        end
+        function TA.unmatricize(
+                m::$M,
+                codomain::Tuple{Vararg{NamedUnitRange}},
+                domain::Tuple{NamedUnitRange, Vararg{NamedUnitRange}}
+            )
+            return ITensorBase.unmatricize_namedtensor(m, codomain, domain)
+        end
+        function TA.unmatricize(
+                m::$M,
+                codomain::Tuple{NamedUnitRange, Vararg{NamedUnitRange}},
+                domain::Tuple{NamedUnitRange, Vararg{NamedUnitRange}}
+            )
+            return ITensorBase.unmatricize_namedtensor(m, codomain, domain)
+        end
+    end
+end
 
 # Flux-canceling constructors at the `Index` level: delegate to the GradedArrays flux backend on
 # the unnamed axes, then reattach names, so the flux convention lives only in the backend. The

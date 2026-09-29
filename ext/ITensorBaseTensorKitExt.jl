@@ -1,7 +1,33 @@
 module ITensorBaseTensorKitExt
 
 using ITensorBase: ITensorBase, NamedUnitRange
-using TensorKit: ElementarySpace, dim
+using TensorAlgebra: TensorAlgebra as TA
+using TensorKit: AbstractTensorMap, ElementarySpace, dim
+
+# TensorAlgebra's TensorKit extension defines `unmatricize` for `AbstractTensorMap` with untyped
+# axes, and a `TensorMap` is not an `AbstractMatrix`, so ITensorBase's named-axes methods do not
+# reach it. Restate them for `AbstractTensorMap`.
+function TA.unmatricize(
+        m::AbstractTensorMap,
+        codomain::Tuple{NamedUnitRange, Vararg{NamedUnitRange}},
+        domain::Tuple{Vararg{NamedUnitRange}}
+    )
+    return ITensorBase.unmatricize_namedtensor(m, codomain, domain)
+end
+function TA.unmatricize(
+        m::AbstractTensorMap,
+        codomain::Tuple{Vararg{NamedUnitRange}},
+        domain::Tuple{NamedUnitRange, Vararg{NamedUnitRange}}
+    )
+    return ITensorBase.unmatricize_namedtensor(m, codomain, domain)
+end
+function TA.unmatricize(
+        m::AbstractTensorMap,
+        codomain::Tuple{NamedUnitRange, Vararg{NamedUnitRange}},
+        domain::Tuple{NamedUnitRange, Vararg{NamedUnitRange}}
+    )
+    return ITensorBase.unmatricize_namedtensor(m, codomain, domain)
+end
 
 # ================================  Index over a native space  ==============================
 # A native TensorKit space is stored directly as the axis value of a `NamedUnitRange`, so

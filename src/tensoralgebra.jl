@@ -108,23 +108,24 @@ end
 # Unmatricize an unnamed matrix into the named `codomain`/`domain` axes, giving a named tensor.
 # `Tuple{Vararg{NamedUnitRange}}` also matches an empty tuple, so demanding at least one named
 # axis across the two groups takes three methods: one per group, plus the both-nonempty case
-# that resolves the ambiguity between them.
+# that resolves the ambiguity between them. `m::AbstractMatrix` keeps these more specific than
+# TensorAlgebra's `unmatricize(::AbstractMatrix, axes_codomain, axes_domain)`.
 function TA.unmatricize(
-        m,
+        m::AbstractMatrix,
         codomain::Tuple{NamedUnitRange, Vararg{NamedUnitRange}},
         domain::Tuple{Vararg{NamedUnitRange}}
     )
     return unmatricize_namedtensor(m, codomain, domain)
 end
 function TA.unmatricize(
-        m,
+        m::AbstractMatrix,
         codomain::Tuple{Vararg{NamedUnitRange}},
         domain::Tuple{NamedUnitRange, Vararg{NamedUnitRange}}
     )
     return unmatricize_namedtensor(m, codomain, domain)
 end
 function TA.unmatricize(
-        m,
+        m::AbstractMatrix,
         codomain::Tuple{NamedUnitRange, Vararg{NamedUnitRange}},
         domain::Tuple{NamedUnitRange, Vararg{NamedUnitRange}}
     )
