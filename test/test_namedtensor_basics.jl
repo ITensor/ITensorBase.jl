@@ -526,6 +526,7 @@ end
         v = view(a, j[2:3])
         @test names(v) == names(a)
         @test unnamed(v) == unnamed(a)[:, 2:3, :]
+        @test unnamed(v) === view(unnamed(a), :, (2:3), :)
         @test unnamed(view(a, k[1:2], i[2:2])) == unnamed(a)[2:2, :, 1:2]
         @test unnamed(a[j => 2:3]) == unnamed(a)[:, 2:3, :]
         @test unnamed(view(a, j => 2:3)) == unnamed(a)[:, 2:3, :]
