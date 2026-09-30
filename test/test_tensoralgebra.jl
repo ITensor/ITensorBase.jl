@@ -6,7 +6,7 @@ using MatrixAlgebraKit: left_null, left_orth, left_polar, lq_compact, lq_full, q
 using StableRNGs: StableRNG
 using TensorAlgebra: TensorAlgebra, contract, directsum, matricize, project, trivialrange,
     unchecked_project, unmatricize
-using Test: @test, @test_broken, @testset
+using Test: @test, @test_broken, @test_throws, @testset
 
 @testset "TensorAlgebra (eltype=$(elt))" for elt in
     (
@@ -278,4 +278,14 @@ end
     TensorAlgebra.contractopadd!(dest_perm, conj, a, identity, b, true, false)
     @test names(dest_perm) == ["k", "i"]
     @test dest_perm ≈ conj(a) * b
+end
+
+@testset "allocating `contract` rejects wrapped named tensors" begin
+    i, j, k = NamedOneTo(2, "i"), NamedOneTo(3, "j"), NamedOneTo(4, "k")
+    a, b = randn(i, j), randn(j, k)
+    @test_throws MethodError TensorAlgebra.contract(operator(a, [i], [j]), b)
+    @test_throws MethodError TensorAlgebra.contract(
+        ITensorBase.lazy(a),
+        ITensorBase.lazy(b)
+    )
 end

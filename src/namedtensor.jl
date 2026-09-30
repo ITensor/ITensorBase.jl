@@ -210,3 +210,9 @@ unnamedtype(a::NamedTensor) = typeof(unnamed(a))
 unnamedtype(::Type{<:NamedTensor}) = AbstractArray
 parenttype(a::NamedTensor) = typeof(parent(a))
 parenttype(::Type{<:NamedTensor}) = AbstractArray
+
+# Restricted to `NamedTensor` so operator and lazy operands, whose `*` returns a wrapped
+# result, throw a `MethodError` instead of returning a plain `NamedTensor`.
+function TensorAlgebra.contract(a1::NamedTensor, a2::NamedTensor; kwargs...)
+    return mul_namedtensor(a1, a2; kwargs...)
+end

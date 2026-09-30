@@ -13,9 +13,6 @@ function mul_namedtensor(a1::AbstractNamedTensor, a2::AbstractNamedTensor; kwarg
     )
     return NamedTensor(a_dest, names_dest)
 end
-function TA.contract(a1::AbstractNamedTensor, a2::AbstractNamedTensor; kwargs...)
-    return mul_namedtensor(a1, a2; kwargs...)
-end
 
 # Left associative fold/reduction.
 # Circumvent Base definitions:
