@@ -1,12 +1,12 @@
-using ITensorBase: ITensorBase, Index, NamedOneTo, id, inds, name, names, operator, prime,
-    rename, unname, unnamed
+using ITensorBase: ITensorBase, Index, NamedOneTo, id, inds, mulopadd!, name, names,
+    operator, prime, rename, unname, unnamed
 using LinearAlgebra: mul!, norm, tr
 using MatrixAlgebraKit: left_null, left_orth, left_polar, lq_compact, lq_full, qr_compact,
     qr_full, right_null, right_orth, right_polar, svd_compact, svd_trunc, svd_vals
 using StableRNGs: StableRNG
 using TensorAlgebra: TensorAlgebra, contract, directsum, matricize, project, trivialrange,
     unchecked_project, unmatricize
-using Test: @test, @test_broken, @test_throws, @testset
+using Test: @test, @test_broken, @testset
 
 @testset "TensorAlgebra (eltype=$(elt))" for elt in
     (
@@ -242,50 +242,36 @@ function TensorAlgebra.contractpermopadd!(
     )
 end
 
-@testset "contraction forwards `alg`" begin
+@testset "`mul!` forwards `alg`" begin
     i, j, k = NamedOneTo(2, "i"), NamedOneTo(3, "j"), NamedOneTo(4, "k")
     a, b = randn(i, j), randn(j, k)
     alg = RecordingContract(Ref(0))
-    @test TensorAlgebra.contract(a, b; alg) ≈ a * b
-    @test alg.calls[] == 1
     dest = similar(a * b)
     mul!(dest, a, b; alg)
     @test dest ≈ a * b
-    @test alg.calls[] == 2
+    @test alg.calls[] == 1
     mul!(dest, a, b, 2, 1; alg)
     @test dest ≈ 3 * (a * b)
-    @test alg.calls[] == 3
+    @test alg.calls[] == 2
 end
 
-@testset "named `contract!` and `contractopadd!`" begin
+@testset "`mulopadd!`" begin
     i, j, k = NamedOneTo(2, "i"), NamedOneTo(3, "j"), NamedOneTo(4, "k")
     a, b = randn(ComplexF64, i, j), randn(ComplexF64, j, k)
     dest = randn(ComplexF64, i, k)
-    TensorAlgebra.contract!(dest, a, b)
-    @test dest ≈ a * b
-    TensorAlgebra.contractopadd!(dest, conj, a, identity, b, true, false)
+    mulopadd!(dest, conj, a, identity, b, true, false)
     @test dest ≈ conj(a) * b
-    TensorAlgebra.contractopadd!(dest, identity, a, conj, b, true, false)
+    mulopadd!(dest, identity, a, conj, b, true, false)
     @test dest ≈ a * conj(b)
     prev = copy(dest)
-    TensorAlgebra.contractopadd!(dest, conj, a, identity, b, 2, 1)
+    mulopadd!(dest, conj, a, identity, b, 2, 1)
     @test dest ≈ prev + 2 * (conj(a) * b)
     alg = RecordingContract(Ref(0))
-    TensorAlgebra.contractopadd!(dest, conj, a, identity, b, true, false; alg)
+    mulopadd!(dest, conj, a, identity, b, true, false; alg)
     @test dest ≈ conj(a) * b
     @test alg.calls[] == 1
     dest_perm = randn(ComplexF64, k, i)
-    TensorAlgebra.contractopadd!(dest_perm, conj, a, identity, b, true, false)
+    mulopadd!(dest_perm, conj, a, identity, b, true, false)
     @test names(dest_perm) == ["k", "i"]
     @test dest_perm ≈ conj(a) * b
-end
-
-@testset "allocating `contract` rejects wrapped named tensors" begin
-    i, j, k = NamedOneTo(2, "i"), NamedOneTo(3, "j"), NamedOneTo(4, "k")
-    a, b = randn(i, j), randn(j, k)
-    @test_throws MethodError TensorAlgebra.contract(operator(a, [i], [j]), b)
-    @test_throws MethodError TensorAlgebra.contract(
-        ITensorBase.lazy(a),
-        ITensorBase.lazy(b)
-    )
 end

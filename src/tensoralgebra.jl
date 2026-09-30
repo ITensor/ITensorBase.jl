@@ -7,9 +7,9 @@ using TensorAlgebra: TensorAlgebra as TA
 names_setdiff(s1, s2) = setdiff(s1, s2)
 
 Base.:*(a1::AbstractNamedTensor, a2::AbstractNamedTensor) = mul_namedtensor(a1, a2)
-function mul_namedtensor(a1::AbstractNamedTensor, a2::AbstractNamedTensor; kwargs...)
+function mul_namedtensor(a1::AbstractNamedTensor, a2::AbstractNamedTensor)
     a_dest, names_dest = TA.contract(
-        unnamed(a1), names(a1), unnamed(a2), names(a2); kwargs...
+        unnamed(a1), names(a1), unnamed(a2), names(a2)
     )
     return NamedTensor(a_dest, names_dest)
 end
@@ -77,13 +77,13 @@ function mul!_namedtensor(
     return a_dest
 end
 
-function TA.contract!(
-        a_dest::AbstractNamedTensor, a1::AbstractNamedTensor, a2::AbstractNamedTensor;
-        kwargs...
-    )
-    return mul!_namedtensor(a_dest, a1, a2; kwargs...)
-end
-function TA.contractopadd!(
+"""
+    mulopadd!(a_dest, op1, a1, op2, a2, α, β; alg = nothing)
+
+Compute `a_dest = α * op1(a1) * op2(a2) + β * a_dest`, matching dimensions by name. `op1` and
+`op2` are `identity` or `conj`, and `alg` is a `TensorAlgebra.ContractAlgorithm`.
+"""
+function mulopadd!(
         a_dest::AbstractNamedTensor,
         op1, a1::AbstractNamedTensor,
         op2, a2::AbstractNamedTensor,
