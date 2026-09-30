@@ -7,11 +7,14 @@ using TensorAlgebra: TensorAlgebra as TA
 names_setdiff(s1, s2) = setdiff(s1, s2)
 
 Base.:*(a1::AbstractNamedTensor, a2::AbstractNamedTensor) = mul_namedtensor(a1, a2)
-function mul_namedtensor(a1::AbstractNamedTensor, a2::AbstractNamedTensor)
+function mul_namedtensor(a1::AbstractNamedTensor, a2::AbstractNamedTensor; kwargs...)
     a_dest, names_dest = TA.contract(
-        unnamed(a1), names(a1), unnamed(a2), names(a2)
+        unnamed(a1), names(a1), unnamed(a2), names(a2); kwargs...
     )
     return NamedTensor(a_dest, names_dest)
+end
+function TA.contract(a1::AbstractNamedTensor, a2::AbstractNamedTensor; kwargs...)
+    return mul_namedtensor(a1, a2; kwargs...)
 end
 
 # Left associative fold/reduction.
@@ -37,38 +40,42 @@ end
 function LA.mul!(
         a_dest::AbstractNamedTensor,
         a1::AbstractNamedTensor, a2::AbstractNamedTensor,
-        α::Number, β::Number
+        α::Number, β::Number;
+        kwargs...
     )
-    return mul!_namedtensor(a_dest, a1, a2, α, β)
+    return mul!_namedtensor(a_dest, a1, a2, α, β; kwargs...)
 end
 function mul!_namedtensor(
         a_dest::AbstractNamedTensor,
         a1::AbstractNamedTensor, a2::AbstractNamedTensor,
-        α::Number, β::Number
+        α::Number, β::Number;
+        kwargs...
     )
     TA.contractadd!(
         unnamed(a_dest), names(a_dest),
         unnamed(a1), names(a1),
         unnamed(a2), names(a2),
-        α, β
+        α, β; kwargs...
     )
     return a_dest
 end
 
 function LA.mul!(
         a_dest::AbstractNamedTensor,
-        a1::AbstractNamedTensor, a2::AbstractNamedTensor
+        a1::AbstractNamedTensor, a2::AbstractNamedTensor;
+        kwargs...
     )
-    return mul!_namedtensor(a_dest, a1, a2)
+    return mul!_namedtensor(a_dest, a1, a2; kwargs...)
 end
 function mul!_namedtensor(
         a_dest::AbstractNamedTensor,
-        a1::AbstractNamedTensor, a2::AbstractNamedTensor
+        a1::AbstractNamedTensor, a2::AbstractNamedTensor;
+        kwargs...
     )
     TA.contract!(
         unnamed(a_dest), names(a_dest),
         unnamed(a1), names(a1),
-        unnamed(a2), names(a2)
+        unnamed(a2), names(a2); kwargs...
     )
     return a_dest
 end
