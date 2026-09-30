@@ -256,3 +256,26 @@ end
     @test dest ≈ 3 * (a * b)
     @test alg.calls[] == 3
 end
+
+@testset "named `contract!` and `contractopadd!`" begin
+    i, j, k = NamedOneTo(2, "i"), NamedOneTo(3, "j"), NamedOneTo(4, "k")
+    a, b = randn(ComplexF64, i, j), randn(ComplexF64, j, k)
+    dest = randn(ComplexF64, i, k)
+    TensorAlgebra.contract!(dest, a, b)
+    @test dest ≈ a * b
+    TensorAlgebra.contractopadd!(dest, conj, a, identity, b, true, false)
+    @test dest ≈ conj(a) * b
+    TensorAlgebra.contractopadd!(dest, identity, a, conj, b, true, false)
+    @test dest ≈ a * conj(b)
+    prev = copy(dest)
+    TensorAlgebra.contractopadd!(dest, conj, a, identity, b, 2, 1)
+    @test dest ≈ prev + 2 * (conj(a) * b)
+    alg = RecordingContract(Ref(0))
+    TensorAlgebra.contractopadd!(dest, conj, a, identity, b, true, false; alg)
+    @test dest ≈ conj(a) * b
+    @test alg.calls[] == 1
+    dest_perm = randn(ComplexF64, k, i)
+    TensorAlgebra.contractopadd!(dest_perm, conj, a, identity, b, true, false)
+    @test names(dest_perm) == ["k", "i"]
+    @test dest_perm ≈ conj(a) * b
+end

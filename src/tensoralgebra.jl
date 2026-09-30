@@ -80,6 +80,28 @@ function mul!_namedtensor(
     return a_dest
 end
 
+function TA.contract!(
+        a_dest::AbstractNamedTensor, a1::AbstractNamedTensor, a2::AbstractNamedTensor;
+        kwargs...
+    )
+    return mul!_namedtensor(a_dest, a1, a2; kwargs...)
+end
+function TA.contractopadd!(
+        a_dest::AbstractNamedTensor,
+        op1, a1::AbstractNamedTensor,
+        op2, a2::AbstractNamedTensor,
+        α::Number, β::Number;
+        kwargs...
+    )
+    TA.contractopadd!(
+        unnamed(a_dest), names(a_dest),
+        op1, unnamed(a1), names(a1),
+        op2, unnamed(a2), names(a2),
+        α, β; kwargs...
+    )
+    return a_dest
+end
+
 # Locate the named-dimension groups `group1`, `group2` within `a`, returning their two
 # positional index groups.
 function nameperm(a::AbstractNamedTensor, group1, group2)
