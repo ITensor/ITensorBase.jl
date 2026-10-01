@@ -1,4 +1,5 @@
 using Documenter: Documenter, DocMeta, deploydocs, makedocs
+using DocumenterInterLinks: InterLinks
 using ITensorBase
 using ITensorFormatter: ITensorFormatter
 
@@ -9,6 +10,8 @@ using ITensorFormatter: ITensorFormatter
 DocMeta.setdocmeta!(ITensorBase, :DocTestSetup, :(using ITensorBase); recursive = true)
 
 ITensorFormatter.make_index!(pkgdir(ITensorBase))
+
+links = InterLinks("GradedArrays" => "https://itensor.github.io/GradedArrays.jl/dev/")
 
 makedocs(;
     modules = [ITensorBase],
@@ -22,9 +25,11 @@ makedocs(;
     pages = [
         "Home" => "index.md",
         "User Interface" => "user_interface.md",
+        "Symmetric tensors" => "symmetries.md",
         "Developer Interface" => "dev_interface.md",
         "Reference" => "reference.md",
-    ]
+    ],
+    plugins = [links]
 )
 
 deploydocs(;
