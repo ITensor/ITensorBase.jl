@@ -37,10 +37,6 @@ ITensorBaseMooncakeExt = "Mooncake"
 ITensorBaseOMEinsumContractionOrdersExt = "OMEinsumContractionOrders"
 ITensorBaseTensorKitExt = "TensorKit"
 
-[sources.GradedArrays]
-rev = "mf/sector-type-overhaul"
-url = "https://github.com/ITensor/GradedArrays.jl"
-
 [compat]
 AbstractTrees = "0.4.5"
 Accessors = "0.1.39"
