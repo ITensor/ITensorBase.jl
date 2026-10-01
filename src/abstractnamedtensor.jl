@@ -1496,8 +1496,9 @@ end
 # Copy of `Base.dims2string` defined in `show.jl`.
 function dims_to_string(d)
     isempty(d) && return "0-dimensional"
-    length(d) == 1 && return "$(d[1])-element"
-    return join(map(string, d), '×')
+    strs = map(x -> sprint(show, x; context = :compact => true), d)
+    length(d) == 1 && return "$(only(strs))-element"
+    return join(strs, '×')
 end
 
 function concretetype_to_string_truncated(

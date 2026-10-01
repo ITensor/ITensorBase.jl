@@ -424,12 +424,22 @@ function primestring(plev)
     end
 end
 
+# The space, so a graded index shows its sectors and its arrow rather than just a total length.
+# A compact context asks for the length instead, which is what a tensor's summary line uses to
+# stay readable with one entry per leg.
 function Base.show(io::IO, i::Index)
-    lenstr = "length=$(length(i))"
+    spacestr = if get(io, :compact, false)
+        "length=$(length(i))"
+    else
+        # A `Base.OneTo` is how an ungraded space is stored rather than how it is written, so it
+        # shows as the range `Index` takes.
+        sp = space(i)
+        sprint(show, sp isa Base.OneTo ? UnitRange(sp) : sp; context = io)
+    end
     idstr = "|id=$(shortid(uuid(i)))"
     tagsstr = !isempty(tags_stored(i)) ? "|$(tagsstring(tags_stored(i)))" : ""
     primestr = primestring(plev(i))
-    str = "Index($(lenstr)$(idstr)$(tagsstr))$(primestr)"
+    str = "Index($(spacestr)$(idstr)$(tagsstr))$(primestr)"
     print(io, str)
     return nothing
 end

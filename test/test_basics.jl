@@ -196,11 +196,11 @@ using UUIDs: UUID
     @testset "show" begin
         i = Index(2)
         @test sprint(show, "text/plain", i) ==
-            "Index(length=2|id=$(first(string(uuid(i)), 8)))"
+            "Index(1:2|id=$(first(string(uuid(i)), 8)))"
 
         i = settag(Index(2), "X", "Y")
         @test sprint(show, "text/plain", i) ==
-            "Index(length=2|id=$(first(string(uuid(i)), 8))|X=>Y)"
+            "Index(1:2|id=$(first(string(uuid(i)), 8))|X=>Y)"
     end
     @testset "whole-tensor index manipulation" begin
         elt = Float64
