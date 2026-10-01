@@ -1,4 +1,4 @@
-using GradedArrays: U1, sectors
+using GradedArrays: U1, fU1, sectors
 using ITensorBase: ITensorBase, ITensor, Index, align, inds, names, prime, space, unnamed
 using StableRNGs: StableRNG
 using TensorAlgebra: TensorAlgebra, dual, isdual, matricize, project, project_aux,
@@ -40,16 +40,14 @@ using Test: @test, @test_throws, @testset
     @test length(inds(randn(rng, U1(1), (i, j)))) == 3
     @test length(inds(randn(rng, U1(1), (i,), (j,)))) == 3
 
-    # A bare `TensorKitSectors.Sector` (fermionic) works as the flux.
-    s = [
-        Index([FermionNumber(0) => 2, FermionNumber(1) => 2]; tags = "s" => "$n") for
-            n in 1:4
-    ]
+    # The flux may be a bare `TensorKitSectors.Sector` even where the axes are graded by the
+    # GradedArrays sector, and the aux leg comes back carrying the GradedArrays one.
+    s = [Index([fU1(0) => 2, fU1(1) => 2]; tags = "s" => "$n") for n in 1:4]
     t = randn(rng, elt, FermionNumber(2), (s[1], s[2], s[3], s[4]))
     @test length(inds(t)) == 5
     auxt = only(setdiff(collect(inds(t)), s))
     @test isdual(auxt) && length(auxt) == 1 &&
-        only(sectors(space(auxt))) == FermionNumber(2)
+        only(sectors(space(auxt))) == fU1(2)
 
     # `zeros`/`ones`/`fill` mirror `randn` (`fill` takes the value first). Each carries the
     # flux on an aux leg the same way.

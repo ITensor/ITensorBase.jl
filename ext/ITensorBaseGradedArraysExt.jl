@@ -1,10 +1,10 @@
 module ITensorBaseGradedArraysExt
 
-using GradedArrays: FusedGradedDiagonal, FusedGradedMatrix, SectorRange
+using GradedArrays: GradedArrays as GA, FusedGradedDiagonal, FusedGradedMatrix
 using ITensorBase: ITensorBase, NamedTensor, name, uniquename, unnamed
 using Random: AbstractRNG, default_rng
 using TensorAlgebra: TensorAlgebra as TA
-using TensorKitSectors: Sector
+using TensorKitSectors: TensorKitSectors as TKS
 
 const NamedUnitRange = ITensorBase.NamedUnitRange
 
@@ -39,8 +39,8 @@ end
 
 # Flux-canceling constructors at the `Index` level: delegate to the GradedArrays flux backend on
 # the unnamed axes, then reattach names, so the flux convention lives only in the backend. The
-# sector may be a bare `TensorKitSectors.Sector` or a `SectorRange`; this is an extension because
-# ITensorBase does not depend on the sector types.
+# sector may be a `TKS.Sector` or a `GA.Sector`, the same pair GradedArrays' own flux constructors
+# dispatch on. This is an extension because ITensorBase does not depend on the sector types.
 
 # Name the delegated result: the physical-leg names followed by a fresh name for the dangling aux
 # leg, minted of the legs' name type (not hardcoded to `IndexName`).
@@ -53,7 +53,7 @@ end
 # Three signature groups, each carrying a named physical axis so overloading `Base` is not piracy:
 # nonempty codomain with a (possibly empty) domain, the codomain-only form, and empty codomain with
 # a nonempty domain. The all-empty flux-only case has no named leg and is left to the backend.
-for S in (Sector, SectorRange)
+for S in (TKS.Sector, GA.Sector)
     # Nonempty codomain, domain given (possibly empty).
     for f in (:rand, :randn)
         @eval begin
