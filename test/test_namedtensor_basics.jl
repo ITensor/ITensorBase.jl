@@ -519,4 +519,23 @@ end
             Name(:c_3_1) Name(:c_3_2)
         ]
     end
+
+    @testset "view with a subset of named indices" begin
+        i, j, k = NamedOneTo(2, "i"), NamedOneTo(3, "j"), NamedOneTo(4, "k")
+        a = randn(i, j, k)
+        v = view(a, j[2:3])
+        @test names(v) == names(a)
+        @test unnamed(v) == unnamed(a)[:, 2:3, :]
+        @test unnamed(v) === view(unnamed(a), :, (2:3), :)
+        @test unnamed(view(a, k[1:2], i[2:2])) == unnamed(a)[2:2, :, 1:2]
+        @test unnamed(a[j => 2:3]) == unnamed(a)[:, 2:3, :]
+        @test unnamed(view(a, j => 2:3)) == unnamed(a)[:, 2:3, :]
+        s = view(a, j[2])
+        @test collect(names(s)) == collect(names(a))[[1, 3]]
+        @test unnamed(s) == unnamed(a)[:, 2, :]
+        @test unnamed(view(a, k[1:4], i[1:2], j[1:3])) == unnamed(a)
+        l = NamedOneTo(2, "l")
+        @test_throws NameMismatch view(a, l[1:2])
+        @test_throws NameMismatch view(a, j[1:1], j[2:2])
+    end
 end

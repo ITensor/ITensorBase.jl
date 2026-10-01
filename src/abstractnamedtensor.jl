@@ -1091,13 +1091,15 @@ function Base.getindex(
 end
 function Base.view(a::AbstractNamedTensor, I1::NamedViewIndex, Irest::NamedViewIndex...)
     I = (I1, Irest...)
-    perm = getperm(name.(I), names(a))
-    isperm(perm) || throw(
-        NameMismatch(
-            "Dimension name mismatch $(names(a)), $(name.(I))."
-        )
-    )
-    Ip = map(p -> unnamed(I[p]), perm)
+
+    # Check and throw if any index is a) not in `a` or b) repeated in `a`.
+    if !issubset(name.(I), names(a)) || !allunique(name.(I))
+        throw(NameMismatch("Dimension name mismatch $(names(a)), $(name.(I))."))
+    end
+
+    Ip = map(getperm(name.(I), names(a))) do k
+        return isnothing(k) ? Colon() : unnamed(I[k])
+    end
     return view_namedtensor(a, Ip...)
 end
 
