@@ -432,9 +432,9 @@ function Base.show(io::IO, i::Index)
         "length=$(length(i))"
     else
         # A `Base.OneTo` is how an ungraded space is stored rather than how it is written, so it
-        # shows as the range `Index` takes.
+        # shows as the length `Index` takes.
         sp = space(i)
-        sprint(show, sp isa Base.OneTo ? UnitRange(sp) : sp; context = io)
+        sp isa Base.OneTo ? string(length(sp)) : sprint(show, sp; context = io)
     end
     idstr = "|id=$(shortid(uuid(i)))"
     tagsstr = !isempty(tags_stored(i)) ? "|$(tagsstring(tags_stored(i)))" : ""
