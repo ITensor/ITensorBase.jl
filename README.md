@@ -7,6 +7,11 @@
 [![Code Style](https://img.shields.io/badge/code_style-ITensor-purple)](https://github.com/ITensor/ITensorFormatter.jl)
 [![Aqua](https://raw.githubusercontent.com/JuliaTesting/Aqua.jl/master/badge.svg)](https://github.com/JuliaTesting/Aqua.jl)
 
+A next-generation rewrite of [ITensors.jl](https://github.com/ITensor/ITensors.jl), allowing
+arbitrary array backends and a wider range of symmetries. Built on top of
+[TensorAlgebra.jl](https://github.com/ITensor/TensorAlgebra.jl), with group symmetric tensors
+powered by [GradedArrays.jl](https://github.com/ITensor/GradedArrays.jl).
+
 ## Support
 
 <picture>

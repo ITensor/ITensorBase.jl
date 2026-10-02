@@ -52,7 +52,7 @@ Note that indices of a `GradedArray` are partitioned into a codomain and a domai
 `GradedArray` stores the block diagonal matrix corresponding to the bipartitioning of the
 indices. When printing, by convention domain indices are implicitly dual (the format and
 conventions are compatible with those from
-[TensorKit.jl](https://github.com/Jutho/TensorKit.jl)). For more information see the
+[TensorKit.jl](https://github.com/QuantumKitHub/TensorKit.jl)). For more information see the
 documentation on [graded arrays](@extref GradedArrays :doc:`user_interface/graded_arrays`).
 
 ## Available symmetries
