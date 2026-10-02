@@ -22,7 +22,7 @@ a = randn(i, dual(j))
 
 Only the symmetry-allowed blocks are stored.
 
-Tensors over graded indices contract, scale and add like any others.
+Tensors over graded indices contract, scale, and add like any others.
 
 ```@example symmetries
 b = randn(j, dual(k))
@@ -57,7 +57,7 @@ documentation on [graded arrays](@extref GradedArrays :doc:`user_interface/grade
 
 ## Available symmetries
 
-Some standard symmetries are available such as `Z2`, `fU1` (fermionic `U(1)`) and `SU2`. See
+Some standard symmetries are available such as `Z2`, `fU1` (fermionic `U(1)`), and `SU2`. See
 [symmetry sectors](@extref GradedArrays Symmetry-sectors) for the complete list and more details.
 
 You can use named sectors to conserve a product of symmetries.
