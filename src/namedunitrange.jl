@@ -38,14 +38,11 @@ dropped. Equal to [`unnamed`](@ref) for a `NamedUnitRange`.
 """
 space(i::NamedUnitRange) = unnamed(i)
 
-"""
-    from_range(r)
-
-The space `r` was built from, the inverse of `TensorAlgebra.to_range`. This is what a range
-is written as rather than what it stores, so a `Base.OneTo` gives back its length and, with
-GradedArrays loaded, a graded space gives back its `sector => multiplicity` pairs. Used for
-printing. Anything else is its own space.
-"""
+# The space `r` was built from, the inverse of `to_range`: what a range is written as rather
+# than what it stores, so a `Base.OneTo` gives back its length and, with GradedArrays loaded, a
+# graded space gives back its `sector => multiplicity` pairs. Used for printing, and overloaded
+# by the extension of whichever package defines the space. Belongs beside `to_range` in
+# TensorAlgebra, where every package that takes a space specification could reach it.
 from_range(r) = r
 from_range(r::Base.OneTo) = length(r)
 

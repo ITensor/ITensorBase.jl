@@ -14,7 +14,7 @@ using Test: @test, @testset
         :tryuniqueind, :uniqueind, :uniqueinds, :unioninds, :uniquename,
     ]
     publics = [
-        :IndexName, :from_range, :mulopadd!, :name, :names, :setname, :space, :unnamed,
+        :IndexName, :mulopadd!, :name, :names, :setname, :space, :unnamed,
         :unnamedtype,
         :decoration, :emptytags, :gettag, :gettags, :hastag, :plev, :settags, :tags,
         :unsettags,
