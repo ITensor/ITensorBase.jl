@@ -188,11 +188,11 @@ end
 
 # An `Index` prints the space it was written with, so a graded one shows its
 # `sector => multiplicity` pairs rather than the `gradedrange(...)` call that built the range,
-# with `dual` factored outside the pairs.
+# and a dual one prints as `dual` of the index rather than of the pairs.
 @testset "GradedArraysExt Index show" begin
     i = Index([U1(0) => 1, U1(1) => 2])
     @test sprint(show, "text/plain", i) ==
         "Index([U1(0) => 1, U1(1) => 2]|id=$(first(string(uuid(i)), 8)))"
     @test sprint(show, "text/plain", dual(i)) ==
-        "Index(dual([U1(0) => 1, U1(1) => 2])|id=$(first(string(uuid(i)), 8)))"
+        "dual(Index([U1(0) => 1, U1(1) => 2]|id=$(first(string(uuid(i)), 8))))"
 end
