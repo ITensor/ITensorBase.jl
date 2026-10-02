@@ -431,10 +431,13 @@ function Base.show(io::IO, i::Index)
     spacestr = if get(io, :compact, false)
         "length=$(length(i))"
     else
-        # A `Base.OneTo` is how an ungraded space is stored rather than how it is written, so it
-        # shows as the length `Index` takes.
+        # The space the `Index` was written with rather than the range it stores, with duality
+        # factored outside it the way a graded range prints its own `dual`. `:typeinfo` drops the
+        # element-type prefix a vector of `sector => multiplicity` pairs would otherwise carry.
         sp = space(i)
-        sp isa Base.OneTo ? string(length(sp)) : sprint(show, sp; context = io)
+        spec = from_range(TA.isdual(sp) ? TA.dual(sp) : sp)
+        specstr = sprint(show, spec; context = IOContext(io, :typeinfo => typeof(spec)))
+        TA.isdual(sp) ? "dual($(specstr))" : specstr
     end
     idstr = "|id=$(shortid(uuid(i)))"
     tagsstr = !isempty(tags_stored(i)) ? "|$(tagsstring(tags_stored(i)))" : ""

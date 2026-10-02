@@ -8,6 +8,12 @@ using TensorKitSectors: TensorKitSectors as TKS
 
 const NamedUnitRange = ITensorBase.NamedUnitRange
 
+# The `sector => multiplicity` pairs `gradedrange` takes, so an `Index` over a graded space
+# prints what it was written with rather than the `gradedrange(...)` call that built the range.
+function ITensorBase.from_range(g::GA.AbstractGradedOneTo)
+    return [s => m for (s, m) in zip(GA.sectors(g), GA.datalengths(g))]
+end
+
 # GradedArrays defines `unmatricize` for its fused matrices with untyped axes, which ties with
 # ITensorBase's methods on named axes. Restate those for each fused matrix type so the named
 # unmatricize of a graded matrix has a unique most-specific method.

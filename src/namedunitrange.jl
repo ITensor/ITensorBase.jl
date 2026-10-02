@@ -38,6 +38,17 @@ dropped. Equal to [`unnamed`](@ref) for a `NamedUnitRange`.
 """
 space(i::NamedUnitRange) = unnamed(i)
 
+"""
+    from_range(r)
+
+The space `r` was built from, the inverse of `TensorAlgebra.to_range`. This is what a range
+is written as rather than what it stores, so a `Base.OneTo` gives back its length and, with
+GradedArrays loaded, a graded space gives back its `sector => multiplicity` pairs. Used for
+printing. Anything else is its own space.
+"""
+from_range(r) = r
+from_range(r::Base.OneTo) = length(r)
+
 # Construct from a space, minting a fresh name of the requested flavor. The space is
 # anything `to_range` accepts (an `Integer`, an existing range, or a sector-pair vector
 # when GradedArrays is loaded), so `Index(2)`, `Index(1:3)`, and

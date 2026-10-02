@@ -1,5 +1,5 @@
 using GradedArrays: U1, fU1, sectors
-using ITensorBase: ITensorBase, ITensor, Index, align, inds, names, prime, space, unnamed
+using ITensorBase: ITensorBase, ITensor, Index, align, inds, prime, space, unnamed, uuid
 using StableRNGs: StableRNG
 using TensorAlgebra: TensorAlgebra, dual, isdual, matricize, project, project_aux,
     tryproject, tryproject_aux, unchecked_project, unchecked_project_aux, unmatricize
@@ -121,7 +121,7 @@ end
     @test m isa AbstractMatrix{elt}
     @test size(m) == (length(i) * length(j), length(k))
     rt = unmatricize(m, (i, j), (k,))
-    @test names(rt) == names(a)
+    @test ITensorBase.names(rt) == ITensorBase.names(a)
     @test isdual(inds(rt)[3])
     @test unnamed(rt) ≈ unnamed(a)
 end
@@ -184,4 +184,15 @@ end
     @test_throws ArgumentError ITensor(m, (i, dual(j)), ())
     # Naming the dimensions flat claims no split, so it stays available.
     @test ITensor(m, (i, dual(j))) isa ITensor
+end
+
+# An `Index` prints the space it was written with, so a graded one shows its
+# `sector => multiplicity` pairs rather than the `gradedrange(...)` call that built the range,
+# with `dual` factored outside the pairs.
+@testset "GradedArraysExt Index show" begin
+    i = Index([U1(0) => 1, U1(1) => 2])
+    @test sprint(show, "text/plain", i) ==
+        "Index([U1(0) => 1, U1(1) => 2]|id=$(first(string(uuid(i)), 8)))"
+    @test sprint(show, "text/plain", dual(i)) ==
+        "Index(dual([U1(0) => 1, U1(1) => 2])|id=$(first(string(uuid(i)), 8)))"
 end

@@ -1,5 +1,5 @@
-using ITensorBase: ITensorBase, Index, NamedOneTo, id, inds, mulopadd!, name, names,
-    operator, prime, rename, unname, unnamed
+using ITensorBase: ITensorBase, Index, NamedOneTo, id, inds, mulopadd!, name, operator,
+    prime, rename, unname, unnamed
 using LinearAlgebra: mul!, norm, tr
 using MatrixAlgebraKit: left_null, left_orth, left_polar, lq_compact, lq_full, qr_compact,
     qr_full, right_null, right_orth, right_polar, svd_compact, svd_trunc, svd_vals
@@ -185,18 +185,18 @@ using Test: @test, @test_broken, @testset
         # the three-argument form builds an operator from the codomain/domain split
         top = project(Sz, (prime(i),), (i,))
         @test eltype(top) === elt
-        @test Set(names(top)) == Set(name.((prime(i), i)))
+        @test Set(ITensorBase.names(top)) == Set(name.((prime(i), i)))
         @test unname(top, (prime(i), i)) == Sz
         # `unchecked_project` skips the (for dense, always exact) verification
         @test unname(unchecked_project(Sz, (prime(i),), (i,)), (prime(i), i)) == Sz
         # the two-argument form builds a state (empty domain)
         v = elt[1, 0]
         s = project(v, (i,))
-        @test names(s) == [name(i)]
+        @test ITensorBase.names(s) == [name(i)]
         @test unname(s, (i,)) == v
         # the empty-codomain form builds an all-domain tensor (mirror of the state)
         bra = project(v, (), (i,))
-        @test names(bra) == [name(i)]
+        @test ITensorBase.names(bra) == [name(i)]
         @test unname(bra, (i,)) == v
     end
     @testset "rename with index keys" begin
@@ -204,14 +204,14 @@ using Test: @test, @test_broken, @testset
         a = randn(elt, i, j)
         # An `Index`-keyed pair relabels like the name-keyed pair rather than silently
         # no-opping, and the result stays an `ITensor` (not `NamedTensor{Any}`).
-        @test names(rename(a, i => k)) ==
-            names(rename(a, "i" => "k"))
+        @test ITensorBase.names(rename(a, i => k)) ==
+            ITensorBase.names(rename(a, "i" => "k"))
         @test rename(a, i => k) isa typeof(a)
         # Mixed index/name keys and values are accepted.
-        @test names(rename(a, i => "k")) ==
-            names(rename(a, "i" => "k"))
-        @test names(rename(a, "i" => k)) ==
-            names(rename(a, "i" => "k"))
+        @test ITensorBase.names(rename(a, i => "k")) ==
+            ITensorBase.names(rename(a, "i" => "k"))
+        @test ITensorBase.names(rename(a, "i" => k)) ==
+            ITensorBase.names(rename(a, "i" => "k"))
     end
     @testset "trivialrange on named ranges" begin
         i = Index(3)

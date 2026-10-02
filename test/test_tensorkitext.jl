@@ -1,4 +1,4 @@
-using ITensorBase: ITensorBase, ITensor, Index, align, name, names, prime, unnamed
+using ITensorBase: ITensorBase, ITensor, Index, align, name, prime, unnamed
 using LinearAlgebra: norm
 using MatrixAlgebraKit: qr_compact, svd_compact
 using StableRNGs: StableRNG
@@ -60,7 +60,7 @@ using Test: @test, @test_throws, @testset
         # Contraction over the shared (dualized) leg matches a direct TensorKit reference.
         b = randn(rng, elt, conj(j), k)
         c = a * b
-        @test Set(names(c)) == Set(name.((i, k)))
+        @test Set(ITensorBase.names(c)) == Set(name.((i, k)))
         ta, tb, gc = unnamed(a), unnamed(b), unnamed(c)
         @tensor ref[vi; vk] := ta[vi, vj] * tb[vj, vk]
         @test TK.space(ref) == TK.space(gc)
@@ -131,7 +131,7 @@ using Test: @test, @test_throws, @testset
         cd = randn(rng, elt, (), (j,))
         @test unnamed(cd) isa AbstractTensorMap
         @test TK.space(unnamed(cd)) == (one(Vj) ← Vj)
-        @test names(cd) == [name(j)]
+        @test ITensorBase.names(cd) == [name(j)]
         @test TK.space(unnamed(zeros(elt, (), (j,)))) == (one(Vj) ← Vj)
         @test_throws MethodError randn(rng, elt, (), ())
 
@@ -143,7 +143,7 @@ using Test: @test, @test_throws, @testset
         @test mm isa AbstractTensorMap
         @test TK.space(mm) == ((Vi ⊗ Vj) ← Vk)
         rt = unmatricize(mm, (i, j), (k,))
-        @test names(rt) == names(ma)
+        @test ITensorBase.names(rt) == ITensorBase.names(ma)
         @test TK.space(unnamed(rt)) == TK.space(unnamed(ma))
         @test unnamed(rt) ≈ unnamed(ma)
 
@@ -151,17 +151,17 @@ using Test: @test, @test_throws, @testset
         # result and the map form re-expresses the requested codomain/domain split, both
         # carrying each index with its arrow to the new position.
         mf = align(m, (j, i))
-        @test names(mf) == [name(j), name(i)]
+        @test ITensorBase.names(mf) == [name(j), name(i)]
         @test TK.space(unnamed(mf), 1) == TK.dual(Vj)
         @test TK.space(unnamed(mf), 2) == Vi
         md = align(m, (j,), (i,))
-        @test names(md) == [name(j), name(i)]
+        @test ITensorBase.names(md) == [name(j), name(i)]
         @test TK.space(unnamed(md)) == (TK.dual(Vj) ← TK.dual(Vi))
         @test TK.space(unnamed(md), 1) == TK.dual(Vj)
         @test TK.space(unnamed(md), 2) == Vi
         # An empty codomain moves both indices into the domain, preserving the outward axes.
         me = align(m, (), (i, j))
-        @test names(me) == [name(i), name(j)]
+        @test ITensorBase.names(me) == [name(i), name(j)]
         @test TK.space(unnamed(me)) == (one(Vi) ← (TK.dual(Vi) ⊗ Vj))
         @test TK.space(unnamed(me), 1) == Vi
         @test TK.space(unnamed(me), 2) == TK.dual(Vj)
@@ -179,7 +179,7 @@ using Test: @test, @test_throws, @testset
         top = project(Sz, (prime(w),), (w,))
         @test unnamed(top) isa AbstractTensorMap
         @test TK.space(unnamed(top)) == (W ← W)
-        @test Set(names(top)) == Set(name.((prime(w), w)))
+        @test Set(ITensorBase.names(top)) == Set(name.((prime(w), w)))
 
         # a charge-breaking operator is projected to zero by `unchecked_project`; the checked
         # `project` rejects the discard
@@ -197,7 +197,7 @@ using Test: @test, @test_throws, @testset
         cobra = project(elt[1, 0], (), (w,))
         @test unnamed(cobra) isa AbstractTensorMap
         @test TK.space(unnamed(cobra)) == (one(W) ← W)
-        @test Set(names(cobra)) == Set((name(w),))
+        @test Set(ITensorBase.names(cobra)) == Set((name(w),))
     end
 end
 
