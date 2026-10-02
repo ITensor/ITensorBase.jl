@@ -1,6 +1,6 @@
-using ITensorBase: ITensorBase, Index, NamedOneTo, id, inds, name, names, operator, prime,
-    rename, unname, unnamed
-using LinearAlgebra: norm, tr
+using ITensorBase: ITensorBase, Index, NamedOneTo, id, inds, mulopadd!, name, names,
+    operator, prime, rename, unname, unnamed
+using LinearAlgebra: mul!, norm, tr
 using MatrixAlgebraKit: left_null, left_orth, left_polar, lq_compact, lq_full, qr_compact,
     qr_full, right_null, right_orth, right_polar, svd_compact, svd_trunc, svd_vals
 using StableRNGs: StableRNG
@@ -224,4 +224,54 @@ using Test: @test, @test_broken, @testset
         @test length(rn) == 4
         @test name(rn) != name(i)
     end
+end
+
+# Records each call, then contracts with the default algorithm.
+struct RecordingContract <: TensorAlgebra.ContractAlgorithm
+    calls::Base.RefValue{Int}
+end
+function TensorAlgebra.contractpermopadd!(
+        alg::RecordingContract, a_dest, perm_dest_codomain, perm_dest_domain,
+        op1, a1, perm1_codomain, perm1_domain, op2, a2, perm2_codomain, perm2_domain,
+        α::Number, β::Number
+    )
+    alg.calls[] += 1
+    return TensorAlgebra.contractpermopadd!(
+        TensorAlgebra.MatricizeContract(), a_dest, perm_dest_codomain, perm_dest_domain,
+        op1, a1, perm1_codomain, perm1_domain, op2, a2, perm2_codomain, perm2_domain, α, β
+    )
+end
+
+@testset "`mul!` forwards `alg`" begin
+    i, j, k = NamedOneTo(2, "i"), NamedOneTo(3, "j"), NamedOneTo(4, "k")
+    a, b = randn(i, j), randn(j, k)
+    alg = RecordingContract(Ref(0))
+    dest = similar(a * b)
+    mul!(dest, a, b; alg)
+    @test dest ≈ a * b
+    @test alg.calls[] == 1
+    mul!(dest, a, b, 2, 1; alg)
+    @test dest ≈ 3 * (a * b)
+    @test alg.calls[] == 2
+end
+
+@testset "`mulopadd!`" begin
+    i, j, k = NamedOneTo(2, "i"), NamedOneTo(3, "j"), NamedOneTo(4, "k")
+    a, b = randn(ComplexF64, i, j), randn(ComplexF64, j, k)
+    dest = randn(ComplexF64, i, k)
+    mulopadd!(dest, conj, a, identity, b, true, false)
+    @test dest ≈ conj(a) * b
+    mulopadd!(dest, identity, a, conj, b, true, false)
+    @test dest ≈ a * conj(b)
+    prev = copy(dest)
+    mulopadd!(dest, conj, a, identity, b, 2, 1)
+    @test dest ≈ prev + 2 * (conj(a) * b)
+    alg = RecordingContract(Ref(0))
+    mulopadd!(dest, conj, a, identity, b, true, false; alg)
+    @test dest ≈ conj(a) * b
+    @test alg.calls[] == 1
+    dest_perm = randn(ComplexF64, k, i)
+    mulopadd!(dest_perm, conj, a, identity, b, true, false)
+    @test names(dest_perm) == ["k", "i"]
+    @test dest_perm ≈ conj(a) * b
 end
