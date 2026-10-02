@@ -1,5 +1,5 @@
-using GradedArrays: U1, sectors
-using ITensorBase: ITensorBase, ITensor, Index, align, inds, names, prime, space, unnamed
+using GradedArrays: U1, fU1, sectors
+using ITensorBase: ITensorBase, ITensor, Index, align, inds, prime, space, unnamed, uuid
 using StableRNGs: StableRNG
 using TensorAlgebra: TensorAlgebra, dual, isdual, matricize, project, project_aux,
     tryproject, tryproject_aux, unchecked_project, unchecked_project_aux, unmatricize
@@ -40,16 +40,14 @@ using Test: @test, @test_throws, @testset
     @test length(inds(randn(rng, U1(1), (i, j)))) == 3
     @test length(inds(randn(rng, U1(1), (i,), (j,)))) == 3
 
-    # A bare `TensorKitSectors.Sector` (fermionic) works as the flux.
-    s = [
-        Index([FermionNumber(0) => 2, FermionNumber(1) => 2]; tags = "s" => "$n") for
-            n in 1:4
-    ]
+    # The flux may be a bare `TensorKitSectors.Sector` even where the axes are graded by the
+    # GradedArrays sector, and the aux leg comes back carrying the GradedArrays one.
+    s = [Index([fU1(0) => 2, fU1(1) => 2]; tags = "s" => "$n") for n in 1:4]
     t = randn(rng, elt, FermionNumber(2), (s[1], s[2], s[3], s[4]))
     @test length(inds(t)) == 5
     auxt = only(setdiff(collect(inds(t)), s))
     @test isdual(auxt) && length(auxt) == 1 &&
-        only(sectors(space(auxt))) == FermionNumber(2)
+        only(sectors(space(auxt))) == fU1(2)
 
     # `zeros`/`ones`/`fill` mirror `randn` (`fill` takes the value first). Each carries the
     # flux on an aux leg the same way.
@@ -123,7 +121,7 @@ end
     @test m isa AbstractMatrix{elt}
     @test size(m) == (length(i) * length(j), length(k))
     rt = unmatricize(m, (i, j), (k,))
-    @test names(rt) == names(a)
+    @test ITensorBase.names(rt) == ITensorBase.names(a)
     @test isdual(inds(rt)[3])
     @test unnamed(rt) ≈ unnamed(a)
 end
@@ -186,4 +184,15 @@ end
     @test_throws ArgumentError ITensor(m, (i, dual(j)), ())
     # Naming the dimensions flat claims no split, so it stays available.
     @test ITensor(m, (i, dual(j))) isa ITensor
+end
+
+# An `Index` prints the space it was written with, so a graded one shows its
+# `sector => multiplicity` pairs rather than the `gradedrange(...)` call that built the range,
+# and a dual one prints as `dual` of the index rather than of the pairs.
+@testset "GradedArraysExt Index show" begin
+    i = Index([U1(0) => 1, U1(1) => 2])
+    @test sprint(show, "text/plain", i) ==
+        "Index([U1(0) => 1, U1(1) => 2]|id=$(first(string(uuid(i)), 8)))"
+    @test sprint(show, "text/plain", dual(i)) ==
+        "dual(Index([U1(0) => 1, U1(1) => 2]|id=$(first(string(uuid(i)), 8))))"
 end

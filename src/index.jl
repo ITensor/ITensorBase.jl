@@ -424,12 +424,28 @@ function primestring(plev)
     end
 end
 
+# The space, so a graded index shows its sectors and its arrow rather than just a total length.
+# A compact context asks for the length instead, which is what a tensor's summary line uses to
+# stay readable with one entry per leg.
 function Base.show(io::IO, i::Index)
-    lenstr = "length=$(length(i))"
+    sp = space(i)
+    # A dual index prints as `dual` of the non-dual one, which is the call that makes it, rather
+    # than as a `dual` around the space, which is not a call at all once the space is a vector of
+    # `sector => multiplicity` pairs.
+    nondual = TA.isdual(sp) ? TA.dual(sp) : sp
+    spacestr = if get(io, :compact, false)
+        "length=$(length(i))"
+    else
+        # The space the `Index` was written with rather than the range it stores. `:typeinfo`
+        # drops the element-type prefix a vector of pairs would otherwise carry.
+        spec = from_range(nondual)
+        sprint(show, spec; context = IOContext(io, :typeinfo => typeof(spec)))
+    end
     idstr = "|id=$(shortid(uuid(i)))"
     tagsstr = !isempty(tags_stored(i)) ? "|$(tagsstring(tags_stored(i)))" : ""
     primestr = primestring(plev(i))
-    str = "Index($(lenstr)$(idstr)$(tagsstr))$(primestr)"
+    str = "Index($(spacestr)$(idstr)$(tagsstr))$(primestr)"
+    TA.isdual(sp) && (str = "dual($(str))")
     print(io, str)
     return nothing
 end

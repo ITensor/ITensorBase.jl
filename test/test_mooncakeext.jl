@@ -1,4 +1,4 @@
-using ITensorBase: Name, NamedTensor, NamedUnitRange, inds, name, nameperm, names,
+using ITensorBase: ITensorBase, Name, NamedTensor, NamedUnitRange, inds, name, nameperm,
     names_setdiff, to_inds, uniquename
 using LinearAlgebra: mul!
 using Mooncake: Mooncake
@@ -23,8 +23,8 @@ using Test: @test, @testset
         Mooncake.TestUtils.test_rule(
             rng, nameperm, a1, (i,), (j,); mode, is_primitive
         )
-        Mooncake.TestUtils.test_rule(rng, names, a1; mode, is_primitive)
-        Mooncake.TestUtils.test_rule(rng, names, a1, 1; mode, is_primitive)
+        Mooncake.TestUtils.test_rule(rng, ITensorBase.names, a1; mode, is_primitive)
+        Mooncake.TestUtils.test_rule(rng, ITensorBase.names, a1, 1; mode, is_primitive)
         Mooncake.TestUtils.test_rule(rng, inds, a1; mode, is_primitive)
         Mooncake.TestUtils.test_rule(rng, inds, a1, 1; mode, is_primitive)
         Mooncake.TestUtils.test_rule(
