@@ -78,10 +78,10 @@ function mul!_namedtensor(
 end
 
 """
-    mulopadd!(a_dest, op1, a1, op2, a2, α, β; alg = nothing)
+    mulopadd!(a_dest, op1, a1, op2, a2, α, β; kwargs...)
 
 Compute `a_dest = α * op1(a1) * op2(a2) + β * a_dest`, matching dimensions by name. `op1` and
-`op2` are `identity` or `conj`, and `alg` is a `TensorAlgebra.ContractAlgorithm`.
+`op2` can be `identity` or `conj`, and keyword arguments (such as algorithm selection) are passed to `TensorAlgebra.contractopadd!`.
 """
 function mulopadd!(
         a_dest::AbstractNamedTensor,
