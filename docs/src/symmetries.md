@@ -20,9 +20,9 @@ k = Index([U1(0) => 1, U1(1) => 1])
 a = randn(i, dual(j))
 ```
 
-Only the symmetry-allowed blocks are stored.
+A `GradedArray` only stores the symmetry-allowed blocks.
 
-Tensors over graded indices contract, scale, and add like any others.
+These tensors support contraction, multiplication by a scalar, and addition.
 
 ```@example symmetries
 b = randn(j, dual(k))
@@ -40,9 +40,9 @@ a + c
 
 ## Duality
 
-`dual` is a GradedArrays function that flips the arrow an index carries, and `isdual` reports
-which way it points. Indices can only contract with ones that have opposite duality, for example
-the `j` Index of `b` contracts with the `dual(j)` Index of `a`.
+`dual` flips the duality of an index, and `isdual` returns whether an index is dual. Indices
+can only contract with ones that have opposite duality, for example the `j` Index of `b`
+contracts with the `dual(j)` Index of `a`.
 
 ```@example symmetries
 isdual.(inds(a))
