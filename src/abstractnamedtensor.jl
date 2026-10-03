@@ -274,19 +274,19 @@ Base.ndims(a::AbstractNamedTensor) = TensorAlgebra.ndims(unnamed(a))
 # Circumvent issue when eltype isn't known at compile time.
 Base.eltype(a::AbstractNamedTensor) = eltype(unnamed(a))
 
-# In-place `zero!`/`scale!`/`add!` of a named tensor, delegating to the unnamed parent array.
-# `add!` aligns `x` to `y`'s dimension order by name (the named analogue of the
-# identity-permutation `add!` on plain arrays) and does the block-wise permute-add on the
+# In-place `zero!`/`scale!`/`scaleadd!` of a named tensor, delegating to the unnamed parent array.
+# `scaleadd!` aligns `x` to `y`'s dimension order by name (the named analogue of the
+# identity-permutation `scaleadd!` on plain arrays) and does the block-wise permute-add on the
 # parents, so it never routes through a broadcast that aliases the destination with an operand.
 TensorAlgebra.zero!(a::AbstractNamedTensor) = (zero!(unnamed(a)); a)
 function TensorAlgebra.scale!(a::AbstractNamedTensor, α::Number)
     TensorAlgebra.scale!(unnamed(a), α)
     return a
 end
-function TensorAlgebra.add!(
+function TensorAlgebra.scaleadd!(
         y::AbstractNamedTensor, x::AbstractNamedTensor, α::Number, β::Number
     )
-    TensorAlgebra.add!(unnamed(y), unnamed(x, names(y)), α, β)
+    TensorAlgebra.scaleadd!(unnamed(y), unnamed(x, names(y)), α, β)
     return y
 end
 
@@ -317,7 +317,7 @@ function VI.scale(a::AbstractNamedTensor, α::Number)
 end
 VI.scale!(a::AbstractNamedTensor, α::Number) = TensorAlgebra.scale!(a, α)
 function VI.scale!(b::AbstractNamedTensor, a::AbstractNamedTensor, α::Number)
-    return TensorAlgebra.add!(b, a, α, false)
+    return TensorAlgebra.scaleadd!(b, a, α, false)
 end
 # The `!!` methods fall back to out-of-place allocation when the destination can't hold the result.
 function VI.scale!!(a::AbstractNamedTensor, α::Number)
@@ -336,7 +336,7 @@ function VI.add(y::AbstractNamedTensor, x::AbstractNamedTensor, α::Number, β::
     return VI.add!(VI.scale!(similar(y, T), y, β), x, α, true)
 end
 function VI.add!(y::AbstractNamedTensor, x::AbstractNamedTensor, α::Number, β::Number)
-    return TensorAlgebra.add!(y, x, α, β)
+    return TensorAlgebra.scaleadd!(y, x, α, β)
 end
 function VI.add!!(y::AbstractNamedTensor, x::AbstractNamedTensor, α::Number, β::Number)
     T = Base.promote_op(VI.add, VI.scalartype(y), VI.scalartype(x), typeof(α), typeof(β))
