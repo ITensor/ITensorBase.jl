@@ -95,7 +95,7 @@ julia> outputinds(op)
 
 See also [`outputnames`](@ref), [`inputinds`](@ref), [`outputaxes`](@ref), [`operator`](@ref).
 """
-outputinds(a::AbstractNamedTensor) = inds(a)[dims(a, outputnames(a))]
+outputinds(a::AbstractNamedTensor) = inds(a)[findnames(a, outputnames(a))]
 
 """
     outputaxes(a)
@@ -108,7 +108,9 @@ shape.
 
 See also [`outputinds`](@ref), [`inputaxes`](@ref), [`operator`](@ref).
 """
-outputaxes(a::AbstractNamedTensor) = map(Base.Fix1(inds, a), Tuple(dims(a, outputnames(a))))
+function outputaxes(a::AbstractNamedTensor)
+    return map(Base.Fix1(inds, a), Tuple(findnames(a, outputnames(a))))
+end
 
 """
     inputinds(a)
@@ -132,7 +134,7 @@ julia> inputinds(op)
 
 See also [`inputnames`](@ref), [`outputinds`](@ref), [`inputaxes`](@ref), [`operator`](@ref).
 """
-inputinds(a::AbstractNamedTensor) = conj.(inds(a)[dims(a, inputnames(a))])
+inputinds(a::AbstractNamedTensor) = conj.(inds(a)[findnames(a, inputnames(a))])
 
 """
     inputaxes(a)
@@ -144,7 +146,7 @@ the non-dual domain space, so `a * randn(inputaxes(a))` contracts.
 See also [`inputinds`](@ref), [`outputaxes`](@ref), [`operator`](@ref).
 """
 function inputaxes(a::AbstractNamedTensor)
-    return map(conj ∘ Base.Fix1(inds, a), Tuple(dims(a, inputnames(a))))
+    return map(conj ∘ Base.Fix1(inds, a), Tuple(findnames(a, inputnames(a))))
 end
 
 # `outputname(a, i, default)` returns the output name paired with input name `i`, and
