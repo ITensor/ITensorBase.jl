@@ -117,10 +117,10 @@ inds(a::AbstractNamedTensor, dim::Int) = axes(a)[dim]
 
 isnamed(::Type{<:AbstractNamedTensor}) = true
 
-function dim(a::AbstractNamedTensor, n)
+function findname(a::AbstractNamedTensor, n)
     return findfirst(==(name(n)), names(a))
 end
-dims(a::AbstractNamedTensor, ns) = Base.Fix1(dim, a).(ns)
+findnames(a::AbstractNamedTensor, ns) = Base.Fix1(findname, a).(ns)
 
 dimname_isequal(x) = Base.Fix1(dimname_isequal, x)
 dimname_isequal(x, y) = isequal(x, y)
@@ -140,7 +140,7 @@ dimname_isequal(r1::NamedUnitRange, r2::Name) = name(r1) == name(r2)
 dimname_isequal(r1::Name, r2::NamedUnitRange) = name(r1) == name(r2)
 
 function to_inds(a::AbstractNamedTensor, dims)
-    is = Base.Fix1(dim, a).(name.(dims))
+    is = Base.Fix1(findname, a).(name.(dims))
     return Base.Fix1(inds, a).(is)
 end
 
@@ -348,8 +348,8 @@ end
 
 VI.inner(x::AbstractNamedTensor, y::AbstractNamedTensor) = LinearAlgebra.dot(x, y)
 
-Base.axes(a::AbstractNamedTensor, dimname::Name) = axes(a, dim(a, dimname))
-Base.size(a::AbstractNamedTensor, dimname::Name) = size(a, dim(a, dimname))
+Base.axes(a::AbstractNamedTensor, dimname::Name) = axes(a, findname(a, dimname))
+Base.size(a::AbstractNamedTensor, dimname::Name) = size(a, findname(a, dimname))
 
 # Lowered through `TensorAlgebra.similar_map` (all-codomain, so identical to
 # `similar(parent, elt, axes)` for dense) so non-`AbstractArray` backends whose `similar`

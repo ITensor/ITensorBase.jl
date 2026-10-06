@@ -1,8 +1,8 @@
 using Combinatorics: Combinatorics
 using ITensorBase: @names, AbstractNamedTensor, Name, NameMismatch, Named,
     NamedCartesianIndex, NamedCartesianIndices, NamedOneTo, NamedTensor, NamedUnitRange,
-    align, aligned, apply, dim, dims, inds, isnamed, name, names, nametype, product, rename,
-    setnames, unname, unnamed, unnamedtype
+    align, aligned, apply, findname, findnames, inds, isnamed, name, names, nametype,
+    product, rename, setnames, unname, unnamed, unnamedtype
 using LinearAlgebra: LinearAlgebra
 using Random: default_rng
 using TensorAlgebra: datatype
@@ -47,9 +47,9 @@ end
         # `Base.names` is an alternative spelling that forwards to `ITensorBase.names`.
         @test Base.names(na) == names(na)
         @test Base.names(na, 1) == names(na, 1)
-        @test dim(na, "i") == 1
-        @test dim(na, "j") == 2
-        @test dims(na, ("j", "i")) == (2, 1)
+        @test findname(na, "i") == 1
+        @test findname(na, "j") == 2
+        @test findnames(na, ("j", "i")) == (2, 1)
         @test na[1, 1] == a[1, 1]
         # The parent array's concrete type is erased from the type but is still
         # recoverable from an instance.

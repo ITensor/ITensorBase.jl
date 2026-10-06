@@ -36,14 +36,4 @@ include("sorteddict.jl")
 include("index.jl")
 include("quirks.jl")
 
-# Lazy and symbolic ITensor expressions.
-include("lazyitensors/baseextensions.jl")
-include("lazyitensors/itensorbaseextensions.jl")
-include("lazyitensors/applied.jl")
-include("lazyitensors/lazyinterface.jl")
-include("lazyitensors/lazybroadcast.jl")
-include("lazyitensors/lazyitensor.jl")
-include("lazyitensors/symbolicitensor.jl")
-include("lazyitensors/evaluation_order.jl")
-
 end
