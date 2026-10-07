@@ -6,17 +6,17 @@ i = Index([U1(0) =&gt; 1, U1(1) =&gt; 2])
 j = Index([U1(0) =&gt; 2, U1(1) =&gt; 1])
 k = Index([U1(0) =&gt; 1, U1(1) =&gt; 1])
 
-a = randn(i, dual(j))</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">Index(length=3|id=9745cfcc)×dual(Index(length=3|id=fe3d79ca)) ITensor:
+a = randn(i, dual(j))</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">Index(length=3|id=6fd5abbf)×dual(Index(length=3|id=e4b761ad)) ITensor:
 3×3 GradedArray (codomain 2, domain 0):
   Codomain Dim 1: gradedrange([U1(0) =&gt; 1, U1(1) =&gt; 2])
   Codomain Dim 2: dual(gradedrange([U1(0) =&gt; 2, U1(1) =&gt; 1]))
 3×1 GradedArrays.FusedGradedMatrix{Float64, GradedArrays.U1, Vector{Float64}, …} with 1 stored block at sectors [U1(0)]:
   Codomain Dim 1: fusedgradedrange([U1(0) =&gt; 4, U1(1) =&gt; 4, U1(-1) =&gt; 1])
   Domain Dim 1:   fusedgradedrange([U1(0) =&gt; 1])
-  0.9605021357174454 
- -0.772584588687862  
- -1.851918481673089  
- -0.12952458800580766
+ -1.651645442641765  
+  0.7626711745797237 
+ -0.39338635200632277
+ -1.2815496042459404 
  ────────────────────
    ⋅                 
    ⋅                 
@@ -24,27 +24,27 @@ a = randn(i, dual(j))</code></pre><pre class="documenter-example-output"><code c
    ⋅                 
  ────────────────────
    ⋅                 </code></pre><p>A <code>GradedArray</code> only stores the symmetry-allowed blocks.</p><p>These tensors support contraction, multiplication by a scalar, and addition.</p><pre><code class="language-julia hljs">b = randn(j, dual(k))
-a * b</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">Index(length=3|id=9745cfcc)×dual(Index(length=2|id=44ac89b1)) ITensor:
+a * b</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">Index(length=3|id=6fd5abbf)×dual(Index(length=2|id=323576bb)) ITensor:
 3×2 GradedArray (codomain 1, domain 1):
   Codomain Dim 1: gradedrange([U1(0) =&gt; 1, U1(1) =&gt; 2])
   Domain Dim 1:   gradedrange([U1(0) =&gt; 1, U1(1) =&gt; 1])
 2×2 GradedArrays.FusedGradedMatrix{Float64, GradedArrays.U1, Vector{Float64}, …} with 2 stored blocks at sectors [U1(0), U1(1)]:
   Codomain Dim 1: fusedgradedrange([U1(0) =&gt; 1, U1(1) =&gt; 2])
   Domain Dim 1:   fusedgradedrange([U1(0) =&gt; 1, U1(1) =&gt; 1])
- 1.6777135296768348  │   ⋅                 
- ────────────────────┼─────────────────────
-  ⋅                  │  1.9058005703220118 
-  ⋅                  │  0.13329314229273234</code></pre><pre><code class="language-julia hljs">2 * a</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">Index(length=3|id=9745cfcc)×dual(Index(length=3|id=fe3d79ca)) ITensor:
+ 1.9097392691619475  │    ⋅                 
+ ────────────────────┼──────────────────────
+  ⋅                  │  -0.39312500062159966
+  ⋅                  │  -1.2806981899506737 </code></pre><pre><code class="language-julia hljs">2 * a</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">Index(length=3|id=6fd5abbf)×dual(Index(length=3|id=e4b761ad)) ITensor:
 3×3 GradedArray (codomain 2, domain 0):
   Codomain Dim 1: gradedrange([U1(0) =&gt; 1, U1(1) =&gt; 2])
   Codomain Dim 2: dual(gradedrange([U1(0) =&gt; 2, U1(1) =&gt; 1]))
 3×1 GradedArrays.FusedGradedMatrix{Float64, GradedArrays.U1, Vector{Float64}, …} with 1 stored block at sectors [U1(0)]:
   Codomain Dim 1: fusedgradedrange([U1(0) =&gt; 4, U1(1) =&gt; 4, U1(-1) =&gt; 1])
   Domain Dim 1:   fusedgradedrange([U1(0) =&gt; 1])
-  1.9210042714348907
- -1.545169177375724 
- -3.703836963346178 
- -0.2590491760116153
+ -3.30329088528353  
+  1.5253423491594473
+ -0.7867727040126455
+ -2.563099208491881 
  ───────────────────
    ⋅                
    ⋅                
@@ -52,23 +52,23 @@ a * b</code></pre><pre class="documenter-example-output"><code class="nohighligh
    ⋅                
  ───────────────────
    ⋅                </code></pre><pre><code class="language-julia hljs">c = randn(i, dual(j))
-a + c</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">Index(length=3|id=9745cfcc)×dual(Index(length=3|id=fe3d79ca)) ITensor:
+a + c</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">Index(length=3|id=6fd5abbf)×dual(Index(length=3|id=e4b761ad)) ITensor:
 3×3 GradedArray (codomain 2, domain 0):
   Codomain Dim 1: gradedrange([U1(0) =&gt; 1, U1(1) =&gt; 2])
   Codomain Dim 2: dual(gradedrange([U1(0) =&gt; 2, U1(1) =&gt; 1]))
 3×1 GradedArrays.FusedGradedMatrix{Float64, GradedArrays.U1, Vector{Float64}, …} with 1 stored block at sectors [U1(0)]:
   Codomain Dim 1: fusedgradedrange([U1(0) =&gt; 4, U1(1) =&gt; 4, U1(-1) =&gt; 1])
   Domain Dim 1:   fusedgradedrange([U1(0) =&gt; 1])
- 1.0835114793734366 
- 0.2146334926965764 
- 0.11169460636577977
- 0.6932050091466495 
- ───────────────────
-  ⋅                 
-  ⋅                 
-  ⋅                 
-  ⋅                 
- ───────────────────
-  ⋅                 </code></pre><h2 id="Duality"><a class="docs-heading-anchor" href="#Duality">Duality</a><a id="Duality-1"></a><a class="docs-heading-anchor-permalink" href="#Duality" title="Permalink"></a></h2><p><code>dual</code> flips the duality of an index, and <code>isdual</code> returns whether an index is dual. Indices can only contract with ones that have opposite duality, for example the <code>j</code> Index of <code>b</code> contracts with the <code>dual(j)</code> Index of <code>a</code>.</p><pre><code class="language-julia hljs">isdual.(inds(a))</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">2-element BitVector:
+ -1.4519521680527285 
+  1.8713446539041305 
+ -0.12720862878065303
+  0.6548183877470553 
+ ────────────────────
+   ⋅                 
+   ⋅                 
+   ⋅                 
+   ⋅                 
+ ────────────────────
+   ⋅                 </code></pre><h2 id="Duality"><a class="docs-heading-anchor" href="#Duality">Duality</a><a id="Duality-1"></a><a class="docs-heading-anchor-permalink" href="#Duality" title="Permalink"></a></h2><p><code>dual</code> flips the duality of an index, and <code>isdual</code> returns whether an index is dual. Indices can only contract with ones that have opposite duality, for example the <code>j</code> Index of <code>b</code> contracts with the <code>dual(j)</code> Index of <code>a</code>.</p><pre><code class="language-julia hljs">isdual.(inds(a))</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">2-element BitVector:
  0
- 1</code></pre><p>Note that indices of a <code>GradedArray</code> are partitioned into a codomain and a domain, and the <code>GradedArray</code> stores the block diagonal matrix corresponding to the bipartitioning of the indices. When printing, by convention domain indices are implicitly dual (the format and conventions are compatible with those from <a href="https://github.com/QuantumKitHub/TensorKit.jl">TensorKit.jl</a>). For more information see the documentation on <a href="https://itensor.github.io/GradedArrays.jl/dev/user_interface/graded_arrays/">graded arrays</a>.</p><h2 id="Available-symmetries"><a class="docs-heading-anchor" href="#Available-symmetries">Available symmetries</a><a id="Available-symmetries-1"></a><a class="docs-heading-anchor-permalink" href="#Available-symmetries" title="Permalink"></a></h2><p>Some standard symmetries are available such as <code>Z2</code>, <code>fU1</code> (fermionic <code>U(1)</code>), and <code>SU2</code>. See <a href="https://itensor.github.io/GradedArrays.jl/dev/user_interface/sectors/#Symmetry-sectors">symmetry sectors</a> for the complete list and more details.</p><p>You can use named sectors to conserve a product of symmetries.</p><pre><code class="language-julia hljs">Index([(; charge = U1(0), spin = U1(1)) =&gt; 1, (; charge = U1(1), spin = U1(0)) =&gt; 2])</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">Index([(charge = U1(0), spin = U1(1)) =&gt; 1, (charge = U1(1), spin = U1(0)) =&gt; 2]|id=a8f20526)</code></pre></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../user_interface/">« User Interface</a><a class="docs-footer-nextpage" href="../dev_interface/">Developer Interface »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.19.0 on <span class="colophon-date" title="Tuesday 6 October 2026 21:27">Tuesday 6 October 2026</span>. Using Julia version 1.13.1.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
+ 1</code></pre><p>Note that indices of a <code>GradedArray</code> are partitioned into a codomain and a domain, and the <code>GradedArray</code> stores the block diagonal matrix corresponding to the bipartitioning of the indices. When printing, by convention domain indices are implicitly dual (the format and conventions are compatible with those from <a href="https://github.com/QuantumKitHub/TensorKit.jl">TensorKit.jl</a>). For more information see the documentation on <a href="https://itensor.github.io/GradedArrays.jl/dev/user_interface/graded_arrays/">graded arrays</a>.</p><h2 id="Available-symmetries"><a class="docs-heading-anchor" href="#Available-symmetries">Available symmetries</a><a id="Available-symmetries-1"></a><a class="docs-heading-anchor-permalink" href="#Available-symmetries" title="Permalink"></a></h2><p>Some standard symmetries are available such as <code>Z2</code>, <code>fU1</code> (fermionic <code>U(1)</code>), and <code>SU2</code>. See <a href="https://itensor.github.io/GradedArrays.jl/dev/user_interface/sectors/#Symmetry-sectors">symmetry sectors</a> for the complete list and more details.</p><p>You can use named sectors to conserve a product of symmetries.</p><pre><code class="language-julia hljs">Index([(; charge = U1(0), spin = U1(1)) =&gt; 1, (; charge = U1(1), spin = U1(0)) =&gt; 2])</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">Index([(charge = U1(0), spin = U1(1)) =&gt; 1, (charge = U1(1), spin = U1(0)) =&gt; 2]|id=4eb5a855)</code></pre></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../user_interface/">« User Interface</a><a class="docs-footer-nextpage" href="../dev_interface/">Developer Interface »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.19.0 on <span class="colophon-date" title="Wednesday 7 October 2026 13:24">Wednesday 7 October 2026</span>. Using Julia version 1.13.1.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
