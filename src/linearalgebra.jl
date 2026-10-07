@@ -33,7 +33,5 @@ end
 # The Hilbert–Schmidt pairing is tr(a1' * a2) after aligning the matrix representations.
 # Contracting conj(a1) with a2 inserts fermionic parity signs on dual legs.
 function LA.dot(a1::AbstractNamedTensor, a2::AbstractNamedTensor)
-    x1, x2 = unnamed(a1), unnamed(a2)
-    perm = Tuple(getperm(names(a2), names(a1)))
-    return TA.dotperm(x1, x2, TA.bipartition(perm, Val(TA.ndims_codomain(x1)))...)
+    return TA.dot(unnamed(a1), names(a1), unnamed(a2), names(a2))
 end
