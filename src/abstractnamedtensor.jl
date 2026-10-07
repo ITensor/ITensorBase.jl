@@ -274,10 +274,12 @@ Base.ndims(a::AbstractNamedTensor) = TensorAlgebra.ndims(unnamed(a))
 # Circumvent issue when eltype isn't known at compile time.
 Base.eltype(a::AbstractNamedTensor) = eltype(unnamed(a))
 
-# In-place `zero!`/`scale!`/`scaleadd!` of a named tensor, delegating to the unnamed parent array.
-# `scaleadd!` aligns `x` to `y`'s dimension order by name (the named analogue of the
+# In-place `zero!`/`scale!`/`scaleadd!`/`twist!` of a named tensor, delegating to the unnamed
+# parent array. `scaleadd!` aligns `x` to `y`'s dimension order by name (the named analogue of the
 # identity-permutation `scaleadd!` on plain arrays) and does the block-wise permute-add on the
 # parents, so it never routes through a broadcast that aliases the destination with an operand.
+# `twist!` takes the dimensions to twist as names or indices rather than as positions, so a caller
+# does not have to know the parent's dimension order.
 TensorAlgebra.zero!(a::AbstractNamedTensor) = (zero!(unnamed(a)); a)
 function TensorAlgebra.scale!(a::AbstractNamedTensor, α::Number)
     TensorAlgebra.scale!(unnamed(a), α)
@@ -288,6 +290,10 @@ function TensorAlgebra.scaleadd!(
     )
     TensorAlgebra.scaleadd!(unnamed(y), unnamed(x, names(y)), α, β)
     return y
+end
+function TensorAlgebra.twist!(a::AbstractNamedTensor, inds)
+    TensorAlgebra.twist!(unnamed(a), findnames(a, inds))
+    return a
 end
 
 # Name-aware `VectorInterface` methods so ITensors can drive iterative solvers such as
