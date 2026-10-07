@@ -1,8 +1,10 @@
 using GradedArrays: U1, fU1, sectors
-using ITensorBase: ITensorBase, ITensor, Index, align, inds, prime, space, unnamed, uuid
+using ITensorBase:
+    ITensorBase, ITensor, Index, align, inds, name, prime, space, unnamed, uuid
 using StableRNGs: StableRNG
 using TensorAlgebra: TensorAlgebra, dual, isdual, matricize, project, project_aux,
-    tryproject, tryproject_aux, unchecked_project, unchecked_project_aux, unmatricize
+    tryproject, tryproject_aux, twist!, unchecked_project, unchecked_project_aux,
+    unmatricize
 using TensorKitSectors: FermionNumber
 using Test: @test, @test_throws, @testset
 
@@ -195,4 +197,36 @@ end
         "Index([U1(0) => 1, U1(1) => 2]|id=$(first(string(uuid(i)), 8)))"
     @test sprint(show, "text/plain", dual(i)) ==
         "dual(Index([U1(0) => 1, U1(1) => 2]|id=$(first(string(uuid(i)), 8))))"
+end
+
+# `twist!` on a named tensor names the dimensions to twist, so it has to map those names to the
+# parent's positions. Two legs are not enough to see that mapping: a flux-zero two-leg tensor has
+# its only odd block odd in both legs, so twisting either one flips the same entries. These three
+# legs carry blocks that are odd in a different pair of legs each, so twisting `i`, `j` or `k`
+# gives three different results and a lookup that went by position would show up.
+@testset "GradedArraysExt twist!" begin
+    rng = StableRNG(1234)
+    i = Index([fU1(0) => 1, fU1(1) => 1]; tags = "i")
+    j = Index([fU1(0) => 1, fU1(1) => 1]; tags = "j")
+    k = Index([fU1(1) => 1, fU1(2) => 1]; tags = "k")
+    a = randn(rng, (i, j), (k,))
+
+    # The sharpest check: naming a dimension agrees with twisting the parent at its position.
+    b = copy(a)
+    twist!(unnamed(b), (2,))
+    @test twist!(copy(a), (inds(a)[2],)) == b
+
+    @test twist!(copy(a), (i,)) != twist!(copy(a), (j,))
+    @test twist!(copy(a), (j,)) != twist!(copy(a), (k,))
+    @test twist!(copy(a), (i,)) != twist!(copy(a), (k,))
+    # A name and the index carrying it select the same dimension.
+    @test twist!(copy(a), (j,)) == twist!(copy(a), (name(j),))
+    # Twisting dimensions together is the same as twisting them one at a time.
+    @test twist!(copy(a), (i, k)) == twist!(twist!(copy(a), (i,)), (k,))
+    # Twisting the same dimension twice squares a sign, so it restores the original.
+    @test twist!(twist!(copy(a), (j,)), (j,)) == a
+    # It mutates and returns the tensor it was given.
+    c = copy(a)
+    @test twist!(c, (j,)) === c
+    @test twist!(copy(a), ()) == a
 end
