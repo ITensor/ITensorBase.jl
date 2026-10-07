@@ -1,4 +1,5 @@
 using LinearAlgebra: LinearAlgebra as LA
+using TensorAlgebra: TensorAlgebra as TA
 
 # We overload `LinearAlgebra.norm` because the LinearAlgebra.jl AbstractArray definition
 # uses scalar indexing:
@@ -29,10 +30,10 @@ for f! in [:mul!, :div!]
     end
 end
 
-# We overload `LienarAlgebra.dot` because the LinearAlgebra.jl AbstractArray definition
-# uses scalar indexing:
-# https://github.com/JuliaLang/LinearAlgebra.jl/blob/3a4fdad7f608928ecb4b41e76b1e9ecacd058444/src/generic.jl#L919-L1009
-# which isn't friendly for named arrays wrapping GPU arrays.
+# The Hilbert–Schmidt pairing is tr(a1' * a2) after aligning the matrix representations.
+# Contracting conj(a1) with a2 inserts fermionic parity signs on dual legs.
 function LA.dot(a1::AbstractNamedTensor, a2::AbstractNamedTensor)
-    return (conj(a1) * a2)[]
+    x1, x2 = unnamed(a1), unnamed(a2)
+    perm = Tuple(getperm(names(a2), names(a1)))
+    return TA.dotperm(x1, x2, TA.bipartition(perm, Val(TA.ndims_codomain(x1)))...)
 end
