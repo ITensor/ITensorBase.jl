@@ -1,6 +1,6 @@
 name = "ITensorBase"
 uuid = "4795dd04-0d67-49bb-8f44-b89c448a1dc7"
-version = "0.16.1"
+version = "0.16.2"
 authors = ["ITensor developers <support@itensor.org> and contributors"]
 
 [workspace]
@@ -34,13 +34,13 @@ ITensorBaseTensorKitExt = "TensorKit"
 Accessors = "0.1.39"
 Adapt = "4.1.1"
 ArrayLayouts = "1.11"
-GradedArrays = "0.17"
+GradedArrays = "0.17.3"
 LinearAlgebra = "1.10"
 MatrixAlgebraKit = "0.2, 0.3, 0.4, 0.5, 0.6"
 Mooncake = "0.4.202, 0.5"
 Random = "1.10"
 SimpleTraits = "0.9.4"
-TensorAlgebra = "0.23.1"
+TensorAlgebra = "0.23.2"
 TensorKit = "0.17"
 TensorKitSectors = "0.3.9"
 UUIDs = "1.10"
