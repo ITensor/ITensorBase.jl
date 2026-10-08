@@ -263,6 +263,23 @@ for f in [
     end
 end
 
+function MAK.qr_compact!(
+        a::AbstractNamedTensor, names_codomain, names_domain; name = (;), kwargs...
+    )
+    # `name` is a keyword here, so reach the `name` function through the module.
+    codomain = ITensorBase.name.(names_codomain)
+    domain = ITensorBase.name.(names_domain)
+    q_unnamed, r_unnamed =
+        TA.qr_compact!(unnamed(a), names(a), codomain, domain; kwargs...)
+    bond = to_uniquename_function(name)(nametype(a))
+    return NamedTensor(q_unnamed, (codomain..., bond)),
+        NamedTensor(r_unnamed, (bond, domain...))
+end
+function MAK.qr_compact!(a::AbstractNamedTensor, names_codomain; kwargs...)
+    codomain = name.(names_codomain)
+    return MAK.qr_compact!(a, codomain, names_setdiff(names(a), codomain); kwargs...)
+end
+
 #
 # SVD (three-output).
 #
