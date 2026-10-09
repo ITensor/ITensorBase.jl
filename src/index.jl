@@ -236,14 +236,29 @@ decoration(n) = (;)
 decoration(n::IndexName) = (; tags = tags(n), plev = plev(n))
 
 """
-    prime(i)
-    prime(t::AbstractNamedTensor)
+    prime(i, plinc = 1)
+    prime(a::AbstractNamedTensor, plinc = 1)
+    prime(a::AbstractNamedTensor, is)
+    prime(a::AbstractNamedTensor, plinc, is)
+    prime(predicate, a::AbstractNamedTensor, plinc = 1)
 
-Increment the prime level of an index or index name by one, returning a new index that
+Increment the prime level of an index or index name by `plinc`, returning a new index that
 is distinct from `i`. Priming is the usual way to make a second copy of an index that
 carries the same tags but is not contracted against the original. The inverse is
 [`noprime`](@ref), which resets the prime level to zero. Given a tensor, prime all of its
 indices.
+
+Given a tensor and `is`, prime only those indices, leaving the rest alone. `is` is a
+collection, or a single index or index name, and `plinc` goes before it. Given a predicate
+instead, prime the indices of `a` for which `predicate` is true, where `plinc` trails the
+predicate because the predicate has to come first. An index of `a` is selected
+by its full name, prime level included, so `noprime(prime(a, i), i)` leaves `a` unchanged:
+the tensor holds `i'`, not `i`. Name the level you mean with `prime(i, 2)`. An index that `a`
+does not have is ignored.
+
+A negative `plinc` lowers the prime level, so `prime(a, -1)` undoes one level of priming.
+Nothing clamps at zero: going below it yields a negative prime level, which is legal but
+prints a warning.
 
 # Examples
 
@@ -255,19 +270,46 @@ false
 
 julia> noprime(prime(i)) == i
 true
+
+julia> prime(i, 2) == prime(prime(i))
+true
+
+julia> j = Index(3);
+
+julia> a = NamedTensor(zeros(2, 3), (i, j));
+
+julia> inds(prime(a, i)) == [prime(i), j]
+true
+
+julia> inds(prime(a, 2, i)) == [prime(i, 2), j]
+true
+
+julia> prime(prime(a, 2), -2) == a
+true
+
+julia> inds(prime(n -> ITensorBase.plev(n) == 0, prime(a, i))) == [prime(i), prime(j)]
+true
 ```
 
-See also [`noprime`](@ref), [`Index`](@ref).
+See also [`noprime`](@ref), [`sim`](@ref), [`Index`](@ref).
 """
 function prime end
 
 """
     noprime(i)
-    noprime(t::AbstractNamedTensor)
+    noprime(a::AbstractNamedTensor)
+    noprime(a::AbstractNamedTensor, is)
+    noprime(predicate, a::AbstractNamedTensor)
 
 Reset the prime level of an index or index name to zero, returning a new index. This
 undoes any number of [`prime`](@ref) calls. Given a tensor, reset the prime level of all of
 its indices.
+
+Given a tensor and `is`, reset only those indices, leaving the rest alone. `is` is a
+collection, or a single index or index name. Given a predicate instead, reset the indices of
+`a` for which `predicate` is true, which is the way to select on something other than the
+exact name, such as a tag. Selection is by full name, so the index passed must carry the
+prime level it has on `a`, and `noprime(a, i)` does nothing to a tensor holding `i'`.
 
 # Examples
 
@@ -276,20 +318,41 @@ julia> i = Index(2);
 
 julia> noprime(prime(i)) == i
 true
+
+julia> j = Index(3);
+
+julia> a = prime(NamedTensor(zeros(2, 3), (i, j)));
+
+julia> inds(noprime(a, prime(j))) == [prime(i), j]
+true
+
+julia> s = ITensorBase.settags(Index(2), "Site");
+
+julia> b = prime(NamedTensor(zeros(2, 3), (s, j)));
+
+julia> inds(noprime(x -> ITensorBase.hastag(x, "Site"), b)) == [s, prime(j)]
+true
 ```
 
-See also [`prime`](@ref), [`Index`](@ref).
+See also [`prime`](@ref), [`sim`](@ref), [`Index`](@ref).
 """
 function noprime end
 
 """
     sim(i)
-    sim(t::AbstractNamedTensor)
+    sim(a::AbstractNamedTensor)
+    sim(a::AbstractNamedTensor, is)
+    sim(predicate, a::AbstractNamedTensor)
 
 Return a "similar" index: a new index (or, given a tensor, a tensor with all of its indices
 replaced) carrying the same tags and prime level as `i` but a fresh unique identifier, so it
 is distinct from `i` and will not contract against it. This is the index-manipulation
 spelling of [`uniquename`](@ref) on an index.
+
+Given a tensor and `is`, replace only those indices, leaving the rest alone. `is` is a
+collection, or a single index or index name. Given a predicate instead, replace the indices
+of `a` for which `predicate` is true. Selection is by full name, prime level included, and an
+index that `a` does not have is ignored.
 
 # Examples
 
@@ -301,13 +364,23 @@ false
 
 julia> length(sim(i))
 2
+
+julia> j = Index(3);
+
+julia> a = NamedTensor(zeros(2, 3), (i, j));
+
+julia> inds(sim(a, i))[1] == i
+false
+
+julia> inds(sim(a, i))[2] == j
+true
 ```
 
-See also [`uniquename`](@ref), [`prime`](@ref).
+See also [`uniquename`](@ref), [`prime`](@ref), [`noprime`](@ref).
 """
 function sim end
 
-prime(n::IndexName) = setplev(n, plev(n) + 1)
+prime(n::IndexName, plinc::Integer = 1) = setplev(n, plev(n) + plinc)
 noprime(n::IndexName) = setplev(n, 0)
 sim(n::IndexName) = uniquename(n)
 
@@ -401,15 +474,47 @@ emptytags(i::Index) = setname(i, emptytags(name(i)))
 decoration(i::Index) = decoration(name(i))
 
 setplev(i::Index, plev) = setname(i, setplev(name(i), plev))
-prime(i::Index) = setname(i, prime(name(i)))
+prime(i::Index, plinc::Integer = 1) = setname(i, prime(name(i), plinc))
 noprime(i::Index) = setname(i, noprime(name(i)))
 sim(i::Index) = setname(i, sim(name(i)))
 
 # Whole-tensor index manipulation: relabel every index name-only via `rename`, leaving the
 # data and spaces untouched.
-prime(a::AbstractNamedTensor) = rename(prime, a)
-noprime(a::AbstractNamedTensor) = rename(noprime, a)
-sim(a::AbstractNamedTensor) = rename(sim, a)
+#
+# The selected forms take a collection of indices, so a lone index needs methods of its own:
+# an `Index` is a `NamedUnitRange`, which iterates its own elements, and would otherwise be
+# read as a collection of integers rather than as one index.
+for f in [:prime, :noprime, :sim]
+    @eval begin
+        $f(a::AbstractNamedTensor) = rename($f, a)
+        $f(a::AbstractNamedTensor, i::AbstractName) = $f(a, (i,))
+        $f(a::AbstractNamedTensor, i::AbstractNamedArray) = $f(a, (i,))
+        function $f(a::AbstractNamedTensor, is)
+            return rename(a, (name(i) => $f(name(i)) for i in is)...)
+        end
+        # `predicate` is typed, since an untyped first argument would be ambiguous against the
+        # collection form above whenever both arguments are tensors.
+        function $f(predicate::Function, a::AbstractNamedTensor)
+            return $f(a, Iterators.filter(predicate, inds(a)))
+        end
+    end
+end
+
+# Only `prime` counts levels, so only `prime` takes an increment. It precedes the selection,
+# as in `prime(i, plinc)` and in both earlier ITensor generations. `Integer` is disjoint from
+# the name and index types above, so this adds no ambiguity. A negative `plinc` lowers the
+# level, which is what an `unprime` would do.
+prime(a::AbstractNamedTensor, plinc::Integer) = rename(n -> prime(n, plinc), a)
+prime(a::AbstractNamedTensor, plinc::Integer, i::AbstractName) = prime(a, plinc, (i,))
+prime(a::AbstractNamedTensor, plinc::Integer, i::AbstractNamedArray) = prime(a, plinc, (i,))
+function prime(a::AbstractNamedTensor, plinc::Integer, is)
+    return rename(a, (name(i) => prime(name(i), plinc) for i in is)...)
+end
+# `plinc` trails the predicate but precedes a selection. The predicate has to come first, so
+# there is nowhere else for it to go, and this is the order legacy settled on too.
+function prime(predicate::Function, a::AbstractNamedTensor, plinc::Integer)
+    return prime(a, plinc, Iterators.filter(predicate, inds(a)))
+end
 
 function primestring(plev)
     if plev < 0

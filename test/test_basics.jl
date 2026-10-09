@@ -1,7 +1,7 @@
 using ITensorBase: ITensorBase, AbstractNamedTensor, ITensor, Index, IndexName, NamedTensor,
     commonind, commoninds, gettag, hascommoninds, hastag, id, inds, name, names, nametype,
     noncommonind, noncommoninds, noprime, operator, plev, prime, rename, setplev, settag,
-    sim, tags, trycommonind, trynoncommonind, tryuniqueind, unioninds, uniqueind,
+    settags, sim, tags, trycommonind, trynoncommonind, tryuniqueind, unioninds, uniqueind,
     uniqueinds, uniquename, unname, unnamed, unsettag, uuid
 using Test: @test, @test_broken, @test_throws, @testset
 using UUIDs: UUID
@@ -114,6 +114,13 @@ using UUIDs: UUID
         @test unnamed(a) == x
         @test plev(i) == 0
         @test plev(prime(i)) == 1
+        # `plinc` lives on the index, never on a tensor, so a tensor's second argument is
+        # always a selection. `prime(i, n)` is how a level-`n` index gets named.
+        @test plev(prime(i, 2)) == 2
+        @test plev(prime(name(i), 3)) == 3
+        @test prime(i, 1) == prime(i)
+        @test prime(i, 0) == i
+        @test prime(prime(i), 2) == prime(i, 3)
         @test length(tags(i)) == 0
         a′ = rename(prime, a)
         @test unnamed(a′) == x
@@ -202,6 +209,83 @@ using UUIDs: UUID
         @test sprint(show, "text/plain", i) ==
             "Index(2|id=$(first(string(uuid(i)), 8))|X=>Y)"
     end
+    @testset "selected-index manipulation" begin
+        elt = Float64
+        i, j, k = Index.((2, 3, 4))
+        a = randn(elt, i, j, k)
+
+        # `sim` is absent here because it mints a fresh id on every call, so two separate calls
+        # never compare equal; it is checked on its own below. Each function is given a tensor
+        # it actually changes, so the comparisons are not trivially true.
+        for (f, b) in ((prime, a), (noprime, prime(a)))
+            bi, _, bk = inds(b)
+            # A lone index or index name stands for the one-element collection. An `Index` is a
+            # `NamedUnitRange`, so without its own method it would be read as a range of integers.
+            @test f(b, bi) == f(b, (bi,))
+            @test f(b, name(bi)) == f(b, (bi,))
+            # Any collection of indices works.
+            @test f(b, [bi, bk]) == f(b, (bi, bk))
+            # Selecting every index agrees with the whole-tensor form.
+            @test f(b, inds(b)) == f(b)
+        end
+
+        # Properties shared by all three, each read off a single call.
+        for f in (prime, noprime, sim)
+            # The unselected indices are left alone.
+            @test inds(f(a, (i, k)))[2] == j
+            # Selecting none is a no-op, as is naming an index the tensor does not have.
+            @test f(a, ()) == a
+            @test f(a, Index(5)) == a
+            # Relabeling is name-only, so the data is untouched.
+            @test unnamed(f(a, i)) == unnamed(a)
+        end
+
+        # `prime` and `noprime` select on the full name, prime level included, so a primed index
+        # has to be named as such. The predicate form is the way to avoid spelling it out.
+        a′ = prime(a, (i, j))
+        @test issetequal(inds(a′), (prime(i), prime(j), k))
+        @test noprime(a′, i) == a′
+        @test noprime(a′, prime(i)) == prime(a, j)
+        @test prime(n -> plev(n) == 0, a′) == prime(a)
+        # A predicate that selects every primed index is just `noprime(a)`, so test one that
+        # leaves a primed index behind.
+        a′′ = prime(a′, (prime(i),))
+        @test issetequal(inds(a′′), (prime(prime(i)), prime(j), k))
+        @test noprime(n -> plev(n) == 2, a′′) == prime(a, j)
+        # Naming the level-2 index directly is the alternative to the predicate.
+        @test noprime(a′′, prime(i, 2)) == prime(a, j)
+
+        # `prime` alone takes a level increment, before the selection. `noprime` and `sim`
+        # have no level to count, so they take no such argument.
+        @test prime(a, 2) == prime(prime(a))
+        @test inds(prime(a, 2, i)) == [prime(i, 2), j, k]
+        @test inds(prime(a, 2, (i, k))) == [prime(i, 2), j, prime(k, 2)]
+        @test prime(a, 2, name(i)) == prime(a, 2, i)
+        @test prime(a, 1) == prime(a)
+        @test prime(a, 0) == a
+        # Stepping up twice matches one increment of two only when the second step names the
+        # index at the level it has reached, since selection includes the prime level.
+        @test prime(a, 2, i) == prime(prime(a, i), prime(i))
+        # A negative increment lowers the level, which is what an `unprime` would do.
+        @test prime(prime(a, 2), -2) == a
+        @test prime(prime(a, 2, i), -1, prime(i, 2)) == prime(a, i)
+        # The predicate form takes the increment too, trailing the predicate.
+        @test prime(n -> plev(n) == 0, a, 2) == prime(a, 2)
+        @test prime(x -> x == i, a, 2) == prime(a, 2, i)
+        @test prime(n -> plev(n) == 0, a, 1) == prime(n -> plev(n) == 0, a)
+
+        # The predicate sees the indices, not the names, so index-level accessors work.
+        i_t = settags(i, "Site")
+        a_t = randn(elt, i_t, j, k)
+        @test prime(x -> hastag(x, "Site"), a_t) == prime(a_t, i_t)
+
+        # `sim` mints a fresh id for the selected index only.
+        a_s = sim(a, i)
+        @test inds(a_s)[1] != i
+        @test issetequal(inds(a_s)[2:3], (j, k))
+        @test unnamed(a_s) == unnamed(a)
+    end
+
     @testset "whole-tensor index manipulation" begin
         elt = Float64
         i, j = Index.((2, 3))
