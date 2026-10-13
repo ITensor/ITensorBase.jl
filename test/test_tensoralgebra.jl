@@ -2,7 +2,8 @@ using ITensorBase: ITensorBase, Index, NamedOneTo, id, inds, mulopadd!, name, op
     prime, rename, unname, unnamed
 using LinearAlgebra: mul!, norm, tr
 using MatrixAlgebraKit: left_null, left_orth, left_polar, lq_compact, lq_full, qr_compact,
-    qr_full, right_null, right_orth, right_polar, svd_compact, svd_trunc, svd_vals
+    qr_compact!, qr_full, right_null, right_orth, right_polar, svd_compact, svd_trunc,
+    svd_vals
 using StableRNGs: StableRNG
 using TensorAlgebra: TensorAlgebra, contract, directsum, matricize, project, trivialrange,
     unchecked_project, unmatricize
@@ -121,6 +122,12 @@ using Test: @test, @test_broken, @testset
             x, y = f(a, (i, k), (j, l))
             @test x * y ≈ a
         end
+
+        q, r = qr_compact(a, (i, k), (j, l))
+        q′, r′ = qr_compact!(copy(a), (i, k), (j, l); name = Returns(names(r, 1)))
+        @test q′ ≈ q && r′ ≈ r
+        q′, r′ = qr_compact!(copy(a), (i, k))
+        @test q′ * r′ ≈ a
     end
     @testset "svd" begin
         dims = (2, 2, 2, 2)
