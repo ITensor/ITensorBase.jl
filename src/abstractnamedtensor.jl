@@ -251,8 +251,12 @@ Base.Array{<:Any, N}(a::AbstractNamedTensor) where {N} = Array{eltype(a), N}(a)
 # Read the parent's axes through TensorAlgebra's interface (not `Base.axes`) so a non-array
 # backend like a TensorMap, whose axes are its native spaces, is supported.
 function Base.axes(a::AbstractNamedTensor)
-    return NamedUnitRange.(TensorAlgebra.axes(unnamed(a)), Tuple(names(a)))
+    return namedaxes(TensorAlgebra.axes(unnamed(a)), names(a))
 end
+# A function barrier: an `ITensor`'s parent is untyped, so its axes are only known at runtime.
+# The names are indexed by position rather than converted with `Tuple`, since they may be stored
+# in a `Vector` whose length is unknown to the compiler.
+namedaxes(axs::Tuple, ns) = ntuple(i -> NamedUnitRange(axs[i], ns[i]), Val(length(axs)))
 function Base.size(a::AbstractNamedTensor)
     return length.(axes(a))
 end
