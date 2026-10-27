@@ -427,7 +427,7 @@ function product_output_input(a::AbstractNamedTensor, b::AbstractNamedTensor)
     isshared(n) = n in names(a) && n in names(b)
     # Where the wire entering at `n` leaves, preferring `b`'s pairing when both pair `n`.
     forward(n) = outputname(b, n, outputname(a, n, nothing))
-    DimName = promote_type(eltype(names(a)), eltype(names(b)))
+    DimName = promote_type(nametype(a), nametype(b))
     input, output = DimName[], DimName[]
     function follow!(op)
         for (inp, out) in operator_pairs(op)
