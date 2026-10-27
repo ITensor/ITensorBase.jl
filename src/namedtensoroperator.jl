@@ -425,26 +425,24 @@ operator_pairs(a::AbstractNamedTensor) = ()
 # are matched by linear scans rather than hashed into sets and dictionaries.
 function product_output_input(a::AbstractNamedTensor, b::AbstractNamedTensor)
     isshared(n) = n in names(a) && n in names(b)
-    # Where the wire entering at `n` leaves, preferring `b`'s pairing when both pair `n`.
-    forward(n) = outputname(b, n, outputname(a, n, nothing))
-    DimName = promote_type(nametype(a), nametype(b))
-    input, output = DimName[], DimName[]
-    function follow!(op)
-        for (inp, out) in operator_pairs(op)
-            isshared(inp) && continue
-            while isshared(out)
-                next = forward(out)
-                isnothing(next) && break
-                out = next
-            end
-            isshared(out) && continue
-            push!(input, inp)
-            push!(output, out)
+    # The surviving end of the wire leaving at `n`, or `nothing` if it dead-ends on a
+    # contracted name. A contracted name continues as the output it is paired with,
+    # preferring `b`'s pairing when both operands pair it.
+    function wire_end(n)
+        while isshared(n)
+            n = @something outputname(b, n, outputname(a, n, nothing)) return nothing
         end
-        return nothing
+        return n
     end
-    follow!(a)
-    follow!(b)
+    DimName = promote_type(nametype(a), nametype(b))
+    output, input = DimName[], DimName[]
+    for op in (a, b), (inp, out) in operator_pairs(op)
+        isshared(inp) && continue
+        out = wire_end(out)
+        isnothing(out) && continue
+        push!(output, out)
+        push!(input, inp)
+    end
     return output, input
 end
 
