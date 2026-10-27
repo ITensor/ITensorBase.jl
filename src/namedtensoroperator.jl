@@ -174,7 +174,7 @@ end
 # every name shared between `x` and `y` must be an input of `x` that is not also an input of
 # `y`. Landing an input of `x` on an input of `y`, or sharing any other name, is rejected.
 function check_apply(x::AbstractNamedTensor, y::AbstractNamedTensor)
-    for s in intersect(names(x), names(y))
+    for s in smallintersect(names(x), names(y))
         if !(s in inputnames(x)) || (s in inputnames(y))
             throw(
                 ArgumentError(
@@ -226,13 +226,9 @@ end
 # TODO: Define versions that accept output and input names,
 # i.e. `transpose(a, output, input)` and `adjoint(a, output, input)` (?).
 function Base.transpose(a::AbstractNamedTensor)
-    out = outputnames(a)
-    inp = inputnames(a)
-    a_map = merge(Dict(out .=> inp), Dict(inp .=> out))
-    a′ = rename(state(a)) do i
-        return get(a_map, i, i)
-    end
-    return operator(a′, out, inp)
+    # Swap each paired output with its input; an input's partner wins if a name is both.
+    a′ = rename(n -> outputname(a, n, inputname(a, n, n)), state(a))
+    return operator(a′, outputnames(a), inputnames(a))
 end
 function Base.adjoint(a::AbstractNamedTensor)
     return transpose(conj(a))
@@ -269,7 +265,7 @@ end
 function product(a::AbstractNamedTensor, b::AbstractNamedTensor)
     check_product(a, b)
     a′, b′ = a, b
-    for s in intersect(inputnames(a), inputnames(b))
+    for s in smallintersect(inputnames(a), inputnames(b))
         bond = uniquename(s)
         a′ = rename(a′, s => bond)                      # a's input site → bond
         b′ = rename(b′, outputname(b, s, s) => bond)   # b's matching output → bond
@@ -416,7 +412,7 @@ end
 # dangling from the operator point of view). The result is always an
 # `NamedTensorOperator`, even when its output and input both come out empty, so
 # the product type does not depend on the runtime names being contracted.
-operator_pairs(a::NamedTensorOperator) = a.inputnames .=> a.outputnames
+operator_pairs(a::NamedTensorOperator) = zip(a.inputnames, a.outputnames)
 operator_pairs(a::AbstractNamedTensor) = ()
 
 # Compose the output/input of `a * b`. The `input => output` pairs of both
@@ -425,21 +421,30 @@ operator_pairs(a::AbstractNamedTensor) = ()
 # name reaches its surviving output partner by following the pairing through
 # any contracted (shared) names. A name whose chain dead-ends on a contracted
 # index is left dangling, so the result is well defined for any contraction.
+# This runs on every operator product, and an operator pairs only a few names, so names
+# are matched by linear scans rather than hashed into sets and dictionaries.
 function product_output_input(a::AbstractNamedTensor, b::AbstractNamedTensor)
-    shared = intersect(names(a), names(b))
-    pairs = collect(Iterators.flatten((operator_pairs(a), operator_pairs(b))))
-    forward = Dict(pairs)
-    input = eltype(keys(forward))[]
-    output = eltype(values(forward))[]
-    for (inp, out) in pairs
-        inp in shared && continue
-        while out in shared && haskey(forward, out)
-            out = forward[out]
+    isshared(n) = n in names(a) && n in names(b)
+    # Where the wire entering at `n` leaves, preferring `b`'s pairing when both pair `n`.
+    forward(n) = outputname(b, n, outputname(a, n, nothing))
+    DimName = promote_type(eltype(names(a)), eltype(names(b)))
+    input, output = DimName[], DimName[]
+    function follow!(op)
+        for (inp, out) in operator_pairs(op)
+            isshared(inp) && continue
+            while isshared(out)
+                next = forward(out)
+                isnothing(next) && break
+                out = next
+            end
+            isshared(out) && continue
+            push!(input, inp)
+            push!(output, out)
         end
-        out in shared && continue
-        push!(input, inp)
-        push!(output, out)
+        return nothing
     end
+    follow!(a)
+    follow!(b)
     return output, input
 end
 
@@ -576,13 +581,7 @@ end
 Trace of a named operator: contracts each output index with its paired input index and
 sums the diagonal, over the operator's intrinsic output/input split.
 """
-function LA.tr(op::NamedTensorOperator)
-    a = state(op)
-    byname = Dict(name(i) => i for i in inds(a))
-    output = map(n -> byname[n], Tuple(outputnames(op)))
-    input = map(n -> byname[n], Tuple(inputnames(op)))
-    return LA.tr(a, output, input)
-end
+LA.tr(op::NamedTensorOperator) = LA.tr(state(op), outputnames(op), inputnames(op))
 
 # === similar_operator ===
 #
