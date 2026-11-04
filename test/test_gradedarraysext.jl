@@ -2,9 +2,9 @@ using GradedArrays: U1, fU1, sectors
 using ITensorBase:
     ITensorBase, ITensor, Index, align, inds, name, prime, space, unnamed, uuid
 using StableRNGs: StableRNG
-using TensorAlgebra: TensorAlgebra, dual, isdual, matricize, project, project_aux,
-    tryproject, tryproject_aux, twist!, unchecked_project, unchecked_project_aux,
-    unmatricize
+using TensorAlgebra: TensorAlgebra, ConjArray, dual, isdual, matricize, project,
+    project_aux, tryproject, tryproject_aux, twist!, unchecked_project,
+    unchecked_project_aux, unmatricize
 using TensorKitSectors: FermionNumber
 using Test: @test, @test_throws, @testset
 
@@ -102,6 +102,21 @@ end
     mr2 = randn(rng, elt, (j, i), (k,))
     @test unnamed(align(mr1 .+ mr2, (i, j), (k,))) ≈
         unnamed(mr1) + unnamed(align(mr2, (i, j), (k,)))
+end
+
+# `conj` of a graded named tensor is lazy and folds into the contraction, so it matches the eager
+# conjugate, fermion signs included.
+@testset "GradedArraysExt lazy conj (eltype = $elt)" for elt in (Float64, ComplexF64)
+    rng = StableRNG(1234)
+    i = Index([fU1(0) => 2, fU1(1) => 3]; tags = "i")
+    j = Index([fU1(0) => 1, fU1(1) => 2]; tags = "j")
+    k = Index([fU1(-1) => 1, fU1(0) => 2]; tags = "k")
+    a = randn(rng, elt, i, j, k)
+    c = randn(rng, elt, i, j)
+    @test unnamed(conj(a)) isa ConjArray
+    @test conj(a) * c ≈ conj.(a) * c
+    @test c * conj(a) ≈ c * conj.(a)
+    @test conj(a) * a ≈ conj.(a) * a
 end
 
 # `matricize` fuses a tensor's codomain/domain split into an unnamed matrix and `unmatricize`
