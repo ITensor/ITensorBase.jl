@@ -392,6 +392,11 @@ end
         b = randn(elt, j, NamedOneTo(4, "k"))
         @test ca * b == conj.(a) * b
 
+        # The lazy conjugate is a view, so writing into it writes the conjugate into `a`.
+        x = randn(elt, i, j)
+        @test fill!(conj(x), zero(elt)) isa AbstractNamedTensor
+        @test iszero(unnamed(x))
+
         # `fill!` forwards to the underlying storage.
         b = randn(elt, i, j)
         @test fill!(b, zero(elt)) === b
