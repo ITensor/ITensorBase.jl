@@ -1,6 +1,7 @@
 using GradedArrays: U1, fU1, sectors
 using ITensorBase:
     ITensorBase, ITensor, Index, align, inds, name, prime, space, unnamed, uuid
+using LinearAlgebra: LinearAlgebra
 using StableRNGs: StableRNG
 using TensorAlgebra: TensorAlgebra, ConjArray, dual, isdual, matricize, project,
     project_aux, tryproject, tryproject_aux, twist!, unchecked_project,
@@ -117,6 +118,10 @@ end
     @test conj(a) * c ≈ conj.(a) * c
     @test c * conj(a) ≈ c * conj.(a)
     @test conj(a) * a ≈ conj.(a) * a
+    # The other operand shares the dualized axes of `conj(a)`, with its names in a different order.
+    d = conj.(randn(rng, elt, k, i, j))
+    @test LinearAlgebra.dot(conj(a), d) ≈ LinearAlgebra.dot(conj.(a), d)
+    @test LinearAlgebra.dot(d, conj(a)) ≈ LinearAlgebra.dot(d, conj.(a))
 end
 
 # `matricize` fuses a tensor's codomain/domain split into an unnamed matrix and `unmatricize`

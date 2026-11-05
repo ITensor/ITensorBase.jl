@@ -391,6 +391,10 @@ end
         @test unnamed(conj(ca)) === unnamed(a)
         b = randn(elt, j, NamedOneTo(4, "k"))
         @test ca * b == conj.(a) * b
+        # Named `dot` goes through `dotperm`, so the names may come in a different order.
+        y = randn(elt, j, i)
+        @test LinearAlgebra.dot(ca, y) ≈ LinearAlgebra.dot(conj.(a), y)
+        @test LinearAlgebra.dot(y, ca) ≈ LinearAlgebra.dot(y, conj.(a))
 
         # The lazy conjugate is a view, so writing into it writes the conjugate into `a`.
         x = randn(elt, i, j)
