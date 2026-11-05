@@ -5,7 +5,7 @@ using ITensorBase: @names, AbstractNamedTensor, Name, NameMismatch, Named,
     product, rename, setnames, unname, unnamed, unnamedtype
 using LinearAlgebra: LinearAlgebra
 using Random: default_rng
-using TensorAlgebra: datatype
+using TensorAlgebra: ConjArray, datatype
 using Test: @test, @test_throws, @testset
 using VectorInterface: scalartype
 
@@ -385,6 +385,21 @@ end
         ca = conj(a)
         @test unnamed(ca) == conj(unnamed(a))
         @test names(ca) == names(a)
+
+        # `conj` is lazy, and contracting the lazy conjugate matches the eager one.
+        @test unnamed(ca) isa ConjArray
+        @test unnamed(conj(ca)) === unnamed(a)
+        b = randn(elt, j, NamedOneTo(4, "k"))
+        @test ca * b == conj.(a) * b
+        # Named `dot` goes through `dotperm`, so the names may come in a different order.
+        y = randn(elt, j, i)
+        @test LinearAlgebra.dot(ca, y) ≈ LinearAlgebra.dot(conj.(a), y)
+        @test LinearAlgebra.dot(y, ca) ≈ LinearAlgebra.dot(y, conj.(a))
+
+        # The lazy conjugate is a view, so writing into it writes the conjugate into `a`.
+        x = randn(elt, i, j)
+        @test fill!(conj(x), zero(elt)) isa AbstractNamedTensor
+        @test iszero(unnamed(x))
 
         # `fill!` forwards to the underlying storage.
         b = randn(elt, i, j)
