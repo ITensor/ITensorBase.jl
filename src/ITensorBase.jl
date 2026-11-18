@@ -35,5 +35,6 @@ include("namedtensoroperator.jl")
 include("sorteddict.jl")
 include("index.jl")
 include("quirks.jl")
+include("precompile.jl")
 
 end
