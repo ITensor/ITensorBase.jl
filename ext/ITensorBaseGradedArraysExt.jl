@@ -1,9 +1,8 @@
 module ITensorBaseGradedArraysExt
 
-using GradedArrays: GradedArrays as GA, FusedGradedDiagonal, FusedGradedMatrix
+using GradedArrays: GradedArrays as GA
 using ITensorBase: ITensorBase, NamedTensor, name, uniquename, unnamed
 using Random: AbstractRNG, default_rng
-using TensorAlgebra: TensorAlgebra as TA
 using TensorKitSectors: TensorKitSectors as TKS
 
 const NamedUnitRange = ITensorBase.NamedUnitRange
@@ -12,35 +11,6 @@ const NamedUnitRange = ITensorBase.NamedUnitRange
 # prints what it was written with rather than the `gradedrange(...)` call that built the range.
 function ITensorBase.from_range(g::GA.AbstractGradedOneTo)
     return [s => m for (s, m) in zip(GA.sectors(g), GA.datalengths(g))]
-end
-
-# GradedArrays defines `unmatricize` for its fused matrices with untyped axes, which ties with
-# ITensorBase's methods on named axes. Restate those for each fused matrix type so the named
-# unmatricize of a graded matrix has a unique most-specific method.
-for M in (:FusedGradedMatrix, :FusedGradedDiagonal)
-    @eval begin
-        function TA.unmatricize(
-                m::$M,
-                codomain::Tuple{NamedUnitRange, Vararg{NamedUnitRange}},
-                domain::Tuple{Vararg{NamedUnitRange}}
-            )
-            return ITensorBase.unmatricize_namedtensor(m, codomain, domain)
-        end
-        function TA.unmatricize(
-                m::$M,
-                codomain::Tuple{Vararg{NamedUnitRange}},
-                domain::Tuple{NamedUnitRange, Vararg{NamedUnitRange}}
-            )
-            return ITensorBase.unmatricize_namedtensor(m, codomain, domain)
-        end
-        function TA.unmatricize(
-                m::$M,
-                codomain::Tuple{NamedUnitRange, Vararg{NamedUnitRange}},
-                domain::Tuple{NamedUnitRange, Vararg{NamedUnitRange}}
-            )
-            return ITensorBase.unmatricize_namedtensor(m, codomain, domain)
-        end
-    end
 end
 
 # Flux-canceling constructors at the `Index` level: delegate to the GradedArrays flux backend on
