@@ -1,6 +1,6 @@
 using LinearAlgebra: LinearAlgebra
 using Random: Random
-using TensorAlgebra: TensorAlgebra, permuteddims, zero!
+using TensorAlgebra: TensorAlgebra, conjed, permuteddims, zero!
 
 # Some of the interface is inspired by:
 # https://github.com/NamedTensor/ITensors.jl
@@ -183,14 +183,16 @@ Base.zero(a::AbstractNamedTensor) = namedtensorof(a, zero(unnamed(a)))
 # `AbstractArray` fallback did through `axes`).
 Base.CartesianIndices(a::AbstractNamedTensor) = CartesianIndices(axes(a))
 
-# Eager conjugation reuses the linear-combination broadcast machinery: `conj.(a)` lowers to a
-# `ConjBroadcasted` leaf that the op primitives absorb (folding `conj` into their `op` flag) and
-# materializes into an all-codomain destination with dualized axes. This keeps one conjugation
-# mechanism shared by the lazy `conj.` path and eager `conj`, so a non-`AbstractArray` backend
-# (a `TensorMap`) needs no separate eager hook. The default `AbstractArray` `conj` would instead
-# map over elements without dualizing the axes, silently changing the contraction convention for
-# graded tensors.
-Base.conj(a::AbstractNamedTensor) = conj.(a)
+# Conjugation is lazy for an `AbstractArray` backing: `conjed` wraps it in a `ConjArray`, which
+# contraction, permutation and matricization absorb by folding `conj` into their `op`, so the
+# conjugate is never materialized on its way into them. A non-`AbstractArray` backing (a
+# `TensorMap`) conjugates eagerly through the `conj.(a)` broadcast instead, which materializes into
+# an all-codomain destination with dualized axes. The default `AbstractArray` `conj` would map over
+# elements without dualizing the axes, silently changing the contraction convention for graded
+# tensors.
+Base.conj(a::AbstractNamedTensor) = conj_namedtensor(a, unnamed(a))
+conj_namedtensor(a, unnamed_a::AbstractArray) = namedtensorof(a, conjed(unnamed_a))
+conj_namedtensor(a, unnamed_a) = conj.(a)
 
 # `LinearAlgebra.normalize` infers result eltype via `typeof(first(a)/nrm)`, which
 # scalar-indexes block-structured storage. `a / norm(a, p)` already preserves names.

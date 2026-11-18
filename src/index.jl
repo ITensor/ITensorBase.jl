@@ -48,11 +48,6 @@ function uniquename(rng::AbstractRNG, ::Type{<:IndexName}; kwargs...)
     return IndexName(rng; kwargs...)
 end
 
-# Derive contractions on integer labels: an `IndexName` carries an id and a tag dictionary and is
-# far costlier to compare than an integer, and deriving a contraction makes several comparison
-# passes over the labels. See `TensorAlgebra.label_type`.
-TA.label_type(::Type{<:IndexName}) = Int
-
 to_symbol_pair(p::Pair) = Symbol(first(p)) => Symbol(last(p))
 
 # Like `Dict`, accept one or more bare `Pair`s as tags. A `Pair` iterates over

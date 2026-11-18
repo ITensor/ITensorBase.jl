@@ -230,15 +230,18 @@ end
 struct RecordingContract <: TensorAlgebra.ContractAlgorithm
     calls::Base.RefValue{Int}
 end
-function TensorAlgebra.contractpermopadd!(
+function TensorAlgebra.contractpermconjadd!(
         alg::RecordingContract, a_dest, perm_dest_codomain, perm_dest_domain,
-        op1, a1, perm1_codomain, perm1_domain, op2, a2, perm2_codomain, perm2_domain,
+        isconj1::Bool, a1, perm1_codomain, perm1_domain,
+        isconj2::Bool, a2, perm2_codomain, perm2_domain,
         α::Number, β::Number
     )
     alg.calls[] += 1
-    return TensorAlgebra.contractpermopadd!(
+    return TensorAlgebra.contractpermconjadd!(
         TensorAlgebra.MatricizeContract(), a_dest, perm_dest_codomain, perm_dest_domain,
-        op1, a1, perm1_codomain, perm1_domain, op2, a2, perm2_codomain, perm2_domain, α, β
+        isconj1, a1, perm1_codomain, perm1_domain, isconj2, a2, perm2_codomain,
+        perm2_domain,
+        α, β
     )
 end
 

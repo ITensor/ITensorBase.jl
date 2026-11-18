@@ -86,11 +86,11 @@ function checknotind(names::NamedUnitRange)
 end
 
 # `TensorAlgebra.ndims_codomain` defaults to `ndims`, so a plain `Array` reports all-codomain and
-# an arity assertion on its own would reject the ordinary dense case. `has_bipartition` is what
+# an arity assertion on its own would reject the ordinary dense case. `hasbipartition` is what
 # separates a bipartition the storage genuinely carries from that default, so the claimed one is
 # only checkable against storage that says it has one.
 function checkbipartition(unnamed, codomain_inds, domain_inds)
-    TensorAlgebra.has_bipartition(unnamed) || return nothing
+    TensorAlgebra.hasbipartition(unnamed) || return nothing
     ncodomain = TensorAlgebra.ndims_codomain(unnamed)
     ncodomain == length(codomain_inds) && return nothing
     throw(
